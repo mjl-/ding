@@ -135,10 +135,18 @@ Now run: "make build test release"
 
 # Todo
 
+- ding: time spent should be the time since starting the clone, not since being queued ("new")
+- ding: allow aborting a build
+- should have env vars with DING_-prefix
+- document somewhere that root-mode doesn't seem to work on macos because macos still (after years!) keeps failing on xcodebuild license checks when running under uids without system user entries (/Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -license check).
+- figure out why not running with /usr/bin/nice in config.Run does not find executables. probably some path setting.
+- create files in output/ earlier? so we don't show errors about missing such files when the vcs clone failes (eg due to no git in path, or no permision to run build.sh (eg because a dir leading to build.sh isn't accessible).
+- add prometheus metrics for builds. how long they take, if they succeed, etc.
 - write test code
 - add authentication to application. need to figure out how to keep a dashboard. and how to do auth on /events
 - when on a build page, show it if a new build is already in progress, with a link to that new build
 - show last two lines of output. now the "make failed"-line is making that output not so useful.
+- use tuit instead of angularjs? or give go wasm a chance.
 
 ## Maybe
 - allow configuring a cleanup script, that is run when a builddir is removed. eg for dropping a database that was created in build.sh.
