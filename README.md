@@ -3,9 +3,7 @@
 Ding builds your software projects from git/mercurial/etc repositories,
 can run tests and keep track of released software.
 
-
-![Ding screenshot](https://www.irias.nl/static/i/w1776-ding-screenshot-index.jpg)
-
+[TODO add a screenshot]
 
 You will typically configure a "post-receive" (web)hook on your git
 server to tell Ding to start a build.
@@ -43,7 +41,7 @@ scripts ("ding upgrade").
 
 # Download
 
-Get the latest version at https://github.com/irias/ding/releases/latest
+Get the latest version at https://github.com/mjl-/ding/releases/latest
 
 
 # Features
@@ -123,7 +121,7 @@ your software goes down.
 That's not a question. But please do send the actual question in.
 
 
-For feedback, bug reports and questions, please contact m.lukkien@irias.nl.
+For feedback, bug reports and questions, please contact mechiel@ueber.net.
 
 
 # Developing

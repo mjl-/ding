@@ -17,16 +17,16 @@ func (d dir) Close() error {
 	return nil
 }
 
-var readOnDirErr = errors.New("cannot read on directory")
+var errReadOnDir = errors.New("cannot read on directory")
 
 func (d dir) Read(p []byte) (n int, err error) {
-	return -1, readOnDirErr
+	return -1, errReadOnDir
 }
 
-var seekOnDirErr = errors.New("cannot seek on directory")
+var errSeekOnDir = errors.New("cannot seek on directory")
 
 func (d dir) Seek(offset int64, whence int) (int64, error) {
-	return -1, seekOnDirErr
+	return -1, errSeekOnDir
 }
 
 func (d dir) Readdir(count int) ([]os.FileInfo, error) {

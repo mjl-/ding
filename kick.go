@@ -1,11 +1,12 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
 
-	"bitbucket.org/mjl/sherpa"
+	"github.com/mjl-/sherpa/client"
 )
 
 func kick(args []string) {
@@ -26,13 +27,13 @@ func kick(args []string) {
 	branch := args[2]
 	commit := args[3]
 
-	client, err := sherpa.NewClient(baseURL, []string{"build"})
+	client, err := client.New(baseURL, []string{"build"})
 	check(err, "initializing sherpa client")
 
 	var build struct {
 		ID int64
 	}
-	err = client.Call(&build, "createBuild", repoName, branch, commit)
+	err = client.Call(context.Background(), &build, "createBuild", repoName, branch, commit)
 	check(err, "building")
 	_, err = fmt.Println("buildId", build.ID)
 	check(err, "write")

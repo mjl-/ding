@@ -83,12 +83,13 @@ func parseConfig(path string) {
 
 func main() {
 	log.SetFlags(0)
+	log.SetPrefix("ding: ")
 	flag.Usage = func() {
 		fmt.Fprintln(os.Stderr, "usage: ding help")
-		fmt.Fprintln(os.Stderr, "       ding serve config.json")
-		fmt.Fprintln(os.Stderr, "       ding upgrade config.json [commit]")
-		fmt.Fprintln(os.Stderr, "       ding kick")
-		fmt.Fprintln(os.Stderr, "       ding version")
+		fmt.Fprintln(os.Stderr, "\tding serve config.json")
+		fmt.Fprintln(os.Stderr, "\tding upgrade config.json [commit]")
+		fmt.Fprintln(os.Stderr, "\tding kick")
+		fmt.Fprintln(os.Stderr, "\tding version")
 		flag.PrintDefaults()
 	}
 	flag.Parse()

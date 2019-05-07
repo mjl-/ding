@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	CompressedSeekErr = errors.New("seek on compressed file")
+	errCompressedSeek = errors.New("seek on compressed file")
 )
 
 type compressedFile struct {
@@ -20,11 +20,11 @@ type compressedFile struct {
 var _ http.File = &compressedFile{}
 
 func (f *compressedFile) Seek(offset int64, whence int) (int64, error) {
-	return -1, CompressedSeekErr
+	return -1, errCompressedSeek
 }
 
 func (f *compressedFile) Readdir(count int) ([]os.FileInfo, error) {
-	return nil, NotDirErr
+	return nil, ErrNotDir
 }
 
 func (f *compressedFile) Stat() (os.FileInfo, error) {

@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"bitbucket.org/mjl/sherpa"
+	"github.com/mjl-/sherpa"
 )
 
 func _prepareBuild(repoName, branch, commit string) (repo Repo, build Build, buildDir string) {

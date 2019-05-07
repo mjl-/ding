@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"os"
 	"path"
@@ -52,13 +51,6 @@ func build(dest string) {
 	s = dirtree("www-src/html", ".html")
 	if dirty(d, s) {
 		write(d, ngtemplates("templates", s, "www-src/html/", "static/html/"))
-	}
-
-	// images
-	s = dirlist("www-src/img", "", "")
-	for _, e := range s {
-		d = target(fmt.Sprintf("static/img/%s", path.Base(e)))
-		dirtyCopy(d, e)
 	}
 
 	// app js
@@ -133,7 +125,6 @@ func build(dest string) {
 	}
 
 	files := []string{
-		"favicon.ico",
 		"robots.txt",
 	}
 	for _, name := range files {
@@ -166,12 +157,12 @@ func build(dest string) {
 		{"UI Bootstrap 1.3.3",
 			[]string{"www-src/licenses/ui-bootstrap-1.3.3"}},
 		{"Sherpa Go server library",
-			[]string{"vendor/bitbucket.org/mjl/sherpa/LICENSE"}},
+			[]string{"vendor/github.com/mjl-/sherpa/LICENSE"}},
 		{"httpasset Go library",
 			[]string{"vendor/bitbucket.org/mjl/httpasset/LICENSE"}},
 		{"", []string{"vendor/github.com/beorn7/perks/LICENSE"}},
 		{"", []string{"vendor/github.com/golang/protobuf/LICENSE"}},
-		{"", []string{"vendor/github.com/irias/sherpa-prometheus-collector/LICENSE.md"}},
+		{"", []string{"vendor/github.com/mjl-/sherpaprom/LICENSE.md"}},
 		{"", []string{"vendor/github.com/lib/pq/LICENSE.md"}},
 		{"", []string{"vendor/github.com/matttproud/golang_protobuf_extensions/LICENSE"}},
 		{"Prometheus Go client", []string{

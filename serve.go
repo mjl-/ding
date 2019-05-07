@@ -16,8 +16,8 @@ import (
 var (
 	dingWorkDir          string
 	serveFlag            = flag.NewFlagSet("serve", flag.ExitOnError)
-	listenAddress        = serveFlag.String("listen", ":6084", "address to listen on")
-	listenWebhookAddress = serveFlag.String("listenwebhook", ":6085", "address to listen on for webhooks, like from github; set empty for no listening")
+	listenAddress        = serveFlag.String("listen", "localhost:6084", "address to listen on")
+	listenWebhookAddress = serveFlag.String("listenwebhook", "localhost:6085", "address to listen on for webhooks, like from github; set empty for no listening")
 
 	rootRequests chan request // for http-serve
 )
@@ -46,7 +46,7 @@ func serve(args []string) {
 	if config.IsolateBuilds.Enabled && os.Getuid() != 0 {
 		log.Fatalln(`must run as root when isolateBuilds is enabled`)
 	} else if !config.IsolateBuilds.Enabled && os.Getuid() == 0 {
-		log.Fatalln(`mjust not run as root when isolateBuilds is disabled`)
+		log.Fatalln(`must not run as root when isolateBuilds is disabled`)
 	}
 
 	proto := 0

@@ -16,8 +16,9 @@ import (
 	"strconv"
 	"strings"
 
-	"bitbucket.org/mjl/sherpa"
-	"github.com/irias/sherpa-prometheus-collector"
+	"github.com/mjl-/sherpa"
+	"github.com/mjl-/sherpadoc"
+	"github.com/mjl-/sherpaprom"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"golang.org/x/sys/unix"
 )
@@ -82,7 +83,7 @@ func servehttp(args []string) {
 	mime.AddExtensionType(".ttf", "font/ttf")
 	mime.AddExtensionType(".otf", "font/otf")
 
-	var doc sherpa.Doc
+	var doc sherpadoc.Section
 	ff, err := httpFS.Open("/ding.json")
 	check(err, "opening sherpa docs")
 	err = json.NewDecoder(ff).Decode(&doc)
@@ -90,10 +91,13 @@ func servehttp(args []string) {
 	err = ff.Close()
 	check(err, "closing sherpa docs after parsing")
 
-	collector, err := collector.NewCollector("ding", nil)
+	collector, err := sherpaprom.NewCollector("ding", nil)
 	check(err, "creating sherpa prometheus collector")
 
-	handler, err := sherpa.NewHandler("/ding/", version, Ding{}, &doc, collector)
+	opts := &sherpa.HandlerOpts{
+		Collector: collector,
+	}
+	handler, err := sherpa.NewHandler("/ding/", version, Ding{}, &doc, opts)
 	check(err, "making sherpa handler")
 
 	http.HandleFunc("/", serveAsset)

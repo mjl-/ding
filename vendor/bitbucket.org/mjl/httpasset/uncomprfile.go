@@ -23,5 +23,5 @@ func (f *uncompressedFile) Stat() (os.FileInfo, error) {
 }
 
 func (f *uncompressedFile) Readdir(count int) ([]os.FileInfo, error) {
-	return nil, NotDirErr
+	return nil, ErrNotDir
 }

@@ -1,13 +1,13 @@
 package main
 
 import (
-	"bitbucket.org/mjl/sherpa"
 	"database/sql"
 	"encoding/json"
 	"log"
 	"runtime/debug"
 
 	"github.com/lib/pq"
+	"github.com/mjl-/sherpa"
 )
 
 func sherpaCheck(err error, msg string) {
