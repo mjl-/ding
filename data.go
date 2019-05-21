@@ -12,6 +12,7 @@ type Repo struct {
 	Origin       string `json:"origin"`        // git/mercurial "URL" (as understood by the respective commands), often SSH or HTTPS. if `vcs` is `command`, this is executed using sh.
 	CheckoutPath string `json:"checkout_path"` // path to place the checkout in.
 	BuildScript  string `json:"build_script"`  // shell scripts that compiles the software, runs tests, and creates releasable files.
+	UID          *int32 `json:"uid"`           // If set, fixed uid to use for builds, sharing a home directory where files can be cached, to speed up builds.
 }
 
 // RepoBuilds is a repository and its most recent build per branch.

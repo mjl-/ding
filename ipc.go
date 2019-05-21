@@ -10,6 +10,8 @@ type msg struct {
 
 	RepoName     string
 	BuildID      int
+	IsSharedUID  bool     // Whether UID below is a shared for a repo, and has a different homedir.
+	UID          int32    // UID to run this build under. Ignored if IsolateBuilds is entirely off. Otherwise it is set to either a unique UID, or a fixed UID per repo, depending on configuration.
 	CheckoutPath string   // for the workdir of the build command
 	Env          []string // environment when building
 }

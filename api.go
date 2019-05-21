@@ -284,14 +284,27 @@ func _checkRepo(repo Repo) {
 	}
 }
 
+func _assignRepoUID(tx *sql.Tx) (uid int32) {
+	q := `select coalesce(min(uid), $1) as uid from repo`
+	err := tx.QueryRow(q, config.IsolateBuilds.UIDEnd-1).Scan(&uid)
+	sherpaCheck(err, "fetching last assigned repo uid from database")
+	return
+}
+
 // CreateRepo creates a new repository.
+// If repo.UID is not null, a unique uid is assigned.
 func (Ding) CreateRepo(repo Repo) (r Repo) {
 	_checkRepo(repo)
 
 	transact(func(tx *sql.Tx) {
-		q := `insert into repo (name, vcs, origin, checkout_path, build_script) values ($1, $2, $3, $4, '') returning id`
+		var uid interface{}
+		if repo.UID != nil {
+			uid = _assignRepoUID(tx)
+		}
+
+		q := `insert into repo (name, vcs, origin, checkout_path, uid, build_script) values ($1, $2, $3, $4, $5, '') returning id`
 		var id int64
-		sherpaCheckRow(tx.QueryRow(q, repo.Name, repo.VCS, repo.Origin, repo.CheckoutPath), &id, "inserting repository in database")
+		sherpaCheckRow(tx.QueryRow(q, repo.Name, repo.VCS, repo.Origin, repo.CheckoutPath, uid), &id, "inserting repository in database")
 		r = _repo(tx, repo.Name)
 
 		events <- EventRepo{r}
@@ -304,8 +317,16 @@ func (Ding) SaveRepo(repo Repo) (r Repo) {
 	_checkRepo(repo)
 
 	transact(func(tx *sql.Tx) {
-		q := `update repo set name=$1, vcs=$2, origin=$3, checkout_path=$4, build_script=$5 where id=$6 returning row_to_json(repo.*)`
-		sherpaCheckRow(tx.QueryRow(q, repo.Name, repo.VCS, repo.Origin, repo.CheckoutPath, repo.BuildScript, repo.ID), &r, "updating repo in database")
+		r = _repo(tx, repo.Name)
+		var uid interface{}
+		if r.UID == nil && repo.UID != nil {
+			uid = _assignRepoUID(tx)
+		} else if repo.UID != nil {
+			uid = *r.UID
+		}
+
+		q := `update repo set name=$1, vcs=$2, origin=$3, checkout_path=$4, uid=$5, build_script=$6 where id=$7 returning row_to_json(repo.*)`
+		sherpaCheckRow(tx.QueryRow(q, repo.Name, repo.VCS, repo.Origin, repo.CheckoutPath, uid, repo.BuildScript, repo.ID), &r, "updating repo in database")
 		r = _repo(tx, repo.Name)
 
 		events <- EventRepo{r}
@@ -315,7 +336,11 @@ func (Ding) SaveRepo(repo Repo) (r Repo) {
 
 // RemoveRepo removes a repository and all its builds.
 func (Ding) RemoveRepo(repoName string) {
+	var repo Repo
+
 	transact(func(tx *sql.Tx) {
+		repo = _repo(tx, repoName)
+
 		_, err := tx.Exec(`delete from result where build_id in (select id from build where repo_id in (select id from repo where name=$1))`, repoName)
 		sherpaCheck(err, "removing results from database")
 
@@ -327,7 +352,11 @@ func (Ding) RemoveRepo(repoName string) {
 	})
 	events <- EventRemoveRepo{repoName}
 
-	_removeDir(repoName, -1)
+	isSharedUID := false
+	if repo.UID != nil {
+		isSharedUID = true
+	}
+	_removeDir(repoName, -1, isSharedUID)
 
 	err := os.RemoveAll(fmt.Sprintf("data/release/%s", repoName))
 	sherpaCheck(err, "removing release directory")

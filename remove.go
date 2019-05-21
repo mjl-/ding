@@ -17,12 +17,15 @@ func _removeBuild(tx *sql.Tx, repoName string, buildID int) {
 	sherpaCheckRow(tx.QueryRow(q, buildID), &builddirRemoved, "removing build from database")
 
 	if !builddirRemoved {
-		_removeDir(repoName, buildID)
+		_removeDir(repoName, buildID, false)
 	}
 }
 
-func _removeDir(repoName string, buildID int) {
-	req := request{msg{msgRemovedir, repoName, buildID, "", nil}, make(chan error), nil}
+// Remove either a build directory or entire repo directory. If buildID < 0, the
+// entire repo is removed. If isSharedUID, and the repore is to be removed, the
+// separate repo homedir is also removed.
+func _removeDir(repoName string, buildID int, isSharedUID bool) {
+	req := request{msg{msgRemovedir, repoName, buildID, isSharedUID, ^0, "", nil}, make(chan error), nil}
 	rootRequests <- req
 	err := <-req.errorResponse
 	sherpaCheck(err, "removing files")
@@ -32,5 +35,5 @@ func _removeBuilddir(tx *sql.Tx, repoName string, buildID int) {
 	err := tx.QueryRow("update build set builddir_removed=true where id=$1 returning id", buildID).Scan(&buildID)
 	sherpaCheck(err, "marking builddir as removed in database")
 
-	_removeDir(repoName, buildID)
+	_removeDir(repoName, buildID, false)
 }

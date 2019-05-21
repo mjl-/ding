@@ -10,6 +10,7 @@ app.controller('Repo', function($scope, $rootScope, $q, $location, $timeout, Msg
 
 
 	$scope.repo = repo;
+	$scope.repoUID = repo.uid !== null;
 	$scope.builds = builds;
 	$scope.releaseBuilds = _.filter($scope.builds, function(b) { return b.released; });
 
@@ -64,7 +65,12 @@ app.controller('Repo', function($scope, $rootScope, $q, $location, $timeout, Msg
 	};
 
 	$scope.save = function() {
-		return api.saveRepo($scope.repo);
+		var repo = _.clone($scope.repo);
+		repo.uid = $scope.repoUID ? 1 : null;
+		return api.saveRepo(repo)
+		.then(function(r) {
+			$scope.repo = r;
+		});
 	};
 
 	$scope.removeBuild = function(build) {

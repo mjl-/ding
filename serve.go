@@ -121,10 +121,6 @@ func serve(args []string) {
 	}
 }
 
-func calcUID(buildID int) int {
-	return config.IsolateBuilds.UIDStart + buildID%(config.IsolateBuilds.UIDEnd-config.IsolateBuilds.UIDStart)
-}
-
 func errstr(err error) string {
 	if err == nil {
 		return ""
@@ -143,8 +139,10 @@ func doMsgChown(msg msg, enc *gob.Encoder) {
 		log.Fatal("received MsgChown with empty RepoName")
 	}
 	buildDir := fmt.Sprintf("%s/data/build/%s/%d", dingWorkDir, msg.RepoName, msg.BuildID)
-
-	uid := calcUID(msg.BuildID)
+	homeDir := fmt.Sprintf("%s/home", buildDir)
+	if msg.IsSharedUID {
+		homeDir = fmt.Sprintf("%s/data/home/%s", dingWorkDir, msg.RepoName)
+	}
 
 	chown := func(path string) error {
 		return filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
@@ -156,11 +154,11 @@ func doMsgChown(msg msg, enc *gob.Encoder) {
 			if (info.Mode() & os.ModeSymlink) != 0 {
 				return nil
 			}
-			return os.Chown(path, uid, config.IsolateBuilds.DingGID)
+			return os.Chown(path, int(msg.UID), config.IsolateBuilds.DingGID)
 		})
 	}
 
-	err := chown(buildDir + "/home")
+	err := chown(homeDir)
 	if err == nil {
 		err = chown(buildDir + "/checkout")
 	}
@@ -173,11 +171,20 @@ func doMsgRemovedir(msg msg, enc *gob.Encoder) {
 		log.Fatal("received MsgRemovedir with empty RepoName")
 	}
 	path := fmt.Sprintf("%s/data/build/%s", dingWorkDir, msg.RepoName)
-	if msg.BuildID > 0 {
+	if msg.BuildID >= 0 {
 		path += fmt.Sprintf("/%d", msg.BuildID)
 	}
 
 	err := os.RemoveAll(path)
+
+	if msg.BuildID < 0 && msg.IsSharedUID {
+		homeDir := fmt.Sprintf("%s/data/home/%s", dingWorkDir, msg.RepoName)
+		err2 := os.RemoveAll(homeDir)
+		if err == nil {
+			err = err2
+		}
+	}
+
 	err = enc.Encode(errstr(err))
 	check(err, "writing removedir response")
 }
@@ -196,8 +203,6 @@ func doMsgBuild(msg msg, enc *gob.Encoder, unixconn *net.UnixConn) {
 	buildDir := fmt.Sprintf("%s/data/build/%s/%d", dingWorkDir, msg.RepoName, msg.BuildID)
 	checkoutDir := fmt.Sprintf("%s/checkout/%s", buildDir, msg.CheckoutPath)
 
-	uid := calcUID(msg.BuildID)
-
 	devnull, err := os.Open("/dev/null")
 	check(err, "opening /dev/null")
 	defer devnull.Close()
@@ -215,7 +220,7 @@ func doMsgBuild(msg msg, enc *gob.Encoder, unixconn *net.UnixConn) {
 	if config.IsolateBuilds.Enabled {
 		attr.Sys = &syscall.SysProcAttr{
 			Credential: &syscall.Credential{
-				Uid:    uint32(uid),
+				Uid:    uint32(msg.UID),
 				Gid:    uint32(config.IsolateBuilds.DingGID),
 				Groups: []uint32{},
 			},

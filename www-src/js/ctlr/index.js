@@ -93,6 +93,7 @@ app.controller('Index', function($scope, $rootScope, $q, $uibModal, $location, $
 					name: '',
 					checkout_path: ''
 				};
+				$scope.repoUID = true;
 				$scope.nameAutoFill = true;
 				$scope.checkoutpathAutoFill = true;
 				$scope.$watch('repo.origin', function(v) {
@@ -109,7 +110,9 @@ app.controller('Index', function($scope, $rootScope, $q, $uibModal, $location, $
 				});
 
 				$scope.create = function() {
-					return api.createRepo($scope.repo)
+					var repo = _.clone($scope.repo);
+					repo.uid = $scope.repoUID ? 1 : null;
+					return api.createRepo(repo)
 					.then(function(repo) {
 						$uibModalInstance.close();
 						$location.path('/repo/' + repo.name);

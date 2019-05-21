@@ -151,6 +151,7 @@ Now run: "make build test release"
 - when on a build page, show it if a new build is already in progress, with a link to that new build
 - show last two lines of output. now the "make failed"-line is making that output not so useful.
 - use tuit instead of angularjs? or give go wasm a chance.
+- keep track of size of shared homedir? or growth of homedir after a build?
 
 ## Maybe
 - allow configuring a cleanup script, that is run when a builddir is removed. eg for dropping a database that was created in build.sh.

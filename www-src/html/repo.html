@@ -63,6 +63,10 @@ vcs id | sed 's/^/commit:/'"></textarea>
 					</div>
 
 					<div class="form-group">
+						<label><input type="checkbox" ng-model="repoUID" /> Reuse UID and $HOME for builds.</label>
+					</div>
+
+					<div class="form-group">
 						<label>build.sh</label>
 						<a href="#/help/#examples">see examples</a>
 						<textarea class="form-control" ng-model="repo.build_script" rows="10" placeholder="#!/bin/sh

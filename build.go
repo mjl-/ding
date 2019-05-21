@@ -28,9 +28,14 @@ func _prepareBuild(repoName, branch, commit string) (repo Repo, build Build, bui
 		err := os.MkdirAll(buildDir, 0777)
 		sherpaCheck(err, "creating build dir")
 
+		homeDir := buildDir + "/home"
+		if repo.UID != nil {
+			homeDir = fmt.Sprintf("%s/data/home/%s", dingWorkDir, repo.Name)
+		}
+
 		err = os.MkdirAll(buildDir+"/scripts", 0777)
 		sherpaCheck(err, "creating scripts dir")
-		err = os.MkdirAll(buildDir+"/home", 0777)
+		err = os.MkdirAll(homeDir, 0777)
 		sherpaCheck(err, "creating home dir")
 
 		buildSh := buildDir + "/scripts/build.sh"
@@ -150,10 +155,17 @@ func _doBuild(repo Repo, build Build, buildDir string) {
 		})
 	}
 
+	var home string
+	if repo.UID != nil {
+		home = fmt.Sprintf("%s/data/home/%s", dingWorkDir, repo.Name)
+	} else {
+		home = fmt.Sprintf("%s/home", buildDir)
+	}
+
 	env := []string{
 		"BUILDDIR=" + buildDir,
 		"CHECKOUTPATH=" + repo.CheckoutPath,
-		fmt.Sprintf("HOME=%s/home", buildDir),
+		"HOME=" + home,
 		fmt.Sprintf("BUILDID=%d", build.ID),
 		"REPONAME=" + repo.Name,
 		"BRANCH=" + build.Branch,
@@ -240,8 +252,19 @@ func _doBuild(repo Repo, build Build, buildDir string) {
 		sherpaUserCheck(err, "checkout revision")
 	}
 
+	var uid int32 = ^0
+	isSharedUID := false
+	if config.IsolateBuilds.Enabled {
+		if repo.UID != nil {
+			uid = *repo.UID
+			isSharedUID = true
+		} else {
+			uid = int32(config.IsolateBuilds.UIDStart + build.ID%(config.IsolateBuilds.UIDEnd-config.IsolateBuilds.UIDStart))
+		}
+	}
+
 	req := request{
-		msg{msgChown, repo.Name, build.ID, repo.CheckoutPath, nil},
+		msg{msgChown, repo.Name, build.ID, isSharedUID, uid, repo.CheckoutPath, nil},
 		make(chan error),
 		nil,
 	}
@@ -251,7 +274,7 @@ func _doBuild(repo Repo, build Build, buildDir string) {
 
 	_updateStatus("build")
 	req = request{
-		msg{msgBuild, repo.Name, build.ID, repo.CheckoutPath, env},
+		msg{msgBuild, repo.Name, build.ID, isSharedUID, uid, repo.CheckoutPath, env},
 		nil,
 		make(chan buildResult),
 	}
