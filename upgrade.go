@@ -162,7 +162,6 @@ func runScripts(tx *sql.Tx, dbVersion int, scripts []script, committing bool) {
 			}
 		}
 	}
-	return
 }
 
 func upgrade(args []string) {

@@ -67,7 +67,7 @@ func servehttp(args []string) {
 		log.Fatalln("fd 4 not a unixconn")
 	}
 
-	rootRequests = make(chan request, 0)
+	rootRequests = make(chan request)
 
 	database, err = sql.Open("postgres", config.Database)
 	check(err, "opening database connection")

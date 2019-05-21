@@ -181,9 +181,7 @@ func build(dest string) {
 		for _, lic := range lics {
 			if lic.name == "" {
 				lic.name = lic.files[0]
-				if strings.HasPrefix(lic.name, "vendor/") {
-					lic.name = lic.name[len("vendor/"):]
-				}
+				lic.name = strings.TrimPrefix(lic.name, "vendor/")
 			}
 			r += "## " + lic.name + "\n\n"
 			for _, file := range lic.files {

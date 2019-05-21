@@ -330,11 +330,7 @@ func _serveDownload(w http.ResponseWriter, r *http.Request, name string, files [
 				return false
 			}
 			_, err = io.Copy(tw, gzr)
-			if err != nil {
-				// probably just a closed connection
-				return false
-			}
-			return true
+			return err == nil
 		}
 		for _, path := range files {
 			if !addFile(path) {

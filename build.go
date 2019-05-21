@@ -242,7 +242,7 @@ func _doBuild(repo Repo, build Build, buildDir string) {
 
 	req := request{
 		msg{msgChown, repo.Name, build.ID, repo.CheckoutPath, nil},
-		make(chan error, 0),
+		make(chan error),
 		nil,
 	}
 	rootRequests <- req
@@ -253,7 +253,7 @@ func _doBuild(repo Repo, build Build, buildDir string) {
 	req = request{
 		msg{msgBuild, repo.Name, build.ID, repo.CheckoutPath, env},
 		nil,
-		make(chan buildResult, 0),
+		make(chan buildResult),
 	}
 	rootRequests <- req
 	result := <-req.buildResponse
@@ -467,11 +467,11 @@ func track(buildID int, step, buildDir string, cmdstdout, cmdstderr io.ReadClose
 	// write .nsec file when we're done here
 	t0 := time.Now()
 	defer func() {
-		time.Now().Sub(t0)
+		time.Since(t0)
 		nsec, err := os.Create(buildDir + "/output/" + step + ".nsec")
 		xcheck(err, "creating nsec file")
 		defer nsec.Close()
-		_, err = fmt.Fprintf(nsec, "%d", time.Now().Sub(t0))
+		_, err = fmt.Fprintf(nsec, "%d", time.Since(t0))
 		xcheck(err, "writing nsec file")
 	}()
 
@@ -495,7 +495,7 @@ func track(buildID int, step, buildDir string, cmdstdout, cmdstderr io.ReadClose
 		stdout bool
 		err    error
 	}
-	lines := make(chan Lines, 0)
+	lines := make(chan Lines)
 	linereader := func(r io.ReadCloser, stdout bool) {
 		buf := make([]byte, 1024)
 		have := 0

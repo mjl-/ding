@@ -165,7 +165,7 @@ func doMsgChown(msg msg, enc *gob.Encoder) {
 		err = chown(buildDir + "/checkout")
 	}
 	err = enc.Encode(errstr(err))
-	check(err, "encoding msg")
+	check(err, "writing chown result")
 }
 
 func doMsgRemovedir(msg msg, enc *gob.Encoder) {
@@ -224,7 +224,8 @@ func doMsgBuild(msg msg, enc *gob.Encoder, unixconn *net.UnixConn) {
 	proc, err := os.StartProcess(argv[0], argv, attr)
 	if err != nil {
 		log.Println("start failed:", err)
-		enc.Encode(err.Error())
+		err = enc.Encode(err.Error())
+		check(err, "writing start failed")
 		return
 	}
 	err = enc.Encode(errstr(err))

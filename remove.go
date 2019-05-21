@@ -22,7 +22,7 @@ func _removeBuild(tx *sql.Tx, repoName string, buildID int) {
 }
 
 func _removeDir(repoName string, buildID int) {
-	req := request{msg{msgRemovedir, repoName, buildID, "", nil}, make(chan error, 0), nil}
+	req := request{msg{msgRemovedir, repoName, buildID, "", nil}, make(chan error), nil}
 	rootRequests <- req
 	err := <-req.errorResponse
 	sherpaCheck(err, "removing files")

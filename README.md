@@ -135,12 +135,16 @@ Now run: "make build test release"
 
 # Todo
 
-- ding: time spent should be the time since starting the clone, not since being queued ("new")
-- ding: allow aborting a build
+- try assigning a uid to a repo, then reusing it while keeping the homedir to get a go cache. or just set the cache explicitly. should speed builds up considerably. and it's probably trusted enough.
+- time spent should be the time since starting the clone, not since being queued ("new")
+- allow aborting a build
 - should have env vars with DING_-prefix
 - document somewhere that root-mode doesn't seem to work on macos because macos still (after years!) keeps failing on xcodebuild license checks when running under uids without system user entries (/Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -license check).
 - figure out why not running with /usr/bin/nice in config.Run does not find executables. probably some path setting.
 - create files in output/ earlier? so we don't show errors about missing such files when the vcs clone failes (eg due to no git in path, or no permision to run build.sh (eg because a dir leading to build.sh isn't accessible).
+- parse output for coverage string, and keep track of that as well.
+- think about browsing generated files during build. perhaps only some marked as interesting. like go tool cover-generated html files.
+- add separate listener for metrics, debug/pprof, version-info like compiler info etc
 - add prometheus metrics for builds. how long they take, if they succeed, etc.
 - write test code
 - add authentication to application. need to figure out how to keep a dashboard. and how to do auth on /events
