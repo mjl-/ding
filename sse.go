@@ -36,13 +36,7 @@ func serveEvents(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error", 500)
 		return
 	}
-	closenotifier, ok := w.(http.CloseNotifier)
-	if !ok {
-		log.Println("internal error: ResponseWriter not a http.CloseNotifier")
-		http.Error(w, "internal error", 500)
-		return
-	}
-	closenotify := closenotifier.CloseNotify()
+
 	if r.Method != "GET" {
 		http.Error(w, "method not allowed", 405)
 		return
@@ -62,6 +56,7 @@ func serveEvents(w http.ResponseWriter, r *http.Request) {
 		unregister <- ew
 	}()
 
+	ctx := r.Context()
 	for {
 		select {
 		case msg := <-ew.events:
@@ -71,7 +66,7 @@ func serveEvents(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-		case <-closenotify:
+		case <-ctx.Done():
 			return
 		}
 	}
