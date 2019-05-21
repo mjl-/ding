@@ -85,7 +85,7 @@ var (
 
 func init() {
 	register = make(chan *eventWorker, 1)
-	unregister = make(chan *eventWorker, 0)
+	unregister = make(chan *eventWorker)
 	events = make(chan eventStringer, 10)
 
 	go func() {
@@ -109,6 +109,7 @@ func eventMux() {
 					nworkers = append(nworkers, x)
 				}
 			}
+			workers = nworkers
 		case ev := <-events:
 			var buf []byte
 			if ev == nil {
