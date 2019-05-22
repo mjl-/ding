@@ -78,7 +78,8 @@ of user id's that ding will assign to builds. Build commands use
 "dingGid" as their gid. Make sure the UIDs don't overlap with regular
 users.
 - Start ding as root, with umask 027. The umask ensures the
-unpriviledged ding process can read build results.
+unpriviledged ding process can read build results. Set permissions
+0750 on data/.
 
 "Run as root? Are you crazy?" No. Ding isn't actually running all
 its code with root priviledges. Early during startup, Ding forks

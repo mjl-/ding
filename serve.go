@@ -43,10 +43,30 @@ func serve(args []string) {
 	dingWorkDir, err = os.Getwd()
 	check(err, "getting current work dir")
 
-	if config.IsolateBuilds.Enabled && os.Getuid() != 0 {
-		log.Fatalln(`must run as root when isolateBuilds is enabled`)
-	} else if !config.IsolateBuilds.Enabled && os.Getuid() == 0 {
-		log.Fatalln(`must not run as root when isolateBuilds is disabled`)
+	if config.IsolateBuilds.Enabled {
+		if os.Getuid() != 0 {
+			log.Fatalln(`must run as root when isolateBuilds is enabled`)
+		}
+		if syscall.Umask(027) != 027 {
+			log.Fatalln("must run with umask 027 with isolateBuilds enabled")
+		}
+		info, err := os.Stat("data")
+		check(err, "stat data dir")
+		sysinfo := info.Sys()
+		if sysinfo == nil {
+			log.Fatalf("cannot determine owner of data/")
+		}
+		st, ok := sysinfo.(*syscall.Stat_t)
+		if !ok {
+			log.Fatalf("underlying fileinfo for data/: sys is a %T", sysinfo)
+		}
+		if info.Mode()&os.ModePerm != 0750 || st.Uid != uint32(config.IsolateBuilds.DingUID) || st.Gid != uint32(config.IsolateBuilds.DingGID) {
+			log.Fatalf("data/ must have permissions 0750 and ding uid/gid %d/%d, but has permissions %#o and uid/gid %d/%d", config.IsolateBuilds.DingUID, config.IsolateBuilds.DingGID, info.Mode()&os.ModePerm, st.Uid, st.Gid)
+		}
+	} else {
+		if os.Getuid() == 0 {
+			log.Fatalln(`must not run as root when isolateBuilds is disabled`)
+		}
 	}
 
 	proto := 0
