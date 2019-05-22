@@ -149,9 +149,7 @@ Now run: "make build test release"
 
 ## Maybe
 - think about adding support for updating toolchains, like go get golang.org/dl/go1.2.3 && go1.2.3 download
-- think about browsing generated files during build. perhaps only some marked as interesting. like go tool cover-generated html files.
 - allow configuring a cleanup script, that is run when a builddir is removed. eg for dropping a database that was created in build.sh.
-- read some file from $HOME after a build and show it in build overviews? eg for code coverage, or whatever. easy & extensible.
 - timestamps in output lines?
 - more ways to send out notifications? eg webhook, telegram, slack.
 - support for running builds on other instances (on other OS'es). maybe some day, if really needed.
