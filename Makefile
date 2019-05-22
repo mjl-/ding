@@ -20,7 +20,7 @@ test:
 
 clean:
 	go clean
-	-rm -r assets assets.zip
+	-rm -r assets assets.zip 2>/dev/null
 	go run fabricate/*.go -- clean
 
 setup:
