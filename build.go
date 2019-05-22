@@ -257,28 +257,23 @@ func _doBuild(repo Repo, build Build, buildDir string) {
 	}
 
 	var uid int32 = ^0
-	isSharedUID := false
+	SharedHome := false
 	if config.IsolateBuilds.Enabled {
 		if repo.UID != nil {
 			uid = *repo.UID
-			isSharedUID = true
+			SharedHome = true
 		} else {
 			uid = int32(config.IsolateBuilds.UIDStart + build.ID%(config.IsolateBuilds.UIDEnd-config.IsolateBuilds.UIDStart))
 		}
 	}
 
-	req := request{
-		msg{msgChown, repo.Name, build.ID, isSharedUID, uid, repo.CheckoutPath, nil},
-		make(chan error),
-		nil,
-	}
-	rootRequests <- req
-	err = <-req.errorResponse
+	chownMsg := msg{Chown: &msgChown{repo.Name, build.ID, SharedHome, uid}}
+	err = requestPrivileged(chownMsg)
 	sherpaCheck(err, "chown")
 
 	_updateStatus("build")
-	req = request{
-		msg{msgBuild, repo.Name, build.ID, isSharedUID, uid, repo.CheckoutPath, env},
+	req := request{
+		msg{Build: &msgBuild{repo.Name, build.ID, uid, repo.CheckoutPath, env}},
 		nil,
 		make(chan buildResult),
 	}

@@ -64,6 +64,12 @@ app.controller('Repo', function($scope, $rootScope, $q, $location, $timeout, Msg
 		});
 	};
 
+	$scope.clearRepoHomedir = function() {
+		return Msg.confirm('Are you sure?', function() {
+			return api.clearRepoHomedir(repo.name);
+		});
+	};
+
 	$scope.save = function() {
 		var repo = _.clone($scope.repo);
 		repo.uid = $scope.repoUID ? 1 : null;

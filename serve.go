@@ -128,16 +128,23 @@ func serve(args []string) {
 		err := dec.Decode(&msg)
 		check(err, "decoding msg")
 
-		switch msg.Kind {
-		case msgChown:
-			doMsgChown(msg, enc)
-		case msgRemovedir:
-			doMsgRemovedir(msg, enc)
-		case msgBuild:
-			doMsgBuild(msg, enc, unixconn)
+		switch {
+		case msg.Build != nil:
+			err = doMsgBuild(msg.Build, enc, unixconn)
+		case msg.Chown != nil:
+			err = doMsgChown(msg.Chown, enc)
+		case msg.RemoveBuilddir != nil:
+			err = doMsgRemoveBuilddir(msg.RemoveBuilddir, enc)
+		case msg.RemoveRepo != nil:
+			err = doMsgRemoveRepo(msg.RemoveRepo, enc)
+		case msg.RemoveSharedHome != nil:
+			err = doMsgRemoveSharedHome(msg.RemoveSharedHome, enc)
 		default:
-			log.Fatalf("unknown msg kind %d\n", msg.Kind)
+			log.Fatalf("no field set in msg %v", msg)
 		}
+
+		err = enc.Encode(errstr(err))
+		check(err, "writing response")
 	}
 }
 
@@ -148,11 +155,9 @@ func errstr(err error) string {
 	return err.Error()
 }
 
-func doMsgChown(msg msg, enc *gob.Encoder) {
+func doMsgChown(msg *msgChown, enc *gob.Encoder) error {
 	if !config.IsolateBuilds.Enabled {
-		err := enc.Encode("")
-		check(err, "encoding chown response")
-		return
+		return nil
 	}
 
 	if msg.RepoName == "" {
@@ -160,7 +165,7 @@ func doMsgChown(msg msg, enc *gob.Encoder) {
 	}
 	buildDir := fmt.Sprintf("%s/build/%s/%d", dingDataDir, msg.RepoName, msg.BuildID)
 	homeDir := fmt.Sprintf("%s/home", buildDir)
-	if msg.IsSharedUID {
+	if msg.SharedHome {
 		homeDir = fmt.Sprintf("%s/home/%s", dingDataDir, msg.RepoName)
 	}
 
@@ -185,34 +190,42 @@ func doMsgChown(msg msg, enc *gob.Encoder) {
 	if err == nil {
 		err = chown(buildDir + "/dl")
 	}
-	err = enc.Encode(errstr(err))
-	check(err, "writing chown result")
+	return err
 }
 
-func doMsgRemovedir(msg msg, enc *gob.Encoder) {
+func doMsgRemoveBuilddir(msg *msgRemoveBuilddir, enc *gob.Encoder) error {
 	if msg.RepoName == "" {
-		log.Fatal("received MsgRemovedir with empty RepoName")
+		log.Fatal("received MsgRemoveBuilddir with empty RepoName")
 	}
-	path := fmt.Sprintf("%s/build/%s", dingDataDir, msg.RepoName)
-	if msg.BuildID >= 0 {
-		path += fmt.Sprintf("/%d", msg.BuildID)
-	}
-
-	err := os.RemoveAll(path)
-
-	if msg.BuildID < 0 && msg.IsSharedUID {
-		homeDir := fmt.Sprintf("%s/home/%s", dingDataDir, msg.RepoName)
-		err2 := os.RemoveAll(homeDir)
-		if err == nil {
-			err = err2
-		}
-	}
-
-	err = enc.Encode(errstr(err))
-	check(err, "writing removedir response")
+	path := fmt.Sprintf("%s/build/%s/%d", dingDataDir, msg.RepoName, msg.BuildID)
+	return os.RemoveAll(path)
 }
 
-func doMsgBuild(msg msg, enc *gob.Encoder, unixconn *net.UnixConn) {
+func doMsgRemoveRepo(msg *msgRemoveRepo, enc *gob.Encoder) error {
+	homeDir := fmt.Sprintf("%s/home/%s", dingDataDir, msg.RepoName)
+	err := os.RemoveAll(homeDir)
+	if err != nil && os.IsNotExist(err) {
+		err = nil
+	}
+
+	p := fmt.Sprintf("%s/build/%s", dingDataDir, msg.RepoName)
+	err2 := os.RemoveAll(p)
+	if err == nil {
+		err = err2
+	}
+	return err
+}
+
+func doMsgRemoveSharedHome(msg *msgRemoveSharedHome, enc *gob.Encoder) error {
+	homeDir := fmt.Sprintf("%s/home/%s", dingDataDir, msg.RepoName)
+	err := os.RemoveAll(homeDir)
+	if err != nil && os.IsNotExist(err) {
+		err = nil
+	}
+	return err
+}
+
+func doMsgBuild(msg *msgBuild, enc *gob.Encoder, unixconn *net.UnixConn) error {
 	outr, outw, err := os.Pipe()
 	check(err, "create stdout pipe")
 	defer outr.Close()
@@ -224,7 +237,7 @@ func doMsgBuild(msg msg, enc *gob.Encoder, unixconn *net.UnixConn) {
 	defer errw.Close()
 
 	buildDir := fmt.Sprintf("%s/build/%s/%d", dingDataDir, msg.RepoName, msg.BuildID)
-	checkoutDir := fmt.Sprintf("%s/checkout/%s", buildDir, msg.CheckoutPath)
+	workDir := fmt.Sprintf("%s/checkout/%s", buildDir, msg.CheckoutPath)
 
 	devnull, err := os.Open("/dev/null")
 	check(err, "opening /dev/null")
@@ -232,7 +245,7 @@ func doMsgBuild(msg msg, enc *gob.Encoder, unixconn *net.UnixConn) {
 
 	argv := []string{buildDir + "/scripts/build.sh"}
 	attr := &os.ProcAttr{
-		Dir: checkoutDir,
+		Dir: workDir,
 		Env: msg.Env,
 		Files: []*os.File{
 			devnull,
@@ -251,13 +264,8 @@ func doMsgBuild(msg msg, enc *gob.Encoder, unixconn *net.UnixConn) {
 	}
 	proc, err := os.StartProcess(argv[0], argv, attr)
 	if err != nil {
-		log.Println("start failed:", err)
-		err = enc.Encode(err.Error())
-		check(err, "writing start failed")
-		return
+		return err
 	}
-	err = enc.Encode(errstr(err))
-	check(err, "writing build start")
 
 	statusr, statusw, err := os.Pipe()
 	check(err, "create status pipe")
@@ -265,13 +273,12 @@ func doMsgBuild(msg msg, enc *gob.Encoder, unixconn *net.UnixConn) {
 	buf := []byte{1}
 	oob := unix.UnixRights(int(outr.Fd()), int(errr.Fd()), int(statusr.Fd()))
 	_, _, err = unixconn.WriteMsgUnix(buf, oob, nil)
-	defer statusr.Close()
-	if err != nil {
-		statusw.Close()
-		check(err, "sending fds from root to http")
-	}
+	check(err, "sending fds from root to http")
+	statusr.Close()
 
 	go func() {
+		defer statusw.Close()
+
 		state, err := proc.Wait()
 		if err == nil && !state.Success() {
 			err = fmt.Errorf(state.String())
@@ -279,4 +286,6 @@ func doMsgBuild(msg msg, enc *gob.Encoder, unixconn *net.UnixConn) {
 		err = gob.NewEncoder(statusw).Encode(errstr(err))
 		check(err, "writing status to http-serve")
 	}()
+
+	return nil
 }

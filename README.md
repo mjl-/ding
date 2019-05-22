@@ -135,6 +135,7 @@ Now run: "make build test release"
 
 # Todo
 
+- time spent should be the time since starting the clone, not since being queued ("new")
 - allow aborting a build
 - write test code
 - add prometheus metrics for builds. how long they take, if they succeed, etc.
@@ -146,6 +147,7 @@ Now run: "make build test release"
 - use tuit instead of angularjs? or give go wasm a chance.
 - keep track of size of shared homedir? or growth of homedir after a build?
 - when cloning, clone from previous checkout, then pull changes from remote as need, should be faster, especially for larger repo's.
+- add button to queue a build, low prio. then only run one low-prio job at a time. for rebuilds of all repo's after a toolchain update.
 
 ## Maybe
 - think about adding support for updating toolchains, like go get golang.org/dl/go1.2.3 && go1.2.3 download

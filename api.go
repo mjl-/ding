@@ -334,12 +334,25 @@ func (Ding) SaveRepo(repo Repo) (r Repo) {
 	return
 }
 
+// ClearRepoHomedir removes the home directory this repository shares across builds.
+func (Ding) ClearRepoHomedir(repoName string) {
+	var r Repo
+	transact(func(tx *sql.Tx) {
+		r = _repo(tx, repoName)
+		if r.UID == nil {
+			userError("repo does not share home directory across builds")
+		}
+	})
+
+	msg := msg{RemoveSharedHome: &msgRemoveSharedHome{repoName}}
+	err := requestPrivileged(msg)
+	sherpaCheck(err, "privileged RemoveSharedHome")
+}
+
 // RemoveRepo removes a repository and all its builds.
 func (Ding) RemoveRepo(repoName string) {
-	var repo Repo
-
 	transact(func(tx *sql.Tx) {
-		repo = _repo(tx, repoName)
+		_repo(tx, repoName)
 
 		_, err := tx.Exec(`delete from result where build_id in (select id from build where repo_id in (select id from repo where name=$1))`, repoName)
 		sherpaCheck(err, "removing results from database")
@@ -352,13 +365,10 @@ func (Ding) RemoveRepo(repoName string) {
 	})
 	events <- EventRemoveRepo{repoName}
 
-	isSharedUID := false
-	if repo.UID != nil {
-		isSharedUID = true
-	}
-	_removeDir(repoName, -1, isSharedUID)
+	err := requestPrivileged(msg{RemoveRepo: &msgRemoveRepo{repoName}})
+	sherpaCheck(err, "removing repo files")
 
-	err := os.RemoveAll(fmt.Sprintf("%s/release/%s", dingDataDir, repoName))
+	err = os.RemoveAll(fmt.Sprintf("%s/release/%s", dingDataDir, repoName))
 	sherpaCheck(err, "removing release directory")
 }
 
@@ -445,7 +455,13 @@ func (Ding) CleanupBuilddir(repoName string, buildID int) (build Build) {
 			panic(&sherpa.Error{Code: "userError", Message: "Builddir already removed"})
 		}
 
-		_removeBuilddir(tx, repoName, buildID)
+		err := tx.QueryRow("update build set builddir_removed=true where id=$1 returning id", buildID).Scan(&buildID)
+		sherpaCheck(err, "marking builddir as removed in database")
+
+		msg := msg{RemoveBuilddir: &msgRemoveBuilddir{repoName, buildID}}
+		err = requestPrivileged(msg)
+		sherpaCheck(err, "removing files")
+
 		build = _build(tx, repoName, buildID)
 		fillBuild(repoName, &build)
 	})

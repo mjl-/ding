@@ -239,15 +239,8 @@ func servehttp(args []string) {
 		err = dec.Decode(&r)
 		check(err, "reading response from root")
 
-		switch req.msg.Kind {
-		case msgChown, msgRemovedir:
-			var err error
-			if r != "" {
-				err = fmt.Errorf("%s", r)
-			}
-			req.errorResponse <- err
-
-		case msgBuild:
+		switch {
+		case req.msg.Build != nil:
 			if r != "" {
 				err = fmt.Errorf("%s", r)
 				log.Println("run failed:", err)
@@ -271,14 +264,18 @@ func servehttp(args []string) {
 				log.Fatalf("wanted 3 fds; got %d fds\n", len(fds))
 			}
 
-			stdout := os.NewFile(uintptr(fds[0]), fmt.Sprintf("build-%d-stdout", req.msg.BuildID))
-			stderr := os.NewFile(uintptr(fds[1]), fmt.Sprintf("build-%d-stderr", req.msg.BuildID))
-			status := os.NewFile(uintptr(fds[2]), fmt.Sprintf("build-%d-status", req.msg.BuildID))
+			stdout := os.NewFile(uintptr(fds[0]), fmt.Sprintf("build-%d-stdout", req.msg.Build.BuildID))
+			stderr := os.NewFile(uintptr(fds[1]), fmt.Sprintf("build-%d-stderr", req.msg.Build.BuildID))
+			status := os.NewFile(uintptr(fds[2]), fmt.Sprintf("build-%d-status", req.msg.Build.BuildID))
 
 			req.buildResponse <- buildResult{nil, stdout, stderr, status}
 
 		default:
-			log.Fatalf("unknown msg.kind %d\n", req.msg.Kind)
+			var err error
+			if r != "" {
+				err = fmt.Errorf("%s", r)
+			}
+			req.errorResponse <- err
 		}
 	}
 }
