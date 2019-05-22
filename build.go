@@ -377,7 +377,7 @@ func parseResults(checkoutDir, path string) (results []Result) {
 
 // start a command and return readers for its output and the final result of the command.
 // it mimics a command started through the root process under a unique uid.
-func setupCmd(buildID int, env []string, step, buildDir, workDir string, args ...string) (stdout, stderr io.ReadCloser, wait <-chan error, rerr error) {
+func setupCmd(buildID int, env []string, step, buildDir, workDir string, path string, args ...string) (stdout, stderr io.ReadCloser, wait <-chan error, rerr error) {
 	type Error struct {
 		err error
 	}
@@ -435,7 +435,7 @@ func setupCmd(buildID int, env []string, step, buildDir, workDir string, args ..
 			stderrw,
 		},
 	}
-	proc, err := os.StartProcess(args[0], args, attr)
+	proc, err := os.StartProcess(path, args, attr)
 	xcheck(err, "command start")
 
 	c := make(chan error, 1)
@@ -450,7 +450,16 @@ func setupCmd(buildID int, env []string, step, buildDir, workDir string, args ..
 }
 
 func run(buildID int, env []string, step, buildDir, workDir string, args ...string) error {
-	cmdstdout, cmdstderr, wait, err := setupCmd(buildID, env, step, buildDir, workDir, args...)
+	path := args[0]
+	if filepath.Base(path) == path {
+		var err error
+		path, err = exec.LookPath(path)
+		if err != nil {
+			return fmt.Errorf("looking up path to command: %s", err)
+		}
+	}
+
+	cmdstdout, cmdstderr, wait, err := setupCmd(buildID, env, step, buildDir, workDir, path, args...)
 	if err != nil {
 		return fmt.Errorf("setting up command: %s", err)
 	}
