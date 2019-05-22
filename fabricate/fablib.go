@@ -36,12 +36,6 @@ func concat(l ...[]string) (r []string) {
 	return
 }
 
-func parseInt(s string) int {
-	r, err := strconv.ParseInt(s, 10, 32)
-	check(err, "parseInt")
-	return int(r)
-}
-
 func write(p, contents string) {
 	log.Println("write", p)
 	os.MkdirAll(path.Dir(p), os.ModePerm)
