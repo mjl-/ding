@@ -4,7 +4,6 @@ run: build
 run-root: build
 	sudo ./ding serve local/local-root.conf
 
-
 build:
 	go build
 	go vet
@@ -16,24 +15,8 @@ frontend:
 
 test:
 	golint
-	go test -cover . -- local/local-test.conf
-
-coverage:
-	go test -coverprofile=coverage.out -test.outputdir . -- local/local-test.conf
-	go tool cover -html=coverage.out
-
-fmt:
-	go fmt .
-
-release:
-	-mkdir local 2>/dev/null
-	(cd assets && zip -qr0 ../assets.zip .)
-	env GOOS=linux GOARCH=amd64 ./release.sh
-	env GOOS=linux GOARCH=386 ./release.sh
-	env GOOS=linux GOARCH=arm GOARM=6 ./release.sh
-	env GOOS=linux GOARCH=arm64 ./release.sh
-	env GOOS=darwin GOARCH=amd64 ./release.sh
-	env GOOS=openbsd GOARCH=amd64 ./release.sh
+	go test -race -coverprofile cover.out -- local/local-test.conf
+	go tool cover -html=cover.out -o cover.html
 
 clean:
 	go clean

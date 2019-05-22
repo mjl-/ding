@@ -23,8 +23,12 @@ const (
 
 var (
 	httpFS   http.FileSystem
-	version  = "dev"
 	database *sql.DB
+
+	version       = "dev"
+	vcsCommitHash = ""
+	vcsTag        = ""
+	vcsBranch     = ""
 )
 
 var config struct {

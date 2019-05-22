@@ -157,6 +157,7 @@ func build(dest string) {
 			[]string{"www-src/licenses/angularjs-1.5.7"}},
 		{"UI Bootstrap 1.3.3",
 			[]string{"www-src/licenses/ui-bootstrap-1.3.3"}},
+		{"", []string{"vendor/github.com/mjl-/httpinfo/LICENSE"}},
 		{"", []string{"vendor/github.com/mjl-/sherpa/LICENSE"}},
 		{"", []string{"vendor/bitbucket.org/mjl/httpasset/LICENSE"}},
 		{"", []string{"vendor/github.com/mjl-/sconf/LICENSE"}},

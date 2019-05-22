@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/mjl-/httpinfo"
 	"github.com/mjl-/sherpa"
 	"github.com/mjl-/sherpadoc"
 	"github.com/mjl-/sherpaprom"
@@ -101,6 +102,16 @@ func servehttp(args []string) {
 	}
 	handler, err := sherpa.NewHandler("/ding/", version, Ding{}, &doc, opts)
 	check(err, "making sherpa handler")
+
+	// Since we set the version variables with ldflags -X, we cannot read them in the vars section.
+	// So we combine them into a CodeVersion during init, and add the handler while we're at it.
+	info := httpinfo.CodeVersion{
+		CommitHash: vcsCommitHash,
+		Tag:        vcsTag,
+		Branch:     vcsBranch,
+		Full:       version,
+	}
+	http.Handle("/info", httpinfo.NewHandler(info, nil))
 
 	http.HandleFunc("/", serveAsset)
 	http.Handle("/ding/", handler)
