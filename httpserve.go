@@ -118,7 +118,8 @@ func servehttp(args []string) {
 	http.Handle("/metrics", promhttp.Handler())
 	http.HandleFunc("/release/", serveRelease)
 	http.HandleFunc("/result/", serveResult)
-	http.HandleFunc("/download/", serveDownload)
+	http.HandleFunc("/download/", serveDownload) // Old
+	http.HandleFunc("/dl/", serveDownload)       // New
 	http.HandleFunc("/events", serveEvents)
 
 	go eventMux()

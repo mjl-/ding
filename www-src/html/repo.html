@@ -90,7 +90,8 @@ make release"></textarea>
 				<li>$DING_BRANCH, the branch of the build</li>
 				<li>$DING_COMMIT, the commit id/hash, empty if not yet known</li>
 				<li>$DING_BUILDID, the build number, unique over all builds in ding</li>
-				<li>$DING_BUILDDIR, the directory where all files related to the build are stored, set to data/build/$DING_REPONAME/$DING_BUILDID/</li>
+				<li>$DING_BUILDDIR, where all files related to the build are stored, set to data/build/$DING_REPONAME/$DING_BUILDID/</li>
+				<li>$DING_DOWNLOADDIR, files stored here are available over HTTP at /dl/file/$DING_REPONAME/$DING_BUILDID/...</li>
 				<li>$DING_CHECKOUTPATH, where files are checked out as configured for the repository, relative to $DING_BUILDDIR/checkout/</li>
 				<li>any key/value pair from the "environment" object in the ding config file</li>
 			</ul>

@@ -58,7 +58,8 @@ data/
         output/
             {clone,build}.{stdout,stderr,output,nsec}
         home/                         ($HOME during builds with unique UIDs)
-    release/&lt;repoName&gt;/&lt;buildId&gt;/
+        dl/                           (files stored here are available at /dl/file/&lt;repoName&gt;/&lt;buildID&gt;/)
+    release/&lt;repoName&gt;/&lt;buildID&gt;/
         &lt;result-filename&gt;
     home/&lt;repoName&gt;/                  ($HOME during builds with shared UIDs)
 </pre>

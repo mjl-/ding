@@ -20,13 +20,16 @@ func serveDownload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// /download/{release,result}/<reponame>/<buildid>/<name>.{zip.tgz}
+	// /dl/{release,result,file}/<reponame>/<buildid>/
+	// For release & result, <name>.{zip.tgz}
+	// For file, any path is allowed.
 	t := strings.Split(r.URL.Path[1:], "/")
-	if len(t) != 5 || hasBadElems(t) {
+	if len(t) < 5 || hasBadElems(t) {
 		http.NotFound(w, r)
 		return
 	}
 
+	what := t[1]
 	repoName := t[2]
 	buildID, err := strconv.Atoi(t[3])
 	if err != nil {
@@ -69,8 +72,13 @@ func serveDownload(w http.ResponseWriter, r *http.Request) {
 		return files
 	}
 
-	switch t[1] {
+	switch what {
 	case "release":
+		if len(t) != 5 {
+			http.NotFound(w, r)
+			return
+		}
+
 		q := `
 			select repo.checkout_path, result.filename, result.filesize
 			from result
@@ -87,6 +95,11 @@ func serveDownload(w http.ResponseWriter, r *http.Request) {
 		_serveDownload(w, r, name, files, isGzip)
 
 	case "result":
+		if len(t) != 5 {
+			http.NotFound(w, r)
+			return
+		}
+
 		q := `
 			select repo.checkout_path, result.filename, result.filesize
 			from result
@@ -100,6 +113,10 @@ func serveDownload(w http.ResponseWriter, r *http.Request) {
 		name := t[4]
 		isGzip := false
 		_serveDownload(w, r, name, files, isGzip)
+
+	case "file":
+		filename := fmt.Sprintf("%s/build/%s/%d/dl/%s", dingDataDir, repoName, buildID, path.Join(t[4:]...))
+		http.ServeFile(w, r, filename)
 
 	default:
 		http.NotFound(w, r)

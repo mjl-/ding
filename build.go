@@ -47,6 +47,10 @@ func _prepareBuild(repoName, branch, commit string) (repo Repo, build Build, bui
 		err = os.MkdirAll(outputDir, 0777)
 		sherpaCheck(err, "creating output dir")
 
+		downloadDir := buildDir + "/dl"
+		err = os.MkdirAll(downloadDir, 0777)
+		sherpaCheck(err, "creating download dir")
+
 		build = _build(tx, repo.Name, build.ID)
 	})
 	events <- EventBuild{repo.Name, build}
@@ -166,6 +170,7 @@ func _doBuild(repo Repo, build Build, buildDir string) {
 		"HOME=" + home,
 		"DING_BUILDDIR=" + buildDir,
 		"DING_CHECKOUTPATH=" + repo.CheckoutPath,
+		"DING_DOWNLOADDIR=" + buildDir + "/dl",
 		"DING_BUILDID=" + fmt.Sprintf("%d", build.ID),
 		"DING_REPONAME=" + repo.Name,
 		"DING_BRANCH=" + build.Branch,
