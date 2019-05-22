@@ -96,7 +96,7 @@ make release"></textarea>
 				<li>any key/value pair from the "environment" object in the ding config file</li>
 			</ul>
 			<h5>Results</h5>
-			<p>The standard output of the release script is parsed. Lines that match this format are treated as released files:</p>
+			<p>The standard output of the release script is parsed. Lines that match a specific format are treated as released files:</p>
 			<blockquote style="font-size: inherit"><tt>release:</tt> <i>command version os arch toolchain path</i></blockquote>
 			<ul>
 				<li><tt>release:</tt> is just the literal string</li>
@@ -107,6 +107,10 @@ make release"></textarea>
 				<li><i>toolchain</i> should describe the compiler and possibly other tools that are used to build this release</li>
 				<li><i>path</i> is the local path (either absolute or relative to the checkout directory) of the released file</li>
 			</ul>
+			<p>Test coverage in percentage from 0 to 100 as floating point can be registered with the following line:</p>
+			<blockquote style="font-size: inherit"><tt>coverage:</tt> <i>float</i></blockquote>
+			<p>A filename for more details about the code coverage can also be registered, the file must be relative to the $DING_DOWNLOADDIR:</p>
+			<blockquote style="font-size: inherit"><tt>coverage-report:</tt> <i>file</i></blockquote>
 		</div>
 	</div>
 
@@ -123,6 +127,7 @@ make release"></textarea>
 						<th>Results</th>
 						<th>Version</th>
 						<th>Build</th>
+						<th>Cover</th>
 						<th>Spent</th>
 						<th>Disk</th>
 						<th>Age</th>
@@ -131,7 +136,7 @@ make release"></textarea>
 				</thead>
 				<tbody ng-if="builds.length === 0">
 					<tr>
-						<td colspan="9">No builds</td>
+						<td colspan="10">No builds</td>
 					</tr>
 				</tbody>
 				<tbody ng-repeat="build in builds">
@@ -141,6 +146,7 @@ make release"></textarea>
 						<td><span ng-if="build.results.length === 1">1 file</span><span ng-if="build.results.length > 1">{{ build.results.length }} files</span></td>
 						<td><span ng-if="build.results.length > 0">{{ build.results[0].version }}</span></td>
 						<td>{{ build.id }}</td>
+						<td><coverage repo="repo" build="build"></coverage></td>
 						<td><buildtime start="build.start" finish="build.finish"></buildtime></td>
 						<td><filesize size="build.disk_usage"></filesize></td>
 						<td><age time="build.start"></age></td>
@@ -155,7 +161,7 @@ make release"></textarea>
 						</td>
 					</tr>
 					<tr ng-if="build.status !== 'success' && build.error_message">
-						<td colspan="9">
+						<td colspan="10">
 							<div style="white-space: pre-wrap; margin-bottom: 2rem">{{ build.last_line }}
 {{ build.error_message }}</div>
 						</td>

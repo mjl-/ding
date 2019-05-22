@@ -21,6 +21,7 @@
 						<th>Branch</th>
 						<th>Status</th>
 						<th>Version</th>
+						<th>Cover</th>
 						<th>Spent</th>
 						<th>Age</th>
 						<th>Action</th>
@@ -28,7 +29,7 @@
 				</thead>
 				<tbody ng-if="repoBuilds.length === 0">
 					<tr>
-						<td colspan="7">No repos</td>
+						<td colspan="8">No repos</td>
 					</tr>
 				</tbody>
 				<tbody ng-repeat="repoBuild in repoBuilds | orderBy:youngestBuild" ng-init="active = $odd">
@@ -36,7 +37,7 @@
 						<td>
 							<a ng-href="#/repo/{{ repoBuild.repo.name }}/">{{ repoBuild.repo.name }}</a>
 						</td>
-						<td colspan="6">No builds</td>
+						<td colspan="7">No builds</td>
 					</tr>
 					<tr ng-repeat="build in repoBuild.builds" ng-class="{active: active}">
 						<td>
@@ -50,6 +51,9 @@
 
 						</td>
 						<td><span ng-if="build.results.length > 0">{{ build.results[0].version }}</span></td>
+						<td>
+							<coverage build="build" repo="repoBuild.repo"></coverage>
+						</td>
 						<td>
 							<buildtime start="build.start" finish="build.finish"></buildtime> / <filesize size="build.disk_usage"></filesize>
 							</td>

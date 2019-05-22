@@ -34,17 +34,19 @@ type Result struct {
 
 // Build is an attempt at building a repository.
 type Build struct {
-	ID              int        `json:"id"`
-	RepoID          int        `json:"repo_id"`
-	Branch          string     `json:"branch"`
-	CommitHash      string     `json:"commit_hash"` // can be empty until `checkout` step, when building latest version of a branch
-	Status          string     `json:"status"`      // `new`, `clone`, `checkout`, `build`, `success`
-	Start           time.Time  `json:"start"`
-	Finish          *time.Time `json:"finish"`
-	ErrorMessage    string     `json:"error_message"`
-	Results         []Result   `json:"results"`
-	Released        *time.Time `json:"released"`
-	BuilddirRemoved bool       `json:"builddir_removed"`
+	ID                 int        `json:"id"`
+	RepoID             int        `json:"repo_id"`
+	Branch             string     `json:"branch"`
+	CommitHash         string     `json:"commit_hash"` // can be empty until `checkout` step, when building latest version of a branch
+	Status             string     `json:"status"`      // `new`, `clone`, `checkout`, `build`, `success`
+	Start              time.Time  `json:"start"`
+	Finish             *time.Time `json:"finish"`
+	ErrorMessage       string     `json:"error_message"`
+	Results            []Result   `json:"results"`
+	Released           *time.Time `json:"released"`
+	BuilddirRemoved    bool       `json:"builddir_removed"`
+	Coverage           *float32   `json:"coverage"`             // Test coverage in percentage, from 0 to 100.
+	CoverageReportFile string     `json:"coverage_report_file"` // Relative to URL /dl/<reponame>/<buildid>.
 
 	LastLine  string `json:"last_line"`  // last line from last steps output
 	DiskUsage int64  `json:"disk_usage"` // disk usage for build
