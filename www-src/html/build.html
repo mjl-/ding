@@ -88,6 +88,10 @@
 				</tbody>
 			</table>
 		</div>
+
+		<h3>Config</h3>
+		<h4>build.sh</h4>
+		<pre style="white-space: pre-wrap">{{ buildResult.build_script }}</pre>
 	</div>
 
 	<div class="col-xs-12 col-lg-6">
@@ -96,9 +100,5 @@
 			<h4>{{ step.name }}<span ng-if="step.name !== 'success' && step.nsec > 0"> (<timespent nsec="step.nsec"></timespent>)</span></h4>
 			<div class="build-output bs-callout" ng-class="{'bs-callout-default': !$last && !build.finish, 'bs-callout-info': $last && !build.finish, 'bs-callout-danger': $last && build.finish && build.status !== 'success', 'bs-callout-success': $last && build.finish && build.status === 'success'}">{{ step.output }}</div>
 		</div>
-
-		<h3>Config</h3>
-		<h4>build.sh</h4>
-		<pre style="white-space: pre-wrap">{{ buildResult.build_script }}</pre>
 	</div>
 </div>
