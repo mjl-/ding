@@ -24,13 +24,13 @@ func _prepareBuild(repoName, branch, commit string) (repo Repo, build Build, bui
 		q := `insert into build (repo_id, branch, commit_hash, status, start) values ($1, $2, $3, $4, NOW()) returning id`
 		sherpaCheckRow(tx.QueryRow(q, repo.ID, branch, commit, "new"), &build.ID, "inserting new build into database")
 
-		buildDir = fmt.Sprintf("%s/data/build/%s/%d", dingWorkDir, repo.Name, build.ID)
+		buildDir = fmt.Sprintf("%s/build/%s/%d", dingDataDir, repo.Name, build.ID)
 		err := os.MkdirAll(buildDir, 0777)
 		sherpaCheck(err, "creating build dir")
 
 		homeDir := buildDir + "/home"
 		if repo.UID != nil {
-			homeDir = fmt.Sprintf("%s/data/home/%s", dingWorkDir, repo.Name)
+			homeDir = fmt.Sprintf("%s/home/%s", dingDataDir, repo.Name)
 		}
 
 		err = os.MkdirAll(buildDir+"/scripts", 0777)
@@ -157,7 +157,7 @@ func _doBuild(repo Repo, build Build, buildDir string) {
 
 	var home string
 	if repo.UID != nil {
-		home = fmt.Sprintf("%s/data/home/%s", dingWorkDir, repo.Name)
+		home = fmt.Sprintf("%s/home/%s", dingDataDir, repo.Name)
 	} else {
 		home = fmt.Sprintf("%s/home", buildDir)
 	}
@@ -171,9 +171,7 @@ func _doBuild(repo Repo, build Build, buildDir string) {
 		"DING_BRANCH=" + build.Branch,
 		"DING_COMMIT=" + build.CommitHash,
 	}
-	for key, value := range config.Environment {
-		env = append(env, key+"="+value)
-	}
+	env = append(env, config.Environment...)
 
 	execCommand := func(args ...string) *exec.Cmd {
 		return exec.Command(args[0], args[1:]...)

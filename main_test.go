@@ -7,6 +7,8 @@ import (
 	"log"
 	"os"
 	"testing"
+
+	"github.com/mjl-/sconf"
 )
 
 func TestMain(m *testing.M) {
@@ -25,10 +27,10 @@ func TestMain(m *testing.M) {
 		check(fmt.Errorf("bad command-line arguments, need 1 config file"), "")
 	}
 
-	parseConfig(args[0])
+	err := sconf.ParseFile(args[0], &config)
+	check(err, "parsing config file")
 	scripts := parseSQLScripts()
 
-	var err error
 	database, err = sql.Open("postgres", config.Database)
 	check(err, "connecting to database")
 

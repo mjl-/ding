@@ -52,7 +52,7 @@ func _sendmail(toName, toEmail, subject, textMsg string) {
 		c = nil
 	}()
 
-	if config.Mail.SMTPTls {
+	if config.Mail.SMTPTLS {
 		tlsconfig := &tls.Config{ServerName: config.Mail.SMTPHost}
 		sherpaCheck(c.StartTLS(tlsconfig), "starting TLS with mail server")
 	}
@@ -62,20 +62,20 @@ func _sendmail(toName, toEmail, subject, textMsg string) {
 		sherpaCheck(c.Auth(auth), "authenticating to mail server")
 	}
 
-	sherpaCheck(c.Mail(config.Mail.From), "setting from address")
+	sherpaCheck(c.Mail(config.Mail.FromEmail), "setting from address")
 	sherpaCheck(c.Rcpt(toEmail), "setting recipient address")
 
 	data, err := c.Data()
 	sherpaCheck(err, "preparing to write mail")
-	if config.Mail.ReplyTo != "" {
-		_, err = fmt.Fprintf(data, "Reply-To: %s <%s>\n", config.Mail.ReplyToName, config.Mail.ReplyTo)
+	if config.Mail.ReplyToEmail != "" {
+		_, err = fmt.Fprintf(data, "Reply-To: %s <%s>\n", config.Mail.ReplyToName, config.Mail.ReplyToEmail)
 		sherpaCheck(err, "writing reply-to header")
 	}
 	_, err = fmt.Fprintf(data, `From: %s <%s>
 To: %s <%s>
 Subject: %s
 
-`, config.Mail.FromName, config.Mail.From, toName, toEmail, subject)
+`, config.Mail.FromName, config.Mail.FromEmail, toName, toEmail, subject)
 	sherpaCheck(err, "writing mail headers")
 
 	_, err = fmt.Fprint(data, textMsg)

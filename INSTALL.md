@@ -1,101 +1,50 @@
 # Installing
 
-You'll need an empty postgres database, and a config.json file like:
+Set up an empty postgres database. Make a new config file. You can get an
+example by running:
 
-	{
-		"showSherpaErrors": true,
-		"printSherpaErrorStack": true,
-		"database": "dbname=ding host=localhost user=ding password=secretpassword sslmode=disable connect_timeout=3 application_name=ding",
-		"environment": {
-			"GEM_PATH": "/home/ding/.gem/ruby/2.3.0",
-			"PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/ding/node_modules/.bin/:/home/ding/.gem/ruby/2.3.0/bin:/home/ding/toolchains/bin",
-			"TOOLCHAINS": "/home/ding/toolchains"
-		},
-		"notify": {
-			"name": "devops",
-			"email": "devops@example.org"
-		},
-		"baseURL": "https://ding.example.org",
-		"githubWebhookSecret": "very secret",
-		"bitbucketWebhookSecret": "very secret but different",
-		"run": ["/usr/bin/nice", "/usr/bin/timeout", "600"],
-		"isolateBuilds": {
-			"enabled": false,
-			"dingUid": 1001,
-			"dingGid": 1001,
-			"uidStart": 10000,
-			"uidEnd": 20000
-		},
-		"mail": {
-			"enabled": false,
-			"from": "info@example.org",
-			"fromName": "Ding",
-			"replyto": "",
-			"replytoName": "",
-			"smtpHost": "localhost",
-			"smtpTls": true,
-			"smtpPort": 587,
-			"smtpUsername": "username",
-			"smtpPassword": "secretpassword"
-		}
-	}
+	ding config-describe >ding.conf
 
-Then give the database initialization a try.
-You'll use this for upgrades in future versions as well:
+Now fill in the blanks and check if the config is correct:
+
+	ding config-test ding.conf
+
+Now initialize the database:
 
 	ding upgrade config.json
 
-And now with commit if the previous was successful:
+You may need to run "upgrade" for future ding updates too, possibly with the
+-dryrun flag.
 
-	ding upgrade config.json commit
-
-
-# Dependencies
-
-Make sure you have git installed if you plan to build git repositories.
-Or mercurial (hg), or any other VCS you want to use.
-
-
-# Notifications
-
-You probably want to enable email notifications for failed builds.
-Configure a mail server, and set "mail", "enabled" to true.
-
-Ding does not support other mechanisms to send notifications (like
-outgoing webhooks, or IRC/telegram/slack/etc). Instead Ding has a
-real-time streaming updates API that can be used for those purposes.
+Make sure you have git or mercurial (hg) installed.
 
 
 # Isolate builds
 
-You should also isolate builds by running each build under a unique
-user id (UID):
+You should also isolate builds by running each build under a unique user id
+(UID):
 
-- Configure the "isolateBuild" section in your config file. "dingUid"
-and "dingGid" are the id's that the ding webserver will run under.
-"uidStart" (inclusive) and "uidEnd" (exclusive) denotes the range
-of user id's that ding will assign to builds. Build commands use
-"dingGid" as their gid. Make sure the UIDs don't overlap with regular
-users.
-- Start ding as root, with umask 027. The umask ensures the
-unpriviledged ding process can read build results. Set permissions
-0750 on data/.
+- Configure the "isolateBuild" section in your config file. "dingUid" and
+"dingGid" are the id's that the ding webserver will run under. "uidStart"
+(inclusive) and "uidEnd" (exclusive) denotes the range of user id's that ding
+will assign to builds. Build commands use "dingGid" as their gid. Make sure the
+UIDs don't overlap with regular users.
+- Start ding as root, with umask 027. The umask ensures the unpriviledged ding
+process can read build results. Set permissions 0750 on data/.
 
-"Run as root? Are you crazy?" No. Ding isn't actually running all
-its code with root priviledges. Early during startup, Ding forks
-off a child process with dinguid/dinggid. That process handles all
-HTTP requests. There is still a process running as root, but its
-only purpose is:
+"Run as root? Are you crazy?" No. Ding isn't actually running all its code with
+root priviledges. Early during startup, Ding forks off a child process with
+dinguid/dinggid. That process handles all HTTP requests. There is still a
+process running as root, but its only purpose is:
 
 1. Starting builds under a unique UID.
 2. Managing files created by the unique UID, such as chown/remove them.
 
-The processes communicate through a simple protocol over a unix
-socket. This privilege separation technique is popularized by
-OpenBSD.
+The processes communicate through a simple protocol over a unix socket. This
+privilege separation technique is popularized by OpenBSD.
 
-Why not use "sudo"? Because it does not seem possible to add sudo
-rules for ranges of UIDs.
+Why not use "sudo"? Because it does not seem possible to add sudo rules for
+ranges of UIDs.
 
 
 # Post-receive hook on git repositories
@@ -182,12 +131,12 @@ events working:
 
 # Monitoring
 
-Ding exposes Prometheus metrics at HTTP endpoint /metrics.
-This includes statistics on usage for the API.
+Ding exposes Prometheus metrics at HTTP endpoint /metrics. This includes
+statistics on usage for the API.
 
-You can also set up simple HTTP monitoring on /ding/status. It's
-the "status" API call and it will raise a 5xx status when one of
-its underlying services (file system, database) is not available.
+You can also set up simple HTTP monitoring on /ding/status. It's the "status"
+API call and it will raise a 5xx status when one of its underlying services
+(file system, database) is not available.
 
 
 # Service file
@@ -207,11 +156,11 @@ Example service file for systemd:
 	SyslogFacility=local0
 	User=root
 	Group=root
-	WorkingDirectory=/home/irias/projects/ding
-	ExecStart=/home/irias/projects/ding/ding serve -listen 127.0.0.1:6084 -listenwebhook 127.0.0.1:6085 config.json
+	WorkingDirectory=/home/services/ding
+	ExecStart=/home/services/ding/ding serve -listen 127.0.0.1:6084 -listenwebhook 127.0.0.1:6085 ding.conf
 
 	[Install]
 	WantedBy=multi-user.target
 
-This listens only on the loopback IP. Note we don't keep the binary
-and config in the (mostly empty) ding home directory, /home/ding.
+This listens only on the loopback IP. We do not keep the binary and config in
+the (mostly empty) ding user home directory /home/ding.

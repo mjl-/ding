@@ -53,6 +53,8 @@ func servehttp(args []string) {
 	err := dec.Decode(&config)
 	check(err, "reading config")
 
+	initDingDataDir()
+
 	// be cautious
 	if config.IsolateBuilds.Enabled && (os.Getuid() != config.IsolateBuilds.DingUID || os.Getgid() != config.IsolateBuilds.DingGID) {
 		log.Fatalln("not running under expected uid/gid")
@@ -110,9 +112,6 @@ func servehttp(args []string) {
 
 	go eventMux()
 
-	dingWorkDir, err = os.Getwd()
-	check(err, "getting current work dir")
-
 	newJobs = make(chan job, 1)
 	finishedJobs = make(chan string, 1)
 	go func() {
@@ -165,7 +164,7 @@ func servehttp(args []string) {
 	}
 	checkRow(database.QueryRow(qStale), &stales, "looking for stale builds in database")
 	for _, stale := range stales {
-		buildDir := fmt.Sprintf("data/build/%s/%d/", stale.RepoName, stale.BuildID)
+		buildDir := fmt.Sprintf("%s/build/%s/%d/", config.DataDir, stale.RepoName, stale.BuildID)
 		du := buildDiskUsage(buildDir)
 
 		qMarkStale := `update build set finish=now(), error_message=$1, disk_usage=$2 where finish is null and status!='new' returning id`
@@ -196,7 +195,7 @@ func servehttp(args []string) {
 					finishedJobs <- job.repoName
 				}()
 
-				buildDir := fmt.Sprintf("%s/data/build/%s/%d", dingWorkDir, repo.Name, build.ID)
+				buildDir := fmt.Sprintf("%s/build/%s/%d", dingDataDir, repo.Name, build.ID)
 				_doBuild(repo, build, buildDir)
 			}()
 		}(repoBuild.Repo, repoBuild.Build)
@@ -331,7 +330,7 @@ func serveRelease(w http.ResponseWriter, r *http.Request) {
 	}
 
 	name := t[3]
-	path := fmt.Sprintf("data/release/%s/%s/%s.gz", t[1], t[2], name)
+	path := fmt.Sprintf("%s/release/%s/%s/%s.gz", config.DataDir, t[1], t[2], name)
 	f, err := os.Open(path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -416,7 +415,7 @@ func serveResult(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if strings.HasSuffix(name, "/"+basename) {
-			path := fmt.Sprintf("data/build/%s/%d/checkout/%s/%s", repoName, buildID, repoCheckoutPath, name)
+			path := fmt.Sprintf("%s/build/%s/%d/checkout/%s/%s", config.DataDir, repoName, buildID, repoCheckoutPath, name)
 			http.ServeFile(w, r, path)
 			return
 		}

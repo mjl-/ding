@@ -10,6 +10,8 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+
+	"github.com/mjl-/sconf"
 )
 
 type script struct {
@@ -51,7 +53,7 @@ func runScripts(tx *sql.Tx, dbVersion int, scripts []script, committing bool) {
 			var repoNames []string
 			checkRow(tx.QueryRow(`select coalesce(json_agg(name), '[]') from repo`), &repoNames, "reading repos from database")
 			for _, repoName := range repoNames {
-				dir := "data/config/" + repoName
+				dir := fmt.Sprintf("%s/config/%s", config.DataDir, repoName)
 				buildSh := readFile(dir + "/build.sh")
 				testSh := readFileLax(dir + "/test.sh")
 				releaseSh := readFileLax(dir + "/release.sh")
@@ -86,7 +88,7 @@ func runScripts(tx *sql.Tx, dbVersion int, scripts []script, committing bool) {
 			}
 			checkRow(tx.QueryRow(q), &repoBuilds, "reading builds from database")
 			for _, repoBuild := range repoBuilds {
-				path := fmt.Sprintf("data/release/%s/%d", repoBuild.Name, repoBuild.ID)
+				path := fmt.Sprintf("%s/release/%s/%d", config.DataDir, repoBuild.Name, repoBuild.ID)
 
 				files, err := ioutil.ReadDir(path)
 				if err != nil {
@@ -155,7 +157,7 @@ func runScripts(tx *sql.Tx, dbVersion int, scripts []script, committing bool) {
 			`
 			checkRow(tx.QueryRow(q), &repoBuilds, "listing builds in database")
 			for _, rb := range repoBuilds {
-				buildDir := fmt.Sprintf("data/build/%s/%d/", rb.RepoName, rb.BuildID)
+				buildDir := fmt.Sprintf("%s/build/%s/%d/", config.DataDir, rb.RepoName, rb.BuildID)
 				du := buildDiskUsage(buildDir)
 				qup := `update build set disk_usage=$1 where id=$2 returning id`
 				checkRow(tx.QueryRow(qup, du, rb.BuildID), &rb.BuildID, "updating disk usage in database for build")
@@ -166,29 +168,24 @@ func runScripts(tx *sql.Tx, dbVersion int, scripts []script, committing bool) {
 
 func upgrade(args []string) {
 	fs := flag.NewFlagSet("upgrade", flag.ExitOnError)
+	dryrun := fs.Bool("dryrun", false, "if set, does rolls back the transaction in which the migration is executed")
 	fs.Usage = func() {
-		fmt.Fprintln(os.Stderr, "usage: ding upgrade config.json [commit]")
+		fmt.Fprintln(os.Stderr, "usage: ding upgrade [flags] ding.json")
 		fs.PrintDefaults()
 	}
 	fs.Parse(args)
 	args = fs.Args()
-	switch len(args) {
-	case 1:
-	case 2:
-		if args[1] != "commit" {
-			flag.Usage()
-			os.Exit(2)
-		}
-	default:
-		fs.Usage()
+	if len(args) != 1 {
+		flag.Usage()
 		os.Exit(2)
 	}
 
-	parseConfig(args[0])
+	err := sconf.ParseFile(args[0], &config)
+	check(err, "parsing config file")
+
 	scripts := parseSQLScripts()
 	lastScript := scripts[len(scripts)-1]
 
-	var err error
 	database, err = sql.Open("postgres", config.Database)
 	check(err, "connecting to database")
 
@@ -217,7 +214,7 @@ func upgrade(args []string) {
 		dbVersion = -1
 	}
 
-	committing := len(args) == 2
+	committing := !*dryrun
 	runScripts(tx, dbVersion, scripts, committing)
 
 	if committing {

@@ -1,12 +1,13 @@
 run: build
-	./ding serve local/config.json
+	./ding serve local/local.conf
 
 run-root: build
-	sudo ./ding serve local/config.json
+	sudo ./ding serve local/local-root.conf
 
 
 build:
 	go build
+	go vet
 	go run fabricate/*.go -- install
 	go run vendor/github.com/mjl-/sherpadoc/cmd/sherpadoc/*.go Ding >assets/ding.json
 
@@ -14,16 +15,15 @@ frontend:
 	go run fabricate/*.go -- install
 
 test:
-	go vet ./...
 	golint
-	go test -cover . -- local/config-test.json
+	go test -cover . -- local/local-test.conf
 
 coverage:
-	go test -coverprofile=coverage.out -test.outputdir . -- local/config-test.json
+	go test -coverprofile=coverage.out -test.outputdir . -- local/local-test.conf
 	go tool cover -html=coverage.out
 
 fmt:
-	go fmt ./...
+	go fmt .
 
 release:
 	-mkdir local 2>/dev/null

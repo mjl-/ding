@@ -46,8 +46,8 @@ func (Ding) Status() {
 	errors := make(chan done, 3)
 
 	go func() {
-		defer os.Remove("data/test")
-		f, err := os.Create("data/test")
+		defer os.Remove(config.DataDir + "/test")
+		f, err := os.Create(config.DataDir + "/test")
 		if err == nil {
 			err = f.Close()
 		}
@@ -188,9 +188,9 @@ func (Ding) CreateRelease(repoName string, buildID int) (build Build) {
 		var filenames []string
 		q := `select coalesce(json_agg(result.filename), '[]') from result where build_id=$1`
 		sherpaCheckRow(tx.QueryRow(q, build.ID), &filenames, "fetching build results from database")
-		checkoutDir := fmt.Sprintf("data/build/%s/%d/checkout/%s", repo.Name, build.ID, repo.CheckoutPath)
+		checkoutDir := fmt.Sprintf("%s/build/%s/%d/checkout/%s", config.DataDir, repo.Name, build.ID, repo.CheckoutPath)
 		for _, filename := range filenames {
-			fileCopy(checkoutDir+"/"+filename, fmt.Sprintf("data/release/%s/%d/%s.gz", repo.Name, build.ID, path.Base(filename)))
+			fileCopy(checkoutDir+"/"+filename, fmt.Sprintf("%s/release/%s/%d/%s.gz", config.DataDir, repo.Name, build.ID, path.Base(filename)))
 		}
 
 		events <- EventBuild{repo.Name, _build(tx, repo.Name, buildID)}
@@ -358,7 +358,7 @@ func (Ding) RemoveRepo(repoName string) {
 	}
 	_removeDir(repoName, -1, isSharedUID)
 
-	err := os.RemoveAll(fmt.Sprintf("data/release/%s", repoName))
+	err := os.RemoveAll(fmt.Sprintf("%s/release/%s", config.DataDir, repoName))
 	sherpaCheck(err, "removing release directory")
 }
 
@@ -372,7 +372,7 @@ func parseInt(s string) int64 {
 }
 
 func _buildResult(repoName string, build Build) (br BuildResult) {
-	buildDir := fmt.Sprintf("data/build/%s/%d/", repoName, build.ID)
+	buildDir := fmt.Sprintf("%s/build/%s/%d/", config.DataDir, repoName, build.ID)
 	br.BuildScript = readFile(buildDir + "scripts/build.sh")
 	br.Steps = []Step{}
 

@@ -5,14 +5,16 @@ package main
 
 import (
 	"database/sql"
-	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
+	"path"
 
 	"bitbucket.org/mjl/httpasset"
+	"github.com/mjl-/sconf"
 )
 
 const (
@@ -20,43 +22,56 @@ const (
 )
 
 var (
-	httpFS  http.FileSystem
-	version = "dev"
-	config  struct {
-		ShowSherpaErrors      bool
-		PrintSherpaErrorStack bool
-		Database              string
-		Environment           map[string]string
-		Notify                struct {
-			Name  string
-			Email string
-		}
-		BaseURL                string
-		GithubWebhookSecret    string   // for github webhook "push" events, to create a build; configure the same secret as in your github repository settings.
-		BitbucketWebhookSecret string   // we use this in the URL the user must configure at bitbucket; they don't have any other authentication mechanism.
-		Run                    []string // prefixed to commands we run. e.g. call "nice" or "timeout"
-		IsolateBuilds          struct {
-			Enabled  bool // if false, we run all build commands as the user running ding.  if true, we run each build under its own uid.
-			UIDStart int  // we'll use this + buildId as the unix uid to run the commands under
-			UIDEnd   int  // if we reach this uid, we wrap around to uidStart again
-			DingUID  int  // the unix uid ding runs as, used to chown files back before deleting.
-			DingGID  int  // the unix gid ding runs as, used to run build commands under.
-		}
-		Mail struct {
-			Enabled,
-			SMTPTls bool
-			SMTPPort int
-			SMTPHost,
-			SMTPUsername,
-			SMTPPassword,
-			From,
-			FromName,
-			ReplyTo,
-			ReplyToName string
-		}
-	}
+	httpFS   http.FileSystem
+	version  = "dev"
 	database *sql.DB
 )
+
+var config struct {
+	ShowSherpaErrors      bool     `sconf-doc:"If set, returns the full error message for sherpa calls failing with a server error. Otherwise, only returns generic error message."`
+	PrintSherpaErrorStack bool     `sconf-doc:"If set, prints error stack for sherpa server errors."`
+	DataDir               string   `sconf-doc:"Directory where all data is stored for builds, releases, home directories. In case of isolate builds, this must have a umask 027 and owned by the ding uid/gid. Can be an absolute path, or a path relative to the ding working directory."`
+	Database              string   `sconf-doc:"For example: dbname=ding host=localhost port=5432 user=ding password=secret sslmode=disable connect_timeout=3 application_name=ding"`
+	Environment           []string `sconf-doc:"List of environment variables in form KEY=VALUE."`
+	Notify                struct {
+		Name  string `sconf-doc:"Name to use along Email address."`
+		Email string `sconf:"optiona" sconf-doc:"Address to send build failure notifications to, if Mail.Enabled is set."`
+	} `sconf:"optional"`
+	BaseURL                string   `sconf-doc:"URL to point to from notifications about failed builds."`
+	GithubWebhookSecret    string   `sconf:"optional" sconf-doc:"For github webhook push events, to create a build; configure the same secret in the github repository settings."`
+	BitbucketWebhookSecret string   `sconf:"optional" sconf-doc:"Will be part of the URL bitbucket sends its webhook request to, e.g. http://.../bitbucket/<reponame>/<bitbucket-webhook-secret>."`
+	Run                    []string `sconf:"optional" sconf-doc:"List of commands and arguments to prepend to the command executed, e.g. nice or timeout."`
+	IsolateBuilds          struct {
+		Enabled  bool `sconf-doc:"If false, we run all build commands as the user running ding and the settings below do not apply.  If true, we run builds with unique UIDs."`
+		UIDStart int  `sconf-doc:"We'll use UIDStart + buildID as the unix UID to run the commands under."`
+		UIDEnd   int  `sconf-doc:"If we reach this UID, we wrap around to UIDStart again."`
+		DingUID  int  `sconf-doc:"UID ding runs as, used to chown files back before deleting."`
+		DingGID  int  `sconf-doc:"GID ding runs as, used to run build commands under."`
+	}
+	Mail struct {
+		Enabled      bool `sconf-doc:"If true, emails can be sent for failed builds. If false, the options below do not apply."`
+		SMTPTLS      bool
+		SMTPPort     int
+		SMTPHost     string
+		SMTPUsername string `sconf:"optional" sconf-doc:"If not set, no authentication is attempted."`
+		SMTPPassword string `sconf:"optional"`
+		FromName     string
+		FromEmail    string
+		ReplyToName  string
+		ReplyToEmail string
+	}
+}
+
+func init() {
+	config.DataDir = "data"
+	config.BaseURL = "http://localhost:6084"
+	config.Mail.SMTPPort = 25
+	config.Mail.SMTPHost = "localhost"
+	config.Mail.FromName = "ding"
+	config.Mail.FromEmail = "ding@example.org"
+	config.Mail.ReplyToName = "ding"
+	config.Mail.ReplyToEmail = "ding@example.org"
+}
 
 func check(err error, msg string) {
 	if err != nil {
@@ -72,38 +87,45 @@ func init() {
 	}
 }
 
-func parseConfig(path string) {
-	f, err := os.Open(path)
-	check(err, "opening config file")
-	err = json.NewDecoder(f).Decode(&config)
-	check(err, "parsing config file")
-	err = f.Close()
-	check(err, "closing config file")
+func initDingDataDir() {
+	workdir, err := os.Getwd()
+	check(err, "getting current work dir")
+	if path.IsAbs(config.DataDir) {
+		dingDataDir = path.Clean(config.DataDir)
+	} else {
+		dingDataDir = path.Join(workdir, config.DataDir)
+	}
 }
 
 func main() {
 	log.SetFlags(0)
-	log.SetPrefix("ding: ")
 	flag.Usage = func() {
-		fmt.Fprintln(os.Stderr, "usage: ding help")
-		fmt.Fprintln(os.Stderr, "\tding serve config.json")
-		fmt.Fprintln(os.Stderr, "\tding upgrade config.json [commit]")
-		fmt.Fprintln(os.Stderr, "\tding kick")
-		fmt.Fprintln(os.Stderr, "\tding version")
-		flag.PrintDefaults()
+		log.Fatalf("usage: ding { config-test | config-describe | help | kick | serve | upgrade | version }")
 	}
-	flag.Parse()
-	args := flag.Args()
-	if len(args) == 0 {
+	if len(os.Args) <= 1 {
 		flag.Usage()
 		os.Exit(2)
 	}
 
-	cmd := args[0]
-	args = args[1:]
+	cmd := os.Args[1]
+	args := os.Args[2:]
 	switch cmd {
+	case "config-test":
+		if len(args) != 1 {
+			log.Fatalf("usage: ding config-test config.conf")
+		}
+		err := sconf.ParseFile(args[0], &config)
+		check(err, "parsing file")
+		fmt.Println("config OK")
+	case "config-describe":
+		err := sconf.Describe(os.Stdout, &config)
+		check(err, "describe")
 	case "help":
-		help(args)
+		f, err := httpFS.Open("/INSTALL.md")
+		check(err, "opening install instructions")
+		_, err = io.Copy(os.Stdout, f)
+		check(err, "copy")
+		check(f.Close(), "close")
 	case "serve":
 		serve(args)
 	case "serve-http":
@@ -114,7 +136,7 @@ func main() {
 	case "kick":
 		kick(args)
 	case "version":
-		_version(args)
+		fmt.Printf("%s\ndatabase schema version %d\n", version, databaseVersion)
 	default:
 		flag.Usage()
 		os.Exit(2)

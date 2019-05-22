@@ -80,7 +80,7 @@ func serveDownload(w http.ResponseWriter, r *http.Request) {
 			where repo.name=$1 and build.id=$2
 		`
 		files := gatherFiles(q, func(repoCheckoutPath, name string) string {
-			return fmt.Sprintf("data/release/%s/%d/%s", repoName, buildID, path.Base(name))
+			return fmt.Sprintf("%s/release/%s/%d/%s", config.DataDir, repoName, buildID, path.Base(name))
 		})
 		name := t[4]
 		isGzip := true
@@ -95,7 +95,7 @@ func serveDownload(w http.ResponseWriter, r *http.Request) {
 			where repo.name=$1 and build.id=$2
 		`
 		files := gatherFiles(q, func(repoCheckoutPath, name string) string {
-			return fmt.Sprintf("data/build/%s/%d/checkout/%s/%s", repoName, buildID, repoCheckoutPath, name)
+			return fmt.Sprintf("%s/build/%s/%d/checkout/%s/%s", config.DataDir, repoName, buildID, repoCheckoutPath, name)
 		})
 		name := t[4]
 		isGzip := false

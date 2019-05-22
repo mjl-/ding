@@ -10,11 +10,12 @@ import (
 	"path/filepath"
 	"syscall"
 
+	"github.com/mjl-/sconf"
 	"golang.org/x/sys/unix"
 )
 
 var (
-	dingWorkDir          string
+	dingDataDir          string // config.DataDir combined with working directory of ding.
 	serveFlag            = flag.NewFlagSet("serve", flag.ExitOnError)
 	listenAddress        = serveFlag.String("listen", "localhost:6084", "address to listen on")
 	listenWebhookAddress = serveFlag.String("listenwebhook", "localhost:6085", "address to listen on for webhooks, like from github; set empty for no listening")
@@ -27,7 +28,7 @@ func serve(args []string) {
 	log.SetPrefix("serve: ")
 	serveFlag.Init("serve", flag.ExitOnError)
 	serveFlag.Usage = func() {
-		fmt.Println("usage: ding [flags] serve config.json")
+		fmt.Println("usage: ding [flags] serve ding.conf")
 		serveFlag.PrintDefaults()
 	}
 	serveFlag.Parse(args)
@@ -37,11 +38,10 @@ func serve(args []string) {
 		os.Exit(2)
 	}
 
-	parseConfig(args[0])
+	err := sconf.ParseFile(args[0], &config)
+	check(err, "parsing config file")
 
-	var err error
-	dingWorkDir, err = os.Getwd()
-	check(err, "getting current work dir")
+	initDingDataDir()
 
 	if config.IsolateBuilds.Enabled {
 		if os.Getuid() != 0 {
@@ -50,18 +50,18 @@ func serve(args []string) {
 		if syscall.Umask(027) != 027 {
 			log.Fatalln("must run with umask 027 with isolateBuilds enabled")
 		}
-		info, err := os.Stat("data")
+		info, err := os.Stat(config.DataDir)
 		check(err, "stat data dir")
 		sysinfo := info.Sys()
 		if sysinfo == nil {
-			log.Fatalf("cannot determine owner of data/")
+			log.Fatalf("cannot determine owner of data dir %q", config.DataDir)
 		}
 		st, ok := sysinfo.(*syscall.Stat_t)
 		if !ok {
-			log.Fatalf("underlying fileinfo for data/: sys is a %T", sysinfo)
+			log.Fatalf("underlying fileinfo for data dir %q: sys is a %T", config.DataDir, sysinfo)
 		}
 		if info.Mode()&os.ModePerm != 0750 || st.Uid != uint32(config.IsolateBuilds.DingUID) || st.Gid != uint32(config.IsolateBuilds.DingGID) {
-			log.Fatalf("data/ must have permissions 0750 and ding uid/gid %d/%d, but has permissions %#o and uid/gid %d/%d", config.IsolateBuilds.DingUID, config.IsolateBuilds.DingGID, info.Mode()&os.ModePerm, st.Uid, st.Gid)
+			log.Fatalf("data dir %q must have permissions 0750 and ding uid/gid %d/%d, but has permissions %#o and uid/gid %d/%d", config.DataDir, config.IsolateBuilds.DingUID, config.IsolateBuilds.DingGID, info.Mode()&os.ModePerm, st.Uid, st.Gid)
 		}
 	} else {
 		if os.Getuid() == 0 {
@@ -158,10 +158,10 @@ func doMsgChown(msg msg, enc *gob.Encoder) {
 	if msg.RepoName == "" {
 		log.Fatal("received MsgChown with empty RepoName")
 	}
-	buildDir := fmt.Sprintf("%s/data/build/%s/%d", dingWorkDir, msg.RepoName, msg.BuildID)
+	buildDir := fmt.Sprintf("%s/build/%s/%d", dingDataDir, msg.RepoName, msg.BuildID)
 	homeDir := fmt.Sprintf("%s/home", buildDir)
 	if msg.IsSharedUID {
-		homeDir = fmt.Sprintf("%s/data/home/%s", dingWorkDir, msg.RepoName)
+		homeDir = fmt.Sprintf("%s/home/%s", dingDataDir, msg.RepoName)
 	}
 
 	chown := func(path string) error {
@@ -190,7 +190,7 @@ func doMsgRemovedir(msg msg, enc *gob.Encoder) {
 	if msg.RepoName == "" {
 		log.Fatal("received MsgRemovedir with empty RepoName")
 	}
-	path := fmt.Sprintf("%s/data/build/%s", dingWorkDir, msg.RepoName)
+	path := fmt.Sprintf("%s/build/%s", dingDataDir, msg.RepoName)
 	if msg.BuildID >= 0 {
 		path += fmt.Sprintf("/%d", msg.BuildID)
 	}
@@ -198,7 +198,7 @@ func doMsgRemovedir(msg msg, enc *gob.Encoder) {
 	err := os.RemoveAll(path)
 
 	if msg.BuildID < 0 && msg.IsSharedUID {
-		homeDir := fmt.Sprintf("%s/data/home/%s", dingWorkDir, msg.RepoName)
+		homeDir := fmt.Sprintf("%s/home/%s", dingDataDir, msg.RepoName)
 		err2 := os.RemoveAll(homeDir)
 		if err == nil {
 			err = err2
@@ -220,7 +220,7 @@ func doMsgBuild(msg msg, enc *gob.Encoder, unixconn *net.UnixConn) {
 	defer errr.Close()
 	defer errw.Close()
 
-	buildDir := fmt.Sprintf("%s/data/build/%s/%d", dingWorkDir, msg.RepoName, msg.BuildID)
+	buildDir := fmt.Sprintf("%s/build/%s/%d", dingDataDir, msg.RepoName, msg.BuildID)
 	checkoutDir := fmt.Sprintf("%s/checkout/%s", buildDir, msg.CheckoutPath)
 
 	devnull, err := os.Open("/dev/null")

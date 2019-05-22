@@ -135,28 +135,23 @@ Now run: "make build test release"
 
 # Todo
 
-- try assigning a uid to a repo, then reusing it while keeping the homedir to get a go cache. or just set the cache explicitly. should speed builds up considerably. and it's probably trusted enough.
-- time spent should be the time since starting the clone, not since being queued ("new")
 - allow aborting a build
-- should have env vars with DING_-prefix
-- document somewhere that root-mode doesn't seem to work on macos because macos still (after years!) keeps failing on xcodebuild license checks when running under uids without system user entries (/Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -license check).
-- figure out why not running with /usr/bin/nice in config.Run does not find executables. probably some path setting.
-- create files in output/ earlier? so we don't show errors about missing such files when the vcs clone failes (eg due to no git in path, or no permision to run build.sh (eg because a dir leading to build.sh isn't accessible).
-- parse output for coverage string, and keep track of that as well.
-- think about browsing generated files during build. perhaps only some marked as interesting. like go tool cover-generated html files.
-- add separate listener for metrics, debug/pprof, version-info like compiler info etc
-- add prometheus metrics for builds. how long they take, if they succeed, etc.
 - write test code
+- add prometheus metrics for builds. how long they take, if they succeed, etc.
+- document somewhere that root-mode doesn't seem to work on macos because macos still (after years!) keeps failing on xcodebuild license checks when running under uids without system user entries (/Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -license check).
+- create files in output/ earlier? so we don't show errors about missing such files when the vcs clone failes (eg due to no git in path, or no permision to run build.sh (eg because a dir leading to build.sh isn't accessible).
 - add authentication to application. need to figure out how to keep a dashboard. and how to do auth on /events
 - when on a build page, show it if a new build is already in progress, with a link to that new build
 - show last two lines of output. now the "make failed"-line is making that output not so useful.
 - use tuit instead of angularjs? or give go wasm a chance.
 - keep track of size of shared homedir? or growth of homedir after a build?
+- when cloning, clone from previous checkout, then pull changes from remote as need, should be faster, especially for larger repo's.
 
 ## Maybe
+- think about adding support for updating toolchains, like go get golang.org/dl/go1.2.3 && go1.2.3 download
+- think about browsing generated files during build. perhaps only some marked as interesting. like go tool cover-generated html files.
 - allow configuring a cleanup script, that is run when a builddir is removed. eg for dropping a database that was created in build.sh.
 - read some file from $HOME after a build and show it in build overviews? eg for code coverage, or whatever. easy & extensible.
-- provide access to the builddir from the previous build, eg to copy dependencies. or perhaps we could also do a faster clone ourselves.
 - timestamps in output lines?
 - more ways to send out notifications? eg webhook, telegram, slack.
 - support for running builds on other instances (on other OS'es). maybe some day, if really needed.
