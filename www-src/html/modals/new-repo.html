@@ -17,15 +17,16 @@
 		</div>
 		<div ng-if="repo.vcs === 'command'" class="form-group">
 			<label>Command</label>
-			<textarea ng-model="repo.origin" class="form-control"  rows="6" placeholder="set -e
-if test &quot;$COMMIT&quot; = ''; then
-  vcs clone --branch $BRANCH https://vcs.example.com/repo checkout/$CHECKOUTPATH
+			<textarea ng-model="repo.origin" class="form-control"  rows="6" placeholder="#!/bin/sh
+set -e
+if test &quot;$DING_COMMIT&quot; = ''; then
+  vcs clone --branch $DING_BRANCH https://vcs.example.com/repo checkout/$DING_CHECKOUTPATH
 else
-  vcs clone --branch $BRANCH --commit $COMMIT https://vcs.example.com/repo checkout/$CHECKOUTPATH
+  vcs clone --branch $DING_BRANCH --commit $DING_COMMIT https://vcs.example.com/repo checkout/$DING_CHECKOUTPATH
 fi
-cd checkout/$CHECKOUTPATH
+cd checkout/$DING_CHECKOUTPATH
 vcs id | sed 's/^/commit:/'"></textarea>
-			<div class="bs-callout bs-callout-info">The command is executed using <tt>sh -c</tt>. It should check out $BRANCH (always set) and $COMMIT (if set, otherwise latest in branch) in checkout/$CHECKOUTPATH. If $COMMIT was empty, the command should end with a line of the form <tt>commit:...</tt>, with the commit id/hash on the dots.</div>
+			<div class="bs-callout bs-callout-info">The command is executed using <tt>sh -c</tt>. It should check out $DING_BRANCH (always set) and $DING_COMMIT (if set, otherwise latest in branch) in checkout/$DING_CHECKOUTPATH. If $DING_COMMIT was empty, the command should end with a line of the form <tt>commit:...</tt>, with the commit id/hash on the dots.</div>
 		</div>
 		<div class="form-group">
 			<label>Name</label>
@@ -34,7 +35,6 @@ vcs id | sed 's/^/commit:/'"></textarea>
 		<div class="form-group">
 			<label>Checkout path</label>
 			<input type="text" class="form-control" placeholder="src/githost/repo..." ng-model="repo.checkout_path" required ng-focus="checkoutpathAutoFill = false" ng-blur="checkoutpathAutoFill = repo.checkout_path === ''" />
-			<p class="help-block">For Go projects, you may want to match a GOPATH package path, like <tt>src/githost/user/project</tt>.</p>
 		</div>
 
 		<div class="form-group">

@@ -163,13 +163,13 @@ func _doBuild(repo Repo, build Build, buildDir string) {
 	}
 
 	env := []string{
-		"BUILDDIR=" + buildDir,
-		"CHECKOUTPATH=" + repo.CheckoutPath,
 		"HOME=" + home,
-		fmt.Sprintf("BUILDID=%d", build.ID),
-		"REPONAME=" + repo.Name,
-		"BRANCH=" + build.Branch,
-		"COMMIT=" + build.CommitHash,
+		"DING_BUILDDIR=" + buildDir,
+		"DING_CHECKOUTPATH=" + repo.CheckoutPath,
+		"DING_BUILDID=" + fmt.Sprintf("%d", build.ID),
+		"DING_REPONAME=" + repo.Name,
+		"DING_BRANCH=" + build.Branch,
+		"DING_COMMIT=" + build.CommitHash,
 	}
 	for key, value := range config.Environment {
 		env = append(env, key+"="+value)

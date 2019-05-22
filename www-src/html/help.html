@@ -18,7 +18,7 @@
 		<p>A build is an attempt to compile the software and create releasable results. A build runs through (hopefully all) of the following steps:</p>
 
 		<h4>new</h4>
-		<p>Waiting to be started: we only run 1 concurrent build per repository, regardless of branch, to prevent access to a database, for example.</p>
+		<p>Waiting to be started: we only run 1 concurrent build per repository, regardless of branch, to prevent access to a shared resource, for example a database.</p>
 
 		<h4>clone</h4>
 		<p>Fetching source code. Ding calls the external programs git or hg or runs the code-fetching shell script. If you specify <tt>origin</tt> URLs that make use of SSH, you will probably also need to install ssh keys in $HOME/.ssh for the unix user Ding is running under. In that case, make sure sure the private key file is only accessible by the user (not group, permission 0400) ding is running under.</p>
@@ -35,7 +35,11 @@
 
 		<h3>Results</h3>
 		<p>Results are just files that can be released. For Java projects, they are typically jar files. For Go projects, they are typically binary files, one for each architecture you compiled for. The output of your build.sh scripts points to the files that are results. Results only exist in the build directory and are removed when the build is removed.</p>
-		<p>But you can also <em>release</em> results.</p>
+		<p>Ding picks up output of the following form as results:</p>
+		<blockquote style="font-size: inherit">release: $name $version $platform $architecture $toolchainversion $path</blockquote>
+		<p>For example:</p>
+		<blockquote style="font-size: inherit">release: ding 0.1.2 linux amd64 go1.12.5 ding-0.1.2-linux-amd64-go1.12.5</blockquote>
+		<p>You can also <em>release</em> results.</p>
 
 		<h3>Releases</h3>
 		<p>Releases are builds of which the results have been saved outside the build directory, including the build script and output captured during the build. The build directory can then be cleaned.</p>
@@ -43,49 +47,20 @@
 		<h2>API</h2>
 		<p>Ding has an API at <a href="/ding/">/ding/</a>.</p>
 
-		<h2 id="examples">Example build.sh scripts</h2>
-		<p>Build scripts will vary over projects. Nevertheless, some examples for inspiration.</p>
-
-		<h3>Ding, written in Go</h3>
-		<p>For Go projects, it is helpful to have them checked out in a path that starts with <tt>src/</tt>, so you can easily configure a private $GOPATH. This assumes you've configured $TOOLCHAINS through Ding's config.json, and extracted the Go version of your choice under $TOOLCHAINS/go.</p>
-		<pre style="white-space: pre-wrap">
-#!/bin/bash
-set -e
-
-export GOPATH=$BUILDDIR/checkout
-export PATH=$PATH:$TOOLCHAINS/go/bin:$GOPATH/bin
-
-mkdir local
-cat &gt;local/config-test.json &lt;&lt;EOF
-... a config as shown in INSTALL.md ...
-EOF
-
-mkdir -p node_modules/.bin && ln -s $(which jshint) node_modules/.bin/
-make build test release</pre>
-
-		<h3>Sherpa-servlet-example, written in Java</h3>
-		<pre style="white-space: pre-wrap">
-#!/bin/bash
-set -e
-
-VERSION=$(sed -n 's/^.*&lt;version&gt;\(.*\)&lt;\/version&gt;.*/\1/p' pom.xml  | head -n1)
-
-mvn -B install
-echo release: sherpa-servlet-example.jar $VERSION any any `javac -version 2&gt;&1 | cut -f2 -d' '` target/SherpaServletExample-$VERSION.jar</pre>
-
 		<h2>File hierarchy</h2>
-		<p>For the curious, this is how files are layed out by Ding:</p>
+		<p> Overview of how where files are stored on disk by ding:</p>
 		<pre style="white-space: pre-wrap">
 data/
-    build/&lt;repoName&gt;/&lt;buildID&gt;/  ($BUILDDIR during builds)
-        checkout/$CHECKOUTPATH/  (working directory for build.sh)
+    build/&lt;repoName&gt;/&lt;buildID&gt;/       ($DING_BUILDDIR during builds)
+        checkout/$DING_CHECKOUTPATH/  (working directory for build.sh)
         scripts/
-            build.sh             (copied from database before build)
+            build.sh                  (copied from database before build)
         output/
             {clone,build}.{stdout,stderr,output,nsec}
-        home/                    ($HOME during builds)
+        home/                         ($HOME during builds with unique UIDs)
     release/&lt;repoName&gt;/&lt;buildId&gt;/
         &lt;result-filename&gt;
+    home/&lt;repoName&gt;/                  ($HOME during builds with shared UIDs)
 </pre>
 	</div>
 </div>

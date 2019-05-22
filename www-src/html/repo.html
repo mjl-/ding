@@ -45,21 +45,21 @@
 					</div>
 					<div ng-if="repo.vcs === 'command'" class="form-group">
 						<label>Command</label>
-						<textarea ng-model="repo.origin" class="form-control"  rows="6" placeholder="set -e
-if test &quot;$COMMIT&quot; = ''; then
-  vcs clone --branch $BRANCH https://vcs.example.com/repo checkout/$CHECKOUTPATH
+						<textarea ng-model="repo.origin" class="form-control"  rows="6" placeholder="#!/bin/sh
+set -e
+if test &quot;$DING_COMMIT&quot; = ''; then
+  vcs clone --branch $DING_BRANCH https://vcs.example.com/repo checkout/$DING_CHECKOUTPATH
 else
-  vcs clone --branch $BRANCH --commit $COMMIT https://vcs.example.com/repo checkout/$CHECKOUTPATH
+  vcs clone --branch $DING_BRANCH --commit $DING_COMMIT https://vcs.example.com/repo checkout/$DING_CHECKOUTPATH
 fi
-cd checkout/$CHECKOUTPATH
+cd checkout/$DING_CHECKOUTPATH
 vcs id | sed 's/^/commit:/'"></textarea>
-						<div class="bs-callout bs-callout-info">The command is executed using <tt>sh -c</tt>. It should check out $BRANCH (always set) and $COMMIT (if set, otherwise latest in branch) in checkout/$CHECKOUTPATH. If $COMMIT was empty, the command should end with a line of the form <tt>commit:...</tt>, with the commit id/hash on the dots.</div>
+						<div class="bs-callout bs-callout-info">The command is executed using <tt>sh -c</tt>. It should check out $DING_BRANCH (always set) and $DING_COMMIT (if set, otherwise latest in branch) in checkout/$DING_CHECKOUTPATH. If $DING_COMMIT was empty, the command should end with a line of the form <tt>commit:...</tt>, with the commit id/hash on the dots.</div>
 					</div>
 
 					<div class="form-group">
 						<label>Checkout path</label>
 						<input type="text" class="form-control" placeholder="src/githost/repo..." ng-model="repo.checkout_path" required />
-						<p class="help-block">For Go projects, you may want to match a GOPATH package path, like <tt>src/githost/user/project</tt>.</p>
 					</div>
 
 					<div class="form-group">
@@ -81,17 +81,18 @@ make release"></textarea>
 		</div>
 
 		<div class="bs-callout bs-callout-info">
-			<p>Build.sh is run in a relatively clean environment, in the checkout directory. It should exit with status 0 only when successful.</p>
+			<p>Build.sh is run in a clean environment. It should exit with status 0 only when successful.</p>
+			<p>The working directory is set to $DING_BUILDDIR/checkout/$DING_CHECKOUTPATH.
 			<h5>Environment variables</h5>
 			<ul>
-				<li>$BUILDDIR, the directory where all files related to the build are stored</li>
-				<li>$HOME, an empty directory, equal to $BUILDDIR/home</li>
-				<li>$CHECKOUTPATH, where files are checked out as configured for the repository, relative to $BUILDDIR/checkout</li>
-				<li>$BUILDID, the build number; you should try to use this in the filenames of releasable files</li>
-				<li>$REPONAME</li>
-				<li>$BRANCH, the branch of the build</li>
-				<li>$COMMIT, the commit id/hash, empty if not yet known</li>
-				<li>any key/value pair from the config "environment" object</li>
+				<li>$HOME, an initially empty directory; for repo's with per-build unique UIDs, equal to $DING_BUILDDIR/home, with shared UIDs set to data/home/$DING_REPONAME.</li>
+				<li>$DING_REPONAME, name of the repository</li>
+				<li>$DING_BRANCH, the branch of the build</li>
+				<li>$DING_COMMIT, the commit id/hash, empty if not yet known</li>
+				<li>$DING_BUILDID, the build number, unique over all builds in ding</li>
+				<li>$DING_BUILDDIR, the directory where all files related to the build are stored, set to data/build/$DING_REPONAME/$DING_BUILDID/</li>
+				<li>$DING_CHECKOUTPATH, where files are checked out as configured for the repository, relative to $DING_BUILDDIR/checkout/</li>
+				<li>any key/value pair from the "environment" object in the ding config file</li>
 			</ul>
 			<h5>Results</h5>
 			<p>The standard output of the release script is parsed. Lines that match this format are treated as released files:</p>
@@ -145,7 +146,7 @@ make release"></textarea>
 						<td style="min-width: 15rem">
 							<div class="btn-group">
 								<button type="button" btn="default sm" icon="repeat" saving-click="createBuild(repo.name, build.branch, build.commit_hash)" uib-tooltip="Rebuild this revision"></button>
-								<button type="button" btn="danger sm" icon="eraser" loading-click="cleanupBuilddir(build)" ng-disabled="build.builddir_removed || !build.finish" uib-tooltip="Clean up the working directory for this build"></button>
+								<button type="button" btn="danger sm" icon="eraser" loading-click="cleanupBuilddir(build)" ng-disabled="build.builddir_removed || !build.finish" uib-tooltip="Clean up the build directory for this build"></button>
 								<button type="button" btn="danger sm" icon="trash" loading-click="removeBuild(build)" ng-disabled="build.released || !build.finish" uib-tooltip="Remove this build"></button>
 								<a ng-href="#/repo/{{ repo.name }}/build/{{ build.id }}/" btn="default sm" link-disabled="build.builddir_removed" icon="folder-open-o" uib-tooltip="Open details for this build" ng-if="!(build.builddir_removed && build.released)"></a>
 								<a ng-href="#/repo/{{ repo.name }}/release/{{ build.id }}/" btn="primary sm" icon="folder-open" uib-tooltip="Open release" ng-if="build.builddir_removed && build.released"></a>
