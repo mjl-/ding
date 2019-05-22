@@ -176,7 +176,7 @@ func servehttp(args []string) {
 	}
 	checkRow(database.QueryRow(qStale), &stales, "looking for stale builds in database")
 	for _, stale := range stales {
-		buildDir := fmt.Sprintf("%s/build/%s/%d/", config.DataDir, stale.RepoName, stale.BuildID)
+		buildDir := fmt.Sprintf("%s/build/%s/%d/", dingDataDir, stale.RepoName, stale.BuildID)
 		du := buildDiskUsage(buildDir)
 
 		qMarkStale := `update build set finish=now(), error_message=$1, disk_usage=$2 where finish is null and status!='new' returning id`
@@ -342,7 +342,7 @@ func serveRelease(w http.ResponseWriter, r *http.Request) {
 	}
 
 	name := t[3]
-	path := fmt.Sprintf("%s/release/%s/%s/%s.gz", config.DataDir, t[1], t[2], name)
+	path := fmt.Sprintf("%s/release/%s/%s/%s.gz", dingDataDir, t[1], t[2], name)
 	f, err := os.Open(path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -427,7 +427,7 @@ func serveResult(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if strings.HasSuffix(name, "/"+basename) {
-			path := fmt.Sprintf("%s/build/%s/%d/checkout/%s/%s", config.DataDir, repoName, buildID, repoCheckoutPath, name)
+			path := fmt.Sprintf("%s/build/%s/%d/checkout/%s/%s", dingDataDir, repoName, buildID, repoCheckoutPath, name)
 			http.ServeFile(w, r, path)
 			return
 		}

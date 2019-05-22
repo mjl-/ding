@@ -9,14 +9,14 @@ import (
 func fillBuild(repoName string, b *Build) {
 	// we only fill it in if not already set. typically during a build.
 	if b.DiskUsage == 0 {
-		buildDir := fmt.Sprintf("%s/build/%s/%d", config.DataDir, repoName, b.ID)
+		buildDir := fmt.Sprintf("%s/build/%s/%d", dingDataDir, repoName, b.ID)
 		b.DiskUsage = buildDiskUsage(buildDir)
 	}
 
 	if b.Finish == nil || b.Status == "success" {
 		return
 	}
-	path := fmt.Sprintf("%s/build/%s/%d/output/%s.output", config.DataDir, repoName, b.ID, b.Status)
+	path := fmt.Sprintf("%s/build/%s/%d/output/%s.output", dingDataDir, repoName, b.ID, b.Status)
 	f, err := os.Open(path)
 	if err != nil {
 		b.LastLine = fmt.Sprintf("(open for last line: %s)", err)
