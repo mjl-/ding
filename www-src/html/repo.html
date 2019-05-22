@@ -45,8 +45,8 @@
 					</div>
 					<div ng-if="repo.vcs === 'command'" class="form-group">
 						<label>Command</label>
-						<textarea ng-model="repo.origin" class="form-control"  rows="6" placeholder="#!/bin/sh
-set -e
+						<textarea ng-model="repo.origin" class="form-control"  rows="6" placeholder="#!/bin/bash
+set -euo pipefail
 if test &quot;$DING_COMMIT&quot; = ''; then
   vcs clone --branch $DING_BRANCH https://vcs.example.com/repo checkout/$DING_CHECKOUTPATH
 else
