@@ -60,8 +60,8 @@ func serve(args []string) {
 		if !ok {
 			log.Fatalf("underlying fileinfo for data dir %q: sys is a %T", dingDataDir, sysinfo)
 		}
-		if info.Mode()&os.ModePerm != 0750 || st.Uid != uint32(config.IsolateBuilds.DingUID) || st.Gid != uint32(config.IsolateBuilds.DingGID) {
-			log.Fatalf("data dir %q must have permissions 0750 and ding uid/gid %d/%d, but has permissions %#o and uid/gid %d/%d", dingDataDir, config.IsolateBuilds.DingUID, config.IsolateBuilds.DingGID, info.Mode()&os.ModePerm, st.Uid, st.Gid)
+		if info.Mode()&077 != 050 || st.Gid != uint32(config.IsolateBuilds.DingGID) {
+			log.Fatalf("data dir %q must have permissions g=rx,o= and ding gid %d, but has permissions %#o and gid %d", dingDataDir, config.IsolateBuilds.DingGID, info.Mode()&os.ModePerm, st.Gid)
 		}
 	} else {
 		if os.Getuid() == 0 {
@@ -181,6 +181,9 @@ func doMsgChown(msg msg, enc *gob.Encoder) {
 	err := chown(homeDir)
 	if err == nil {
 		err = chown(buildDir + "/checkout")
+	}
+	if err == nil {
+		err = chown(buildDir + "/dl")
 	}
 	err = enc.Encode(errstr(err))
 	check(err, "writing chown result")
