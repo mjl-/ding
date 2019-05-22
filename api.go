@@ -285,7 +285,7 @@ func _checkRepo(repo Repo) {
 }
 
 func _assignRepoUID(tx *sql.Tx) (uid int32) {
-	q := `select coalesce(min(uid), $1) as uid from repo`
+	q := `select coalesce(min(uid), $1) - 1 as uid from repo`
 	err := tx.QueryRow(q, config.IsolateBuilds.UIDEnd-1).Scan(&uid)
 	sherpaCheck(err, "fetching last assigned repo uid from database")
 	return
