@@ -51,16 +51,10 @@
 {{ build.error_message }}</div>
 
 						</td>
-						<td><span ng-if="build.results.length > 0">{{ build.results[0].version }}</span></td>
-						<td>
-							<coverage build="build" repo="repoBuild.repo"></coverage>
-						</td>
-						<td>
-							<buildtime start="build.start" finish="build.finish"></buildtime>
-						</td>
-						<td>
-							<filesize size="build.disk_usage"></filesize>
-						</td>
+						<td>{{ build.version }}</td>
+						<td><coverage build="build" repo="repoBuild.repo"></coverage></td>
+						<td><buildtime start="build.start" finish="build.finish"></buildtime></td>
+						<td><filesize size="build.disk_usage"></filesize></td>
 						<td><age time="build.start"></age></td>
 						<td>
 							<a class="btn btn-default" ng-href="#/repo/{{ repoBuild.repo.name }}/build/{{ build.id }}/" link-disabled="build.builddir_removed">Open</a>

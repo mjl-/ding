@@ -106,7 +106,7 @@ make release"></textarea>
 					<tr>
 						<td>{{ build.branch }}</td>
 						<td><span ng-if="build.results.length === 1">1 file</span><span ng-if="build.results.length > 1">{{ build.results.length }} files</span></td>
-						<td><span ng-if="build.results.length > 0">{{ build.results[0].version }}</span></td>
+						<td>{{ build.version }}</td>
 						<td>{{ build.id }}</td>
 						<td><age time="build.start"></age></td>
 						<td>
@@ -128,8 +128,8 @@ make release"></textarea>
 					<tr>
 						<th>Status</th>
 						<th>Branch</th>
-						<th>Results</th>
 						<th>Version</th>
+						<th>Results</th>
 						<th>Build</th>
 						<th>Cover</th>
 						<th style="width: 4.5em">Time</th>
@@ -147,8 +147,8 @@ make release"></textarea>
 					<tr>
 						<td><build-status status="build.status" finish="build.finish" released="build.released"></build-status></td>
 						<td>{{ build.branch }}</td>
+						<td>{{ build.version }}</td>
 						<td><span ng-if="build.results.length === 1">1 file</span><span ng-if="build.results.length > 1">{{ build.results.length }} files</span></td>
-						<td><span ng-if="build.results.length > 0">{{ build.results[0].version }}</span></td>
 						<td>{{ build.id }}</td>
 						<td><coverage repo="repo" build="build"></coverage></td>
 						<td><buildtime start="build.start" finish="build.finish"></buildtime></td>
@@ -194,19 +194,24 @@ make release"></textarea>
 			</ul>
 
 			<h5>Results</h5>
-			<p>The standard output of the release script is parsed. Lines that match a specific format are treated as released files:</p>
+			<p>The standard output of the release script is parsed. The following lines are recognized:</p>
+
+			<p>Version of this build:</p>
+			<blockquote style="font-size: inherit"><tt>version:</tt> <i>string</i></blockquote>
+
 			<blockquote style="font-size: inherit"><tt>release:</tt> <i>command version os arch toolchain path</i></blockquote>
 			<ul>
 				<li><tt>release:</tt> is just the literal string</li>
 				<li><i>command</i> is the name of the command, as you would type it in a terminal</li>
-				<li><i>version</i> is a semver, <i>x.y.z</i></li>
 				<li><i>os</i> must be one of: <i>any, linux, darwin, openbsd, windows</i>; the OS this program can run on, <i>any</i> is for platform-independent tools like a jar</li>
 				<li><i>arch</i> must be one of: <i>any, amd64, arm64</i>; similar to OS</li>
 				<li><i>toolchain</i> should describe the compiler and possibly other tools that are used to build this release</li>
 				<li><i>path</i> is the local path (either absolute or relative to the checkout directory) of the released file</li>
 			</ul>
+
 			<p>Test coverage in percentage from 0 to 100 as floating point can be registered with the following line:</p>
 			<blockquote style="font-size: inherit"><tt>coverage:</tt> <i>float</i></blockquote>
+
 			<p>A filename for more details about the code coverage can also be registered, the file must be relative to the $DING_DOWNLOADDIR:</p>
 			<blockquote style="font-size: inherit"><tt>coverage-report:</tt> <i>file</i></blockquote>
 

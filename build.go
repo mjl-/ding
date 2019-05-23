@@ -309,16 +309,16 @@ func _doBuild(repo Repo, build Build, buildDir string) {
 	build.DiskUsage = buildDiskUsage(buildDir)
 	transact(func(tx *sql.Tx) {
 		outputDir := buildDir + "/output"
-		results, coverage, coverageReportFile := parseResults(repo, build, checkoutDir, outputDir+"/build.stdout")
+		version, results, coverage, coverageReportFile := parseResults(repo, build, checkoutDir, outputDir+"/build.stdout")
 
-		qins := `insert into result (build_id, command, version, os, arch, toolchain, filename, filesize) values ($1, $2, $3, $4, $5, $6, $7, $8) returning id`
+		qins := `insert into result (build_id, command, os, arch, toolchain, filename, filesize) values ($1, $2, $3, $4, $5, $6, $7) returning id`
 		for _, result := range results {
 			var id int
-			err = tx.QueryRow(qins, build.ID, result.Command, result.Version, result.Os, result.Arch, result.Toolchain, result.Filename, result.Filesize).Scan(&id)
+			err = tx.QueryRow(qins, build.ID, result.Command, result.Os, result.Arch, result.Toolchain, result.Filename, result.Filesize).Scan(&id)
 			sherpaCheck(err, "inserting result into database")
 		}
 
-		_, err = tx.Exec("update build set status='success', finish=NOW(), disk_usage=$1, coverage=$2, coverage_report_file=$3 where id=$4", build.DiskUsage, coverage, coverageReportFile, build.ID)
+		_, err = tx.Exec("update build set status='success', finish=NOW(), disk_usage=$1, coverage=$2, coverage_report_file=$3, version=$4 where id=$5", build.DiskUsage, coverage, coverageReportFile, version, build.ID)
 		sherpaCheck(err, "marking build as success in database")
 
 		events <- EventBuild{repo.Name, _build(tx, repo.Name, build.ID)}
@@ -350,7 +350,7 @@ func _cleanupBuilds(repoName, branch string) {
 	}
 }
 
-func parseResults(repo Repo, build Build, checkoutDir, path string) (results []Result, coverage *float32, coverageReportFile string) {
+func parseResults(repo Repo, build Build, checkoutDir, path string) (version string, results []Result, coverage *float32, coverageReportFile string) {
 	f, err := os.Open(path)
 	sherpaUserCheck(err, "opening build output")
 	defer func() {
@@ -363,10 +363,10 @@ func parseResults(repo Repo, build Build, checkoutDir, path string) (results []R
 		switch t[0] {
 		case "release:":
 			//  "release:" command version os arch toolchain path
-			if len(t) != 7 {
-				sherpaUserCheck(err, "invalid \"release:\"-line, should have 7 words: "+line)
+			if len(t) != 6 {
+				userError("invalid \"release:\"-line, should have 6 words: "+line)
 			}
-			result := Result{t[1], t[2], t[3], t[4], t[5], t[6], 0}
+			result := Result{t[1], t[2], t[3], t[4], t[5], 0}
 			if !strings.HasPrefix(result.Filename, "/") {
 				result.Filename = checkoutDir + "/" + result.Filename
 			}
@@ -375,10 +375,15 @@ func parseResults(repo Repo, build Build, checkoutDir, path string) (results []R
 			result.Filename = result.Filename[len(checkoutDir+"/"):]
 			result.Filesize = info.Size()
 			results = append(results, result)
+		case "version:":
+			if len(t) != 2 {
+				userError("invalid \"version:\"-line, should have 1 parameter: "+line)
+			}
+			version = t[1]
 		case "coverage:":
 			// "coverage:" 75.0
 			if len(t) != 2 {
-				sherpaUserCheck(err, "invalid \"coverage:\"-line, should have 1 parameter: "+line)
+				userError("invalid \"coverage:\"-line, should have 1 parameter: "+line)
 			}
 			var fl float64
 			fl, err = strconv.ParseFloat(t[1], 32)
@@ -390,7 +395,7 @@ func parseResults(repo Repo, build Build, checkoutDir, path string) (results []R
 		case "coverage-report:":
 			// "coverage-report:" coverage.html
 			if len(t) != 2 {
-				sherpaUserCheck(err, "invalid \"coverage-report:\"-line, should have 1 parameter: "+line)
+				userError("invalid \"coverage-report:\"-line, should have 1 parameter: "+line)
 			}
 			coverageReportFile = t[1]
 			p := fmt.Sprintf("%s/build/%s/%d/dl/%s", dingDataDir, repo.Name, build.ID, coverageReportFile)

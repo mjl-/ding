@@ -24,7 +24,6 @@ type RepoBuilds struct {
 // Result is a file created during a build, as the result of a build. Files like this can be released.
 type Result struct {
 	Command   string `json:"command"`   // short name of command, without version, as you would want to run it from a command-line
-	Version   string `json:"version"`   // typically semvar, x.y.z
 	Os        string `json:"os"`        // eg `any`, `linux`, `darwin, `openbsd`, `windows`
 	Arch      string `json:"arch"`      // eg `any`, `amd64`, `arm64`
 	Toolchain string `json:"toolchain"` // string describing the tools used during build, eg SDK version
@@ -43,14 +42,16 @@ type Build struct {
 	Start              *time.Time `json:"start"`       // Time the build was started. Of a build is finish - start.
 	Finish             *time.Time `json:"finish"`
 	ErrorMessage       string     `json:"error_message"`
-	Results            []Result   `json:"results"`
 	Released           *time.Time `json:"released"`
 	BuilddirRemoved    bool       `json:"builddir_removed"`
 	Coverage           *float32   `json:"coverage"`             // Test coverage in percentage, from 0 to 100.
 	CoverageReportFile string     `json:"coverage_report_file"` // Relative to URL /dl/<reponame>/<buildid>.
+	Version            string     `json:"version"`              // Version if this build, typically contains a semver version, with optional commit count/hash, perhaps a branch.
 
 	LastLine  string `json:"last_line"`  // last line from last steps output
 	DiskUsage int64  `json:"disk_usage"` // disk usage for build
+
+	Results []Result `json:"results"`
 }
 
 // Step is one phase of a build and stores the output generated in that step.

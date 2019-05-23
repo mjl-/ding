@@ -3,8 +3,6 @@
 Ding builds your software projects from git/mercurial/etc repositories, can run
 tests and keep track of released software.
 
-[TODO add a screenshot]
-
 You will typically configure a "post-receive" (web)hook on your git server to
 tell Ding to start a build.
 
