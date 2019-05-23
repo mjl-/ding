@@ -19,6 +19,7 @@
 			<label>Command</label>
 			<textarea ng-model="repo.origin" class="form-control"  rows="6" placeholder="#!/bin/bash
 set -euo pipefail
+
 if test &quot;$DING_COMMIT&quot; = ''; then
   vcs clone --branch $DING_BRANCH https://vcs.example.com/repo checkout/$DING_CHECKOUTPATH
 else

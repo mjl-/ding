@@ -48,6 +48,7 @@
 						<label>Command</label>
 						<textarea ng-model="repo.origin" class="form-control"  rows="6" placeholder="#!/bin/bash
 set -euo pipefail
+
 if test &quot;$DING_COMMIT&quot; = ''; then
   vcs clone --branch $DING_BRANCH https://vcs.example.com/repo checkout/$DING_CHECKOUTPATH
 else
@@ -69,8 +70,9 @@ vcs id | sed 's/^/commit:/'"></textarea>
 
 					<div class="form-group">
 						<label>Build.sh</label>
-						<textarea class="form-control" ng-model="repo.build_script" rows="10" placeholder="#!/bin/sh
-set -e
+						<textarea class="form-control" ng-model="repo.build_script" rows="10" placeholder="#!/bin/bash
+set -euo pipefail
+
 make release"></textarea>
 					</div>
 
@@ -216,7 +218,7 @@ make release"></textarea>
 				<li>For github: <tt>/github/<i>repoName</i></tt></li>
 				<li>For bitbucket: <tt>/bitbucket/<i>repoName</i>/<i>secret</i></tt></li>
 			</ul>
-			<p>You'll need to configure secrets in the config file, see <a href="/INSTALL.md">INSTALL.md</a> for the details. </p>
+			<p>You'll need to configure secrets in the config file, see <a href="/INSTALL.txt">INSTALL.txt</a> for the details. </p>
 		</div>
 	</div>
 </div>
