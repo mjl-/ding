@@ -22,7 +22,7 @@ func _prepareBuild(repoName, branch, commit string) (repo Repo, build Build, bui
 	transact(func(tx *sql.Tx) {
 		repo = _repo(tx, repoName)
 
-		q := `insert into build (repo_id, branch, commit_hash, status, start) values ($1, $2, $3, $4, NOW()) returning id`
+		q := `insert into build (repo_id, branch, commit_hash, status) values ($1, $2, $3, $4) returning id`
 		sherpaCheckRow(tx.QueryRow(q, repo.ID, branch, commit, "new"), &build.ID, "inserting new build into database")
 
 		buildDir = fmt.Sprintf("%s/build/%s/%d", dingDataDir, repo.Name, build.ID)
@@ -152,10 +152,17 @@ func _doBuild(repo Repo, build Build, buildDir string) {
 		}
 	}()
 
-	_updateStatus := func(status string) {
+	_updateStatus := func(status string, isStart bool) {
 		transact(func(tx *sql.Tx) {
 			_, err := tx.Exec("update build set status=$1 where id=$2", status, build.ID)
 			sherpaCheck(err, "updating build status in database")
+
+			if isStart {
+				var one int
+				q := "update build set start=now() where id=$1 returning 1"
+				sherpaCheckRow(tx.QueryRow(q, build.ID), &one, "marking start time for build in database")
+			}
+
 			events <- EventBuild{repo.Name, _build(tx, repo.Name, build.ID)}
 		})
 	}
@@ -190,7 +197,7 @@ func _doBuild(repo Repo, build Build, buildDir string) {
 		return args
 	}
 
-	_updateStatus("clone")
+	_updateStatus("clone", true)
 	var err error
 	switch repo.VCS {
 	case "git":
@@ -271,7 +278,7 @@ func _doBuild(repo Repo, build Build, buildDir string) {
 	err = requestPrivileged(chownMsg)
 	sherpaCheck(err, "chown")
 
-	_updateStatus("build")
+	_updateStatus("build", false)
 	req := request{
 		msg{Build: &msgBuild{repo.Name, build.ID, uid, repo.CheckoutPath, env}},
 		nil,

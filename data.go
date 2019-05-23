@@ -39,7 +39,8 @@ type Build struct {
 	Branch             string     `json:"branch"`
 	CommitHash         string     `json:"commit_hash"` // can be empty until `checkout` step, when building latest version of a branch
 	Status             string     `json:"status"`      // `new`, `clone`, `checkout`, `build`, `success`
-	Start              time.Time  `json:"start"`
+	Created            time.Time  `json:"created"`     // Time of creation of this build. Ding only has one concurrent build per repo, so the start time may be later.
+	Start              *time.Time `json:"start"`       // Time the build was started. Of a build is finish - start.
 	Finish             *time.Time `json:"finish"`
 	ErrorMessage       string     `json:"error_message"`
 	Results            []Result   `json:"results"`

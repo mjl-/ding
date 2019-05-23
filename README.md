@@ -135,7 +135,6 @@ Now run: "make build test release"
 
 # Todo
 
-- time spent should be the time since starting the clone, not since being queued ("new")
 - allow aborting a build
 - write test code
 - add prometheus metrics for builds. how long they take, if they succeed, etc.
