@@ -223,7 +223,7 @@ func upgrade(args []string) {
 		check(err, "write")
 	} else {
 		check(tx.Rollback(), "rolling back")
-		_, err = fmt.Println("upgrade rolled back, run again with an additional parameter 'commit'")
+		_, err = fmt.Println("upgrade rolled back, would succeed")
 		check(err, "write")
 	}
 }
