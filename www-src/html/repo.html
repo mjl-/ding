@@ -82,37 +82,39 @@ make release"></textarea>
 			</div>
 		</div>
 
-		<div class="bs-callout bs-callout-info">
-			<p>Build.sh is run in a clean environment. It should exit with status 0 only when successful.</p>
-			<p>The working directory is set to $DING_BUILDDIR/checkout/$DING_CHECKOUTPATH.
-			<h5>Environment variables</h5>
-			<ul>
-				<li>$HOME, an initially empty directory; for repo's with per-build unique UIDs, equal to $DING_BUILDDIR/home, with shared UIDs set to data/home/$DING_REPONAME.</li>
-				<li>$DING_REPONAME, name of the repository</li>
-				<li>$DING_BRANCH, the branch of the build</li>
-				<li>$DING_COMMIT, the commit id/hash, empty if not yet known</li>
-				<li>$DING_BUILDID, the build number, unique over all builds in ding</li>
-				<li>$DING_BUILDDIR, where all files related to the build are stored, set to data/build/$DING_REPONAME/$DING_BUILDID/</li>
-				<li>$DING_DOWNLOADDIR, files stored here are available over HTTP at /dl/file/$DING_REPONAME/$DING_BUILDID/...</li>
-				<li>$DING_CHECKOUTPATH, where files are checked out as configured for the repository, relative to $DING_BUILDDIR/checkout/</li>
-				<li>any key/value pair from the "environment" object in the ding config file</li>
-			</ul>
-			<h5>Results</h5>
-			<p>The standard output of the release script is parsed. Lines that match a specific format are treated as released files:</p>
-			<blockquote style="font-size: inherit"><tt>release:</tt> <i>command version os arch toolchain path</i></blockquote>
-			<ul>
-				<li><tt>release:</tt> is just the literal string</li>
-				<li><i>command</i> is the name of the command, as you would type it in a terminal</li>
-				<li><i>version</i> is a semver, <i>x.y.z</i></li>
-				<li><i>os</i> must be one of: <i>any, linux, darwin, openbsd, windows</i>; the OS this program can run on, <i>any</i> is for platform-independent tools like a jar</li>
-				<li><i>arch</i> must be one of: <i>any, amd64, arm64</i>; similar to OS</li>
-				<li><i>toolchain</i> should describe the compiler and possibly other tools that are used to build this release</li>
-				<li><i>path</i> is the local path (either absolute or relative to the checkout directory) of the released file</li>
-			</ul>
-			<p>Test coverage in percentage from 0 to 100 as floating point can be registered with the following line:</p>
-			<blockquote style="font-size: inherit"><tt>coverage:</tt> <i>float</i></blockquote>
-			<p>A filename for more details about the code coverage can also be registered, the file must be relative to the $DING_DOWNLOADDIR:</p>
-			<blockquote style="font-size: inherit"><tt>coverage-report:</tt> <i>file</i></blockquote>
+		<div class="panel panel-default">
+			<div class="panel-heading">
+				<div class="panel-title">Releases</div>
+			</div>
+			<table class="table table-striped">
+				<thead>
+					<tr>
+						<th>Branch</th>
+						<th>Results</th>
+						<th>Version</th>
+						<th>Build</th>
+						<th>Age</th>
+						<th>Action</th>
+					</tr>
+				</thead>
+				<tbody ng-if="releaseBuilds.length === 0">
+					<tr>
+						<td colspan="6">No releases</td>
+					</tr>
+				</tbody>
+				<tbody ng-repeat="build in releaseBuilds | orderBy:'-id'">
+					<tr>
+						<td>{{ build.branch }}</td>
+						<td><span ng-if="build.results.length === 1">1 file</span><span ng-if="build.results.length > 1">{{ build.results.length }} files</span></td>
+						<td><span ng-if="build.results.length > 0">{{ build.results[0].version }}</span></td>
+						<td>{{ build.id }}</td>
+						<td><age time="build.start"></age></td>
+						<td>
+							<a ng-href="#/repo/{{ repo.name }}/release/{{ build.id }}/" btn="primary sm" icon="folder-open" uib-tooltip="Open release"></a>
+						</td>
+					</tr>
+				</tbody>
+			</table>
 		</div>
 	</div>
 
@@ -174,44 +176,40 @@ make release"></textarea>
 	</div>
 
 	<div class="col-xs-12 col-lg-6">
-		<div class="panel panel-default">
-			<div class="panel-heading">
-				<div class="panel-title">Releases</div>
-			</div>
-			<table class="table table-striped">
-				<thead>
-					<tr>
-						<th>Branch</th>
-						<th>Results</th>
-						<th>Version</th>
-						<th>Build</th>
-						<th>Age</th>
-						<th>Action</th>
-					</tr>
-				</thead>
-				<tbody ng-if="releaseBuilds.length === 0">
-					<tr>
-						<td colspan="6">No releases</td>
-					</tr>
-				</tbody>
-				<tbody ng-repeat="build in releaseBuilds | orderBy:'-id'">
-					<tr>
-						<td>{{ build.branch }}</td>
-						<td><span ng-if="build.results.length === 1">1 file</span><span ng-if="build.results.length > 1">{{ build.results.length }} files</span></td>
-						<td><span ng-if="build.results.length > 0">{{ build.results[0].version }}</span></td>
-						<td>{{ build.id }}</td>
-						<td><age time="build.start"></age></td>
-						<td>
-							<a ng-href="#/repo/{{ repo.name }}/release/{{ build.id }}/" btn="primary sm" icon="folder-open" uib-tooltip="Open release"></a>
-						</td>
-					</tr>
-				</tbody>
-			</table>
-		</div>
-	</div>
-
-	<div class="col-xs-12 col-lg-6">
 		<div class="bs-callout bs-callout-info">
+			<p>Build.sh is run in a clean environment. It should exit with status 0 only when successful.</p>
+			<p>The working directory is set to $DING_BUILDDIR/checkout/$DING_CHECKOUTPATH.
+
+			<h5>Environment variables</h5>
+			<ul>
+				<li>$HOME, an initially empty directory; for repo's with per-build unique UIDs, equal to $DING_BUILDDIR/home, with shared UIDs set to data/home/$DING_REPONAME.</li>
+				<li>$DING_REPONAME, name of the repository</li>
+				<li>$DING_BRANCH, the branch of the build</li>
+				<li>$DING_COMMIT, the commit id/hash, empty if not yet known</li>
+				<li>$DING_BUILDID, the build number, unique over all builds in ding</li>
+				<li>$DING_BUILDDIR, where all files related to the build are stored, set to data/build/$DING_REPONAME/$DING_BUILDID/</li>
+				<li>$DING_DOWNLOADDIR, files stored here are available over HTTP at /dl/file/$DING_REPONAME/$DING_BUILDID/...</li>
+				<li>$DING_CHECKOUTPATH, where files are checked out as configured for the repository, relative to $DING_BUILDDIR/checkout/</li>
+				<li>any key/value pair from the "environment" object in the ding config file</li>
+			</ul>
+
+			<h5>Results</h5>
+			<p>The standard output of the release script is parsed. Lines that match a specific format are treated as released files:</p>
+			<blockquote style="font-size: inherit"><tt>release:</tt> <i>command version os arch toolchain path</i></blockquote>
+			<ul>
+				<li><tt>release:</tt> is just the literal string</li>
+				<li><i>command</i> is the name of the command, as you would type it in a terminal</li>
+				<li><i>version</i> is a semver, <i>x.y.z</i></li>
+				<li><i>os</i> must be one of: <i>any, linux, darwin, openbsd, windows</i>; the OS this program can run on, <i>any</i> is for platform-independent tools like a jar</li>
+				<li><i>arch</i> must be one of: <i>any, amd64, arm64</i>; similar to OS</li>
+				<li><i>toolchain</i> should describe the compiler and possibly other tools that are used to build this release</li>
+				<li><i>path</i> is the local path (either absolute or relative to the checkout directory) of the released file</li>
+			</ul>
+			<p>Test coverage in percentage from 0 to 100 as floating point can be registered with the following line:</p>
+			<blockquote style="font-size: inherit"><tt>coverage:</tt> <i>float</i></blockquote>
+			<p>A filename for more details about the code coverage can also be registered, the file must be relative to the $DING_DOWNLOADDIR:</p>
+			<blockquote style="font-size: inherit"><tt>coverage-report:</tt> <i>file</i></blockquote>
+
 			<h5>Webhooks</h5>
 			<p>You can configure github and bitbucket to send "push" events after they've received new commits. The URL paths you need to configure at the repositories:</p>
 			<ul>
