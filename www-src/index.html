@@ -21,7 +21,12 @@
 		<div class="loadingsaved x-loadingsaved" style="display:none">
 			<i class="fa fa-check"></i> Saved ☺</i>
 		</div>
-		<div class="topbar" role="navigation" style="padding: 0 15px">
+
+		<div ng-if="sseError" style="background-color: #f2dede; color: #a94442; border-bottom: 1px solid #ead3d3; padding: 1rem; top: 0; left: 0; right: 0; text-align: center; position: fixed; z-index: 1">
+			No connection to server for live updates. <a href="#" loading-click="reconnect()">Reconnect.</a>.
+		</div>
+
+		<div class="topbar" role="navigation" style="padding: 0 15px" ng-style="{'margin-top': sseError ? '40px' : 0}">
 			<div ng-if="breadcrumbs" class="breadcrumbs">
 				<span class="crumb">
 					<a ng-href="#/" icon="home"></a>
@@ -35,10 +40,6 @@
 				<a href="#/help/">Help</a>
 			</div>
 			<div style="clear:both"></div>
-		</div>
-
-		<div ng-if="sseError" class="alert alert-danger" style="margin: 15px">
-			{{ sseError }}
 		</div>
 
 		<div class="page">

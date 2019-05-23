@@ -123,11 +123,11 @@ Now run: "make build test release"
 
 # Todo
 
-- when sse-stream breaks, don't show it at the top of the page, but in a fixed hovering spot, so you see it even when scrolled down
 - when on a build page, show it if a new build is already in progress, with a link to that new build.
 - keep track of size of shared homedir. and growth of homedir after a build.
 - allow aborting a build
 - write test code
+- on reconnect after sse failure, make sure our state is up to date again. it isn't now.
 - improve showing the cause of a failed build. 1. show then just last single line of output (make just prints that it failed at the end). 2. create files in output/ earlier? so we don't show errors about missing such files when the vcs clone failes (eg due to no git in path, or no permision to run build.sh (eg because a dir leading to build.sh isn't accessible).
 - add prometheus metrics for builds. how long they take, if they succeed, etc.
 - add button to queue a build, low prio. then only run one low-prio job at a time. for rebuilds of all repo's after a toolchain update.

@@ -50,8 +50,13 @@ var app = angular.module('app', [
 		handleApiError(rejection);
 	});
 
-	if (!!window.EventSource) {
-		var events = new window.EventSource('/events');
+	var eventSource;
+
+	$rootScope.reconnect = function() {
+		if (eventSource) {
+			eventSource.close();
+		}
+		eventSource = new window.EventSource('/events');
 		var kinds = [
 			'repo',
 			'removeRepo',
@@ -60,21 +65,26 @@ var app = angular.module('app', [
 			'output'
 		];
 		_.forEach(kinds, function(kind) {
-			events.addEventListener(kind, function(e) {
+			eventSource.addEventListener(kind, function(e) {
 				var m = JSON.parse(e.data);
 				$rootScope.$broadcast(kind, m);
 			});
 		});
-		events.addEventListener('open', function(e) {
+		eventSource.addEventListener('open', function(e) {
 			$timeout(function() {
 				$rootScope.sseError = '';
 			});
 		});
-		events.addEventListener('error', function(e) {
+		eventSource.addEventListener('error', function(e) {
 			$timeout(function() {
-				$rootScope.sseError = 'Connection error, no live updates.';
+				$rootScope.sseError = true;
 			});
 		});
+		return $q.resolve();
+	};
+
+	if (!!window.EventSource) {
+		$rootScope.reconnect();
 	} else {
 		$rootScope.noSSE = true;
 	}
