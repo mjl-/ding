@@ -25,9 +25,10 @@ function release() {
 	DEST=local/$NAME-$VERSION-$GOOS-$GOARCH-$GOVERSION-$BUILDID$SUFFIX
 	GOOS=$GOOS GOARCH=$GOARCH go build -ldflags "-X main.version=$VERSION -X main.vcsCommitHash=$COMMIT -X main.vcsBranch=$BRANCH -X main.vcsTag=$TAG" -o $DEST
 	cat assets.zip >>$DEST
-	echo release: $NAME $VERSION $GOOS $GOARCH $GOVERSION $DEST
+	echo release: $NAME $GOOS $GOARCH $GOVERSION $DEST
 }
 
+echo version: $VERSION
 release linux amd64
 release linux 386
 release linux arm64
