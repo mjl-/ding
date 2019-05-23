@@ -14,15 +14,15 @@ app
 			var sec = parseInt(new Date().getTime() - new Date(scope.time).getTime()) / 1000;
 			var age;
 			if (sec < 60) {
-				age = Math.round(sec) + ' secs';
+				age = Math.round(sec) + 's';
 			} else if (sec < 120*60) {
-				age = Math.round(sec / 60) + ' mins';
+				age = Math.round(sec / 60) + 'm';
 			} else if (sec < 48*3600) {
-				age = Math.round(sec / 3600) + ' hours';
+				age = Math.round(sec / 3600) + 'h';
 			} else if (sec < 21*24*3600) {
-				age = Math.round(sec / (24*3600)) + ' days';
+				age = Math.round(sec / (24*3600)) + 'd';
 			} else {
-				age = Math.round(sec / (7*24*3600)) + ' weeks';
+				age = Math.round(sec / (7*24*3600)) + 'w';
 			}
 			scope.age = age;
 		}
