@@ -7,8 +7,8 @@ import (
 // Start a build, running build.sh.
 type msgBuild struct {
 	RepoName     string
-	BuildID      int
-	UID          int32 // UID to run this build under. Ignored if IsolateBuilds is entirely off. Otherwise it is set to either a unique UID, or a fixed UID per repo, depending on configuration.
+	BuildID      int32
+	UID          uint32 // UID to run this build under. Ignored if IsolateBuilds is entirely off. Otherwise it is set to either a unique UID, or a fixed UID per repo, depending on configuration.
 	CheckoutPath string
 	Env          []string
 }
@@ -17,15 +17,15 @@ type msgBuild struct {
 // Called before starting a build.
 type msgChown struct {
 	RepoName   string
-	BuildID    int
+	BuildID    int32
 	SharedHome bool
-	UID        int32
+	UID        uint32
 }
 
 // Remove a build directory. Called for automatic cleanup or by explicit user request.
 type msgRemoveBuilddir struct {
 	RepoName string
-	BuildID  int
+	BuildID  int32
 }
 
 // Remove all files for a repo, including all builds, releases, possibly shared home directory.

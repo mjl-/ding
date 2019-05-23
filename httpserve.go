@@ -57,7 +57,7 @@ func servehttp(args []string) {
 	initDingDataDir()
 
 	// be cautious
-	if config.IsolateBuilds.Enabled && (os.Getuid() != config.IsolateBuilds.DingUID || os.Getgid() != config.IsolateBuilds.DingGID) {
+	if config.IsolateBuilds.Enabled && (uint32(os.Getuid()) != config.IsolateBuilds.DingUID || uint32(os.Getgid()) != config.IsolateBuilds.DingGID) {
 		log.Fatalln("not running under expected uid/gid")
 	}
 

@@ -4,7 +4,7 @@ import (
 	"database/sql"
 )
 
-func _removeBuild(tx *sql.Tx, repoName string, buildID int) {
+func _removeBuild(tx *sql.Tx, repoName string, buildID int32) {
 	_, err := tx.Exec(`delete from result where build_id=$1`, buildID)
 	sherpaCheck(err, "removing results from database")
 

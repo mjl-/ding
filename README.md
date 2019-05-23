@@ -147,6 +147,7 @@ Now run: "make build test release"
 - keep track of size of shared homedir? or growth of homedir after a build?
 - when cloning, clone from previous checkout, then pull changes from remote as need, should be faster, especially for larger repo's.
 - add button to queue a build, low prio. then only run one low-prio job at a time. for rebuilds of all repo's after a toolchain update.
+- attempt to detect pushes of commits+tag, don't build for both the commit and the tag if they're about the same thing.
 
 ## Maybe
 - think about adding support for updating toolchains, like go get golang.org/dl/go1.2.3 && go1.2.3 download

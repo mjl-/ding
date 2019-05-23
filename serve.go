@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/gob"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -60,7 +61,7 @@ func serve(args []string) {
 		if !ok {
 			log.Fatalf("underlying fileinfo for data dir %q: sys is a %T", dingDataDir, sysinfo)
 		}
-		if info.Mode()&077 != 050 || st.Gid != uint32(config.IsolateBuilds.DingGID) {
+		if info.Mode()&077 != 050 || st.Gid != config.IsolateBuilds.DingGID {
 			log.Fatalf("data dir %q must have permissions g=rx,o= and ding gid %d, but has permissions %#o and gid %d", dingDataDir, config.IsolateBuilds.DingGID, info.Mode()&os.ModePerm, st.Gid)
 		}
 	} else {
@@ -105,8 +106,8 @@ func serve(args []string) {
 	if config.IsolateBuilds.Enabled {
 		attr.Sys = &syscall.SysProcAttr{
 			Credential: &syscall.Credential{
-				Uid:    uint32(config.IsolateBuilds.DingUID),
-				Gid:    uint32(config.IsolateBuilds.DingGID),
+				Uid:    config.IsolateBuilds.DingUID,
+				Gid:    config.IsolateBuilds.DingGID,
 				Groups: []uint32{},
 			},
 		}
@@ -155,18 +156,20 @@ func errstr(err error) string {
 	return err.Error()
 }
 
+var errBadParams = errors.New("bad parameters")
+
 func doMsgChown(msg *msgChown, enc *gob.Encoder) error {
 	if !config.IsolateBuilds.Enabled {
 		return nil
 	}
 
-	if msg.RepoName == "" {
-		log.Fatal("received MsgChown with empty RepoName")
-	}
 	buildDir := fmt.Sprintf("%s/build/%s/%d", dingDataDir, msg.RepoName, msg.BuildID)
 	homeDir := fmt.Sprintf("%s/home", buildDir)
 	if msg.SharedHome {
 		homeDir = fmt.Sprintf("%s/home/%s", dingDataDir, msg.RepoName)
+	}
+	if filepath.Clean(buildDir) != buildDir || filepath.Clean(homeDir) != homeDir {
+		return errBadParams
 	}
 
 	chown := func(path string) error {
@@ -179,7 +182,7 @@ func doMsgChown(msg *msgChown, enc *gob.Encoder) error {
 			if (info.Mode() & os.ModeSymlink) != 0 {
 				return nil
 			}
-			return os.Chown(path, int(msg.UID), config.IsolateBuilds.DingGID)
+			return os.Chown(path, int(msg.UID), int(config.IsolateBuilds.DingGID))
 		})
 	}
 
@@ -194,22 +197,25 @@ func doMsgChown(msg *msgChown, enc *gob.Encoder) error {
 }
 
 func doMsgRemoveBuilddir(msg *msgRemoveBuilddir, enc *gob.Encoder) error {
-	if msg.RepoName == "" {
-		log.Fatal("received MsgRemoveBuilddir with empty RepoName")
+	p := fmt.Sprintf("%s/build/%s/%d", dingDataDir, msg.RepoName, msg.BuildID)
+	if filepath.Clean(p) != p {
+		return errBadParams
 	}
-	path := fmt.Sprintf("%s/build/%s/%d", dingDataDir, msg.RepoName, msg.BuildID)
-	return os.RemoveAll(path)
+	return os.RemoveAll(p)
 }
 
 func doMsgRemoveRepo(msg *msgRemoveRepo, enc *gob.Encoder) error {
 	homeDir := fmt.Sprintf("%s/home/%s", dingDataDir, msg.RepoName)
+	repoDir := fmt.Sprintf("%s/build/%s", dingDataDir, msg.RepoName)
+	if filepath.Clean(homeDir) != homeDir || filepath.Clean(repoDir) != repoDir {
+		return errBadParams
+	}
+
 	err := os.RemoveAll(homeDir)
 	if err != nil && os.IsNotExist(err) {
 		err = nil
 	}
-
-	p := fmt.Sprintf("%s/build/%s", dingDataDir, msg.RepoName)
-	err2 := os.RemoveAll(p)
+	err2 := os.RemoveAll(repoDir)
 	if err == nil {
 		err = err2
 	}
@@ -218,6 +224,9 @@ func doMsgRemoveRepo(msg *msgRemoveRepo, enc *gob.Encoder) error {
 
 func doMsgRemoveSharedHome(msg *msgRemoveSharedHome, enc *gob.Encoder) error {
 	homeDir := fmt.Sprintf("%s/home/%s", dingDataDir, msg.RepoName)
+	if filepath.Clean(homeDir) != homeDir {
+		return errBadParams
+	}
 	err := os.RemoveAll(homeDir)
 	if err != nil && os.IsNotExist(err) {
 		err = nil
@@ -238,6 +247,9 @@ func doMsgBuild(msg *msgBuild, enc *gob.Encoder, unixconn *net.UnixConn) error {
 
 	buildDir := fmt.Sprintf("%s/build/%s/%d", dingDataDir, msg.RepoName, msg.BuildID)
 	workDir := fmt.Sprintf("%s/checkout/%s", buildDir, msg.CheckoutPath)
+	if filepath.Clean(buildDir) != buildDir || filepath.Clean(workDir) != workDir {
+		return errBadParams
+	}
 
 	devnull, err := os.Open("/dev/null")
 	check(err, "opening /dev/null")
@@ -254,10 +266,13 @@ func doMsgBuild(msg *msgBuild, enc *gob.Encoder, unixconn *net.UnixConn) error {
 		},
 	}
 	if config.IsolateBuilds.Enabled {
+		if msg.UID < config.IsolateBuilds.UIDStart || msg.UID >= config.IsolateBuilds.UIDEnd {
+			return errBadParams
+		}
 		attr.Sys = &syscall.SysProcAttr{
 			Credential: &syscall.Credential{
-				Uid:    uint32(msg.UID),
-				Gid:    uint32(config.IsolateBuilds.DingGID),
+				Uid:    msg.UID,
+				Gid:    config.IsolateBuilds.DingGID,
 				Groups: []uint32{},
 			},
 		}

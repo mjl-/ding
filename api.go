@@ -125,7 +125,7 @@ func _repo(tx *sql.Tx, repoName string) (r Repo) {
 	return
 }
 
-func _build(tx *sql.Tx, repoName string, id int) (b Build) {
+func _build(tx *sql.Tx, repoName string, id int32) (b Build) {
 	q := `select row_to_json(bwr.*) from build_with_result bwr where id = $1`
 	sherpaCheckRow(tx.QueryRow(q, id), &b, "fetching build")
 	fillBuild(repoName, &b)
@@ -162,7 +162,7 @@ func toJSON(v interface{}) string {
 }
 
 // CreateRelease release a build.
-func (Ding) CreateRelease(repoName string, buildID int) (build Build) {
+func (Ding) CreateRelease(repoName string, buildID int32) (build Build) {
 	transact(func(tx *sql.Tx) {
 		repo := _repo(tx, repoName)
 
@@ -284,7 +284,7 @@ func _checkRepo(repo Repo) {
 	}
 }
 
-func _assignRepoUID(tx *sql.Tx) (uid int32) {
+func _assignRepoUID(tx *sql.Tx) (uid uint32) {
 	q := `select coalesce(min(uid), $1) - 1 as uid from repo`
 	err := tx.QueryRow(q, config.IsolateBuilds.UIDEnd-1).Scan(&uid)
 	sherpaCheck(err, "fetching last assigned repo uid from database")
@@ -407,7 +407,7 @@ func _buildResult(repoName string, build Build) (br BuildResult) {
 }
 
 // BuildResult returns the results of the requested build.
-func (Ding) BuildResult(repoName string, buildID int) (br BuildResult) {
+func (Ding) BuildResult(repoName string, buildID int32) (br BuildResult) {
 	var build Build
 	transact(func(tx *sql.Tx) {
 		build = _build(tx, repoName, buildID)
@@ -418,7 +418,7 @@ func (Ding) BuildResult(repoName string, buildID int) (br BuildResult) {
 }
 
 // Release fetches the build config and results for a release.
-func (Ding) Release(repoName string, buildID int) (br BuildResult) {
+func (Ding) Release(repoName string, buildID int32) (br BuildResult) {
 	transact(func(tx *sql.Tx) {
 		build := _build(tx, repoName, buildID)
 
@@ -430,7 +430,7 @@ func (Ding) Release(repoName string, buildID int) (br BuildResult) {
 }
 
 // RemoveBuild removes a build completely. Both from database and all local files.
-func (Ding) RemoveBuild(buildID int) {
+func (Ding) RemoveBuild(buildID int32) {
 	var repoName string
 	transact(func(tx *sql.Tx) {
 		qrepo := `select to_json(repo.name) from build join repo on build.repo_id = repo.id where build.id = $1`
@@ -448,7 +448,7 @@ func (Ding) RemoveBuild(buildID int) {
 
 // CleanupBuilddir cleans up (removes) a build directory.
 // This does not remove the build itself from the database.
-func (Ding) CleanupBuilddir(repoName string, buildID int) (build Build) {
+func (Ding) CleanupBuilddir(repoName string, buildID int32) (build Build) {
 	transact(func(tx *sql.Tx) {
 		build = _build(tx, repoName, buildID)
 		if build.BuilddirRemoved {

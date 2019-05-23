@@ -43,7 +43,7 @@ func (e EventBuild) eventString() (string, []byte, error) {
 // EventRemoveBuild represents the removal of a build from the database.
 type EventRemoveBuild struct {
 	RepoName string `json:"repo_name"`
-	BuildID  int    `json:"build_id"`
+	BuildID  int32  `json:"build_id"`
 }
 
 func (e EventRemoveBuild) eventString() (string, []byte, error) {
@@ -54,7 +54,7 @@ func (e EventRemoveBuild) eventString() (string, []byte, error) {
 // EventOutput represents new output from a build.
 // Text only contains the newly added output, not the full output so far.
 type EventOutput struct {
-	BuildID int    `json:"build_id"`
+	BuildID int32  `json:"build_id"`
 	Step    string `json:"step"`  // during which the output was generated, eg `clone`, `checkout`, `build`
 	Where   string `json:"where"` // `stdout` or `stderr`
 	Text    string `json:"text"`  // lines of text written

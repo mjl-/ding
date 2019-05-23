@@ -46,11 +46,11 @@ var config struct {
 	BitbucketWebhookSecret string   `sconf:"optional" sconf-doc:"Will be part of the URL bitbucket sends its webhook request to, e.g. http://.../bitbucket/<reponame>/<bitbucket-webhook-secret>."`
 	Run                    []string `sconf:"optional" sconf-doc:"List of commands and arguments to prepend to the command executed, e.g. nice or timeout."`
 	IsolateBuilds          struct {
-		Enabled  bool `sconf-doc:"If false, we run all build commands as the user running ding and the settings below do not apply.  If true, we run builds with unique UIDs."`
-		UIDStart int  `sconf-doc:"We'll use UIDStart + buildID as the unix UID to run the commands under."`
-		UIDEnd   int  `sconf-doc:"If we reach this UID, we wrap around to UIDStart again."`
-		DingUID  int  `sconf-doc:"UID ding runs as, used to chown files back before deleting."`
-		DingGID  int  `sconf-doc:"GID ding runs as, used to run build commands under."`
+		Enabled  bool   `sconf-doc:"If false, we run all build commands as the user running ding and the settings below do not apply.  If true, we run builds with unique UIDs."`
+		UIDStart uint32 `sconf-doc:"We'll use UIDStart + buildID as the unix UID to run the commands under."`
+		UIDEnd   uint32 `sconf-doc:"If we reach this UID, we wrap around to UIDStart again."`
+		DingUID  uint32 `sconf-doc:"UID ding runs as, used to chown files back before deleting."`
+		DingGID  uint32 `sconf-doc:"GID ding runs as, used to run build commands under."`
 	}
 	Mail struct {
 		Enabled      bool `sconf-doc:"If true, emails can be sent for failed builds. If false, the options below do not apply."`

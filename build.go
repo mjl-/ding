@@ -263,14 +263,14 @@ func _doBuild(repo Repo, build Build, buildDir string) {
 		sherpaUserCheck(err, "checkout revision")
 	}
 
-	var uid int32 = ^0
+	var uid uint32
 	SharedHome := false
 	if config.IsolateBuilds.Enabled {
 		if repo.UID != nil {
 			uid = *repo.UID
 			SharedHome = true
 		} else {
-			uid = int32(config.IsolateBuilds.UIDStart + build.ID%(config.IsolateBuilds.UIDEnd-config.IsolateBuilds.UIDStart))
+			uid = config.IsolateBuilds.UIDStart + uint32(build.ID)%(config.IsolateBuilds.UIDEnd-config.IsolateBuilds.UIDStart)
 		}
 	}
 
@@ -407,7 +407,7 @@ func parseResults(repo Repo, build Build, checkoutDir, path string) (results []R
 
 // start a command and return readers for its output and the final result of the command.
 // it mimics a command started through the root process under a unique uid.
-func setupCmd(buildID int, env []string, step, buildDir, workDir string, path string, args ...string) (stdout, stderr io.ReadCloser, wait <-chan error, rerr error) {
+func setupCmd(buildID int32, env []string, step, buildDir, workDir string, path string, args ...string) (stdout, stderr io.ReadCloser, wait <-chan error, rerr error) {
 	type Error struct {
 		err error
 	}
@@ -479,7 +479,7 @@ func setupCmd(buildID int, env []string, step, buildDir, workDir string, path st
 	return stdoutr, stderrr, c, nil
 }
 
-func run(buildID int, env []string, step, buildDir, workDir string, args ...string) error {
+func run(buildID int32, env []string, step, buildDir, workDir string, args ...string) error {
 	path := args[0]
 	if filepath.Base(path) == path {
 		var err error
@@ -496,7 +496,7 @@ func run(buildID int, env []string, step, buildDir, workDir string, args ...stri
 	return track(buildID, step, buildDir, cmdstdout, cmdstderr, wait)
 }
 
-func track(buildID int, step, buildDir string, cmdstdout, cmdstderr io.ReadCloser, wait <-chan error) (rerr error) {
+func track(buildID int32, step, buildDir string, cmdstdout, cmdstderr io.ReadCloser, wait <-chan error) (rerr error) {
 	type Error struct {
 		err error
 	}
