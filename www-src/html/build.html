@@ -80,7 +80,7 @@
 					<tr ng-if="build.results.length === 0">
 						<td colspan="7">No results</td>
 					</tr>
-					<tr ng-repeat="result in build.results">
+					<tr ng-repeat="result in build.results | orderBy:'id'">
 						<td>{{ result.command }}</td>
 						<td>{{ result.version }}</td>
 						<td>{{ result.os }}</td>

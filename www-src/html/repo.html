@@ -141,7 +141,7 @@ make release"></textarea>
 						<td colspan="10">No builds</td>
 					</tr>
 				</tbody>
-				<tbody ng-repeat="build in builds">
+				<tbody ng-repeat="build in builds | orderBy:'-id'">
 					<tr>
 						<td><build-status status="build.status" finish="build.finish" released="build.released"></build-status></td>
 						<td>{{ build.branch }}</td>
@@ -194,7 +194,7 @@ make release"></textarea>
 						<td colspan="6">No releases</td>
 					</tr>
 				</tbody>
-				<tbody ng-repeat="build in releaseBuilds">
+				<tbody ng-repeat="build in releaseBuilds | orderBy:'-id'">
 					<tr>
 						<td>{{ build.branch }}</td>
 						<td><span ng-if="build.results.length === 1">1 file</span><span ng-if="build.results.length > 1">{{ build.results.length }} files</span></td>
