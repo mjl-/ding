@@ -2,7 +2,7 @@ run: build
 	./ding serve local/local.conf
 
 run-root: build
-	sudo ./ding serve local/local-root.conf
+	sudo sh -c 'umask 027; ./ding serve local/local-root.conf'
 
 build:
 	go build
