@@ -364,7 +364,7 @@ func parseResults(repo Repo, build Build, checkoutDir, path string) (version str
 		case "release:":
 			//  "release:" command version os arch toolchain path
 			if len(t) != 6 {
-				userError("invalid \"release:\"-line, should have 6 words: "+line)
+				userError("invalid \"release:\"-line, should have 6 words: " + line)
 			}
 			result := Result{t[1], t[2], t[3], t[4], t[5], 0}
 			if !strings.HasPrefix(result.Filename, "/") {
@@ -377,13 +377,13 @@ func parseResults(repo Repo, build Build, checkoutDir, path string) (version str
 			results = append(results, result)
 		case "version:":
 			if len(t) != 2 {
-				userError("invalid \"version:\"-line, should have 1 parameter: "+line)
+				userError("invalid \"version:\"-line, should have 1 parameter: " + line)
 			}
 			version = t[1]
 		case "coverage:":
 			// "coverage:" 75.0
 			if len(t) != 2 {
-				userError("invalid \"coverage:\"-line, should have 1 parameter: "+line)
+				userError("invalid \"coverage:\"-line, should have 1 parameter: " + line)
 			}
 			var fl float64
 			fl, err = strconv.ParseFloat(t[1], 32)
@@ -395,7 +395,7 @@ func parseResults(repo Repo, build Build, checkoutDir, path string) (version str
 		case "coverage-report:":
 			// "coverage-report:" coverage.html
 			if len(t) != 2 {
-				userError("invalid \"coverage-report:\"-line, should have 1 parameter: "+line)
+				userError("invalid \"coverage-report:\"-line, should have 1 parameter: " + line)
 			}
 			coverageReportFile = t[1]
 			p := fmt.Sprintf("%s/build/%s/%d/dl/%s", dingDataDir, repo.Name, build.ID, coverageReportFile)
