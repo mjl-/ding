@@ -6,7 +6,7 @@ app
 .directive('buildtime', function($timeout) {
 	return {
 		restrict: 'E',
-		template: '<span><span ng-if="start">{{ elapsed.toFixed(1) }}s</span><span ng-if="!finish">...</span></span>',
+		template: '<span><span ng-if="start">{{ elapsed.toFixed((elapsed < 10 || finish) ? 1 : 0) }}s</span><span ng-if="!finish">...</span></span>',
 		scope: {
 			'start': '=',
 			'finish': '='
@@ -15,7 +15,7 @@ app
 			var timeoutID;
 			var scheduleUpdate = function() {
 				var spentMS = new Date().getTime() - new Date(scope.start).getTime();
-				var wait = spentMS < 5*1000 ? 100 : 1000;
+				var wait = spentMS < 10*1000 ? 100 : 1000;
 				timeoutID = window.setTimeout(function() {
 					timeoutID = null; // Cause another schedule by render, if needed.
 					$timeout(render);
