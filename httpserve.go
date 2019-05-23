@@ -396,42 +396,46 @@ func serveResult(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	basename := t[3]
-
-	fail := func(err error) {
-		log.Printf("error fetching result: %s\n", err)
-		http.Error(w, "internal error", 500)
-	}
+	filename := t[3]
 
 	q := `
-		select repo.checkout_path, result.filename
-		from result
-		join build on result.build_id = build.id
-		join repo on build.repo_id = repo.id
-		where repo.name=$1 and build.id=$2
+		select row_to_json(x.*)
+		from (
+			select
+				repo.checkout_path,
+				coalesce(json_agg(result.filename), '[]') as filenames
+			from result
+			join build on result.build_id = build.id
+			join repo on build.repo_id = repo.id
+			where repo.name=$1 and build.id=$2
+			group by repo.checkout_path
+		) x
 	`
-	rows, err := database.Query(q, repoName, buildID)
+	var buildResults struct {
+		CheckoutPath string   `json:"checkout_path"`
+		Filenames    []string `json:"filenames"`
+	}
+	var buf []byte
+	err = database.QueryRow(q, repoName, buildID).Scan(&buf)
+	if err == sql.ErrNoRows {
+		http.NotFound(w, r)
+		return
+	}
+	if err == nil {
+		err = json.Unmarshal(buf, &buildResults)
+	}
 	if err != nil {
-		fail(err)
+		log.Printf("fetching build results from database: %s", err)
+		http.Error(w, "500 internal error", http.StatusInternalServerError)
 		return
 	}
-	defer rows.Close()
-	for rows.Next() {
-		var repoCheckoutPath, name string
-		err = rows.Scan(&repoCheckoutPath, &name)
-		if err != nil {
-			fail(err)
+	suffix := "/" + filename
+	for _, path := range buildResults.Filenames {
+		if path == filename || strings.HasSuffix(filename, suffix) {
+			p := fmt.Sprintf("%s/build/%s/%d/checkout/%s/%s", dingDataDir, repoName, buildID, buildResults.CheckoutPath, path)
+			http.ServeFile(w, r, p)
 			return
 		}
-		if strings.HasSuffix(name, "/"+basename) {
-			path := fmt.Sprintf("%s/build/%s/%d/checkout/%s/%s", dingDataDir, repoName, buildID, repoCheckoutPath, name)
-			http.ServeFile(w, r, path)
-			return
-		}
-	}
-	if err = rows.Err(); err != nil {
-		fail(err)
-		return
 	}
 	http.NotFound(w, r)
 }
