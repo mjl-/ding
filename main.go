@@ -108,7 +108,7 @@ func initDingDataDir() {
 func main() {
 	log.SetFlags(0)
 	flag.Usage = func() {
-		log.Fatalf("usage: ding { config-test | config-describe | help | kick | serve | upgrade | version }")
+		log.Fatalf("usage: ding { config-test | config-describe | help | kick | serve | upgrade | version | license }")
 	}
 	if len(os.Args) <= 1 {
 		flag.Usage()
@@ -129,11 +129,7 @@ func main() {
 		err := sconf.Describe(os.Stdout, &config)
 		check(err, "describe")
 	case "help":
-		f, err := httpFS.Open("/INSTALL.txt")
-		check(err, "opening install instructions")
-		_, err = io.Copy(os.Stdout, f)
-		check(err, "copy")
-		check(f.Close(), "close")
+		printFile("INSTALL.txt")
 	case "serve":
 		serve(args)
 	case "serve-http":
@@ -145,8 +141,18 @@ func main() {
 		kick(args)
 	case "version":
 		fmt.Printf("%s\ndatabase schema version %d\n", version, databaseVersion)
+	case "license":
+		printFile("web/LICENSES")
 	default:
 		flag.Usage()
 		os.Exit(2)
 	}
+}
+
+func printFile(name string) {
+	f, err := httpFS.Open(name)
+	check(err, "opening file")
+	_, err = io.Copy(os.Stdout, f)
+	check(err, "copy")
+	check(f.Close(), "close")
 }
