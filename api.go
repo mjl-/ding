@@ -225,18 +225,34 @@ func fileCopy(src, dst string) {
 	sherpaCheck(err, "copying result file to destination")
 }
 
-// RepoBuilds returns all repositories and their latest build per branch (always for master, default & develop, for other branches only if the latest build was less than 4 weeks ago).
+// RepoBuilds returns all repositories and recent build info for "active" branches.
+// A branch is active if its name is "master" (for git), "default" (for hg), or
+// "develop", or if the last build was less than 4 weeks ago. The most recent
+// completed build is returned, and optionally the first build in progress.
 func (Ding) RepoBuilds() (rb []RepoBuilds) {
 	q := `
 		with repo_branch_builds as (
-			select *
-			from build_with_result
-			where id in (
-				select max(id) as id
-				from build
-				where branch in ('master', 'default', 'develop') or start > now() - interval '4 weeks'
-				group by repo_id, branch
-			)
+				select *
+				from build_with_result
+				where id in (
+					select max(id) as id
+					from build
+					where true
+						and (branch in ('master', 'default', 'develop') or start > now() - interval '4 weeks')
+						and build.finish is not null
+					group by repo_id, branch
+				)
+			union all
+				select *
+				from build_with_result
+				where id in (
+					select min(id) as id
+					from build
+					where true
+						and (branch in ('master', 'default', 'develop') or start > now() - interval '4 weeks')
+						and build.finish is null
+					group by repo_id, branch
+				)
 		)
 		select coalesce(json_agg(repobuilds.*), '[]')
 		from (

@@ -15,7 +15,7 @@ type Repo struct {
 	UID          *uint32 `json:"uid"`           // If set, fixed uid to use for builds, sharing a home directory where files can be cached, to speed up builds.
 }
 
-// RepoBuilds is a repository and its most recent build per branch.
+// RepoBuilds is a repository and its recent builds, per branch.
 type RepoBuilds struct {
 	Repo   Repo    `json:"repo"`
 	Builds []Build `json:"builds"`

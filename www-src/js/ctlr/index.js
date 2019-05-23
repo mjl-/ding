@@ -33,6 +33,42 @@ app.controller('Index', function($scope, $rootScope, $q, $uibModal, $location, $
 		});
 	});
 
+	function buildsCleanup(rb) {
+		// For each branch, we want to newest finished build, and the oldest unfinished build.
+		var branches = {}; // branch -> branch
+		var finished = {}; // branch -> builds
+		var unfinished = {}; // branch -> builds
+		_.forEach(rb.builds, function(b) {
+			var br = b.branch;
+			branches[br] = br;
+			finished[br] = finished[br] || [];
+			unfinished[br] = unfinished[br] || [];
+			if (b.finish) {
+				finished[br].push(b);
+			} else {
+				unfinished[br].push(b);
+			}
+		});
+		var builds = [];
+		_.forEach(branches, function(br) {
+			var l = unfinished[br];
+			if (l.length > 0) {
+				l.sort(function(a, b) {
+					return new Date(a.created).getTime() - new Date(b.created).getTime();
+				});
+				builds.push(l[0]);
+			}
+			l = finished[br];
+			if (l.length > 0) {
+				l.sort(function(a, b) {
+					return new Date(b.finish).getTime() - new Date(a.finish).getTime();
+				});
+				builds.push(l[0]);
+			}
+		});
+		rb.builds = builds;
+	}
+
 	$scope.$on('build', function(x, e) {
 		var b = e.build;
 		var repoName = e.repo_name;
@@ -44,14 +80,13 @@ app.controller('Index', function($scope, $rootScope, $q, $uibModal, $location, $
 				console.log('build for unknown repo?', b, repoName);
 				return;
 			}
-			for (var i = 0; i < rb.builds.length; i++) {
-				var bb = rb.builds[i];
-				if (bb.id === b.id || bb.branch === b.branch) {
-					rb.builds[i] = b;
-					return;
-				}
+			var i = _.findIndex(rb.builds, {id: b.id});
+			if(i >= 0) {
+				rb.builds.splice(i, 1, b);
+			} else {
+				rb.builds.push(b);
 			}
-			rb.builds.push(b);
+			buildsCleanup(rb);
 		});
 	});
 
@@ -68,13 +103,15 @@ app.controller('Index', function($scope, $rootScope, $q, $uibModal, $location, $
 		});
 	});
 
-
 	$scope.youngestBuild = function(rb) {
 		var tm;
 		for(var i = 0; i < rb.builds.length; i++) {
 			var b = rb.builds[i];
 			if (!tm || b.start > tm) {
 				tm = b.start;
+			}
+			if (!tm || b.created > tm) {
+				tm = b.created;
 			}
 		}
 		if (tm) {
