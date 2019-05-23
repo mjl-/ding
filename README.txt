@@ -123,7 +123,6 @@ Now run: "make build test release"
 
 # Todo
 
-- when on a build page, show it if a new build is already in progress, with a link to that new build.
 - keep track of size of shared homedir. and growth of homedir after a build.
 - allow aborting a build
 - write test code

@@ -14,9 +14,19 @@ app.controller('Build', function($scope, $rootScope, $q, $location, $timeout, Ms
 	$scope.build = buildResult.build;
 	$scope.steps = buildResult.steps;
 
+	$scope.newerBuild = null;
+	$scope.hideNewerBuild = function() {
+		$scope.hideBuildID = $scope.newerBuild.id;
+	};
+
 	$scope.$on('build', function(x, e) {
 		var b = e.build;
 		if (b.id !== $scope.build.id) {
+			if (e.repo_name === repo.name && (!$scope.newerBuild || (e.build.start && e.build.id > $scope.newerBuild.id))) {
+				$timeout(function() {
+					$scope.newerBuild = e.build;
+				});
+			}
 			return;
 		}
 		$timeout(function() {
