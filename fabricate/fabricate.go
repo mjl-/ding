@@ -132,7 +132,7 @@ func build(dest string) {
 		dirtyCopy(target(name), "www-src/"+name)
 	}
 
-	dirtyCopy(internalTarget("INSTALL.md"), "INSTALL.md")
+	dirtyCopy(internalTarget("INSTALL.txt"), "INSTALL.txt")
 
 	// licenses
 	type license struct {
@@ -142,7 +142,7 @@ func build(dest string) {
 	d = target("LICENSES")
 	lics := []license{
 		{"Ding",
-			[]string{"LICENSE.md"}},
+			[]string{"LICENSE"}},
 		{"Go runtime and standard library",
 			[]string{"www-src/licenses/go"}},
 		{"Bootstrap 3.3.6",
