@@ -1,6 +1,6 @@
 // Ding is a self-hosted build server for developers.
 //
-// See the INSTALL.md file for installation instructions, or run "ding help".
+// See the INSTALL.txt file for installation instructions, or run "ding help".
 package main
 
 import (
@@ -70,6 +70,10 @@ func init() {
 	config.DataDir = "data"
 	config.BaseURL = "http://localhost:6084"
 	config.Mail.SMTPPort = 25
+	config.IsolateBuilds.UIDStart = 10000
+	config.IsolateBuilds.UIDEnd = 20000
+	config.IsolateBuilds.DingUID = 1234
+	config.IsolateBuilds.DingGID = 1234
 	config.Mail.SMTPHost = "localhost"
 	config.Mail.FromName = "ding"
 	config.Mail.FromEmail = "ding@example.org"
@@ -125,7 +129,7 @@ func main() {
 		err := sconf.Describe(os.Stdout, &config)
 		check(err, "describe")
 	case "help":
-		f, err := httpFS.Open("/INSTALL.md")
+		f, err := httpFS.Open("/INSTALL.txt")
 		check(err, "opening install instructions")
 		_, err = io.Copy(os.Stdout, f)
 		check(err, "copy")
