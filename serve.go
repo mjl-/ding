@@ -20,6 +20,7 @@ var (
 	serveFlag            = flag.NewFlagSet("serve", flag.ExitOnError)
 	listenAddress        = serveFlag.String("listen", "localhost:6084", "address to listen on")
 	listenWebhookAddress = serveFlag.String("listenwebhook", "localhost:6085", "address to listen on for webhooks, like from github; set empty for no listening")
+	dbmigrate            = serveFlag.Bool("dbmigrate", true, "perform database migrations if not yet at latest schema version at startup")
 
 	rootRequests chan request // for http-serve
 )

@@ -183,47 +183,47 @@ func upgrade(args []string) {
 	err := sconf.ParseFile(args[0], &config)
 	check(err, "parsing config file")
 
-	scripts := parseSQLScripts()
-	lastScript := scripts[len(scripts)-1]
-
 	database, err = sql.Open("postgres", config.Database)
 	check(err, "connecting to database")
 
 	tx, err := database.Begin()
 	check(err, "beginning transaction")
 
-	var have bool
-	err = tx.QueryRow("select exists (select 1 from pg_tables where schemaname='public' and tablename='schema_upgrades')").Scan(&have)
-	check(err, "checking whether table schema_upgrades exists")
-
-	var dbVersion int
-	if have {
-		err = tx.QueryRow("select max(version) from schema_upgrades").Scan(&dbVersion)
-		check(err, "finding database schema version")
-
-		lastScript := scripts[len(scripts)-1]
-		if dbVersion == lastScript.Version {
-			fmt.Println("database already at latest version", dbVersion)
-			os.Exit(0)
-		}
-		_, err = fmt.Printf("upgrading database from version %d to %d...\n", dbVersion, lastScript.Version)
-		check(err, "write")
-	} else {
-		_, err = fmt.Printf("initializing database to latest version %d...\n", lastScript.Version)
-		check(err, "write")
-		dbVersion = -1
-	}
-
 	committing := !*dryrun
-	runScripts(tx, dbVersion, scripts, committing)
+	prevDBVersion, newDBVersion := ensureLatestSQL(tx, committing)
+	if prevDBVersion == databaseVersion {
+		log.Println("database already at latest version", databaseVersion)
+		os.Exit(0)
+	}
 
 	if committing {
 		check(tx.Commit(), "committing")
-		_, err = fmt.Printf("upgrade to version %d committed\n", lastScript.Version)
-		check(err, "write")
+		log.Printf("database upgrade from %d to %d committed", prevDBVersion, newDBVersion)
 	} else {
 		check(tx.Rollback(), "rolling back")
-		_, err = fmt.Println("upgrade rolled back, would succeed")
-		check(err, "write")
+		log.Printf("database upgrade from %d to %d rolled back, would succeed", prevDBVersion, newDBVersion)
 	}
+}
+
+func ensureLatestSQL(tx *sql.Tx, committing bool) (prevDBVersion, newDBVersion int) {
+	scripts := parseSQLScripts()
+	lastScript := scripts[len(scripts)-1]
+	newDBVersion = lastScript.Version
+
+	var have bool
+	err := tx.QueryRow("select exists (select 1 from pg_tables where schemaname='public' and tablename='schema_upgrades')").Scan(&have)
+	check(err, "checking whether table schema_upgrades exists")
+
+	prevDBVersion = -1
+	if have {
+		err = tx.QueryRow("select max(version) from schema_upgrades").Scan(&prevDBVersion)
+		check(err, "finding database schema version")
+
+		if prevDBVersion == newDBVersion {
+			return
+		}
+	}
+
+	runScripts(tx, prevDBVersion, scripts, committing)
+	return
 }

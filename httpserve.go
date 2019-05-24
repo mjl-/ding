@@ -74,11 +74,27 @@ func servehttp(args []string) {
 
 	database, err = sql.Open("postgres", config.Database)
 	check(err, "opening database connection")
-	var dbVersion int
-	err = database.QueryRow("select max(version) from schema_upgrades").Scan(&dbVersion)
-	check(err, "fetching database schema version")
-	if dbVersion != databaseVersion {
-		log.Fatalf("bad database schema version, expected %d, saw %d", databaseVersion, dbVersion)
+
+	if *dbmigrate {
+		tx, err := database.Begin()
+		check(err, "begin migrations database transaction")
+
+		prevDBVersion, newDBVersion := ensureLatestSQL(tx, true)
+		if prevDBVersion != newDBVersion {
+			err = tx.Commit()
+			check(err, "commit database migration")
+			log.Printf("database upgraded from version %d to latest %d", prevDBVersion, newDBVersion)
+		} else {
+			err = tx.Rollback()
+			check(err, "rollback database migration")
+		}
+	} else {
+		var dbVersion int
+		err = database.QueryRow("select max(version) from schema_upgrades").Scan(&dbVersion)
+		check(err, "fetching database schema version")
+		if dbVersion != databaseVersion {
+			log.Fatalf("bad database schema version, expected %d, saw %d", databaseVersion, dbVersion)
+		}
 	}
 
 	// so http package returns these known mimetypes

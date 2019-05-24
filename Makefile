@@ -1,8 +1,8 @@
 run: build
-	./ding serve local/local.conf
+	./ding serve -dbmigrate=false local/local.conf
 
 run-root: build
-	sudo sh -c 'umask 027; ./ding serve -listen localhost:6086 -listenwebhook localhost:6087 local/local-root.conf'
+	sudo sh -c 'umask 027; ./ding serve -dbmigrate=false -listen localhost:6086 -listenwebhook localhost:6087 local/local-root.conf'
 
 build:
 	go build
