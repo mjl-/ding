@@ -1,25 +1,26 @@
 # Ding - simple secure self-hosted build server for developers
 
-Ding builds your software projects from git/mercurial/etc repositories, can run
-tests and keep track of released software.
+Ding lets you configure repositories and build scripts and compile your
+software. For a build, ding:
+- Fetches the sources code, with a git or hg clone, or with a script of your
+choosing.
+- Sets up directories to run the build, under a unique UID, so builds don't
+interfere with each other or the system.
+- Runs the build script, capturing output and parsing it for instructions
+referencing the version of the software built, releasable files and test
+coverage.
+- Keeps track of the releasable files, allowing you to mark them as released so
+they are not cleaned up automatically.
 
-You will typically configure a "post-receive" (web)hook on your git server to
-tell Ding to start a build.
+Ding starts a web server with a UI for creating/configuring repositories,
+starting builds, seeing the output. Ding serves an API at /ding/, including
+real-time updates to builds and repositories. The web UI uses only this API.
 
-Ding will start the compile, run tests, and make resulting binaries/files.
-Successful results can be promoted to a release.
+Non-released builds older than 2 weeks or beyond the 10th build are
+automatically cleaned up.
 
-All command output of a build is kept around. If builds/tests go wrong, you can
-look at the output.
-
-Build dirs are kept around for some time, and garbage collected automatically
-when you have more than 10 builds, or after 2 weeks.
-
-Ding provides a web API at /ding/, open it once you've got it installed. It
-includes an option to get real-time updates to builds and repositories.
-
-"Ding kick" is a subcommand you can use in a git hook to signal that a build
-should start. Github and bitbucket webhooks are also supported.
+Command "ding kick" can be used in a git hook to signal that a build should
+start. Github and bitbucket webhooks are also supported.
 
 See INSTALL.txt for installation instructions.
 
@@ -48,26 +49,21 @@ existing skills, avoid the burden of complex systems.
 - Secure, with isolated builds, each build starts under its own unix user id:
 extremely fast, and builds can't interfere with each other.
 - (Web) API for all functionality (what the html5/js frontend is using).
-- Runs on unix systems (Linux, BSD's).
+- Runs on most unix systems (Linux, BSD's).
 
 
 # Non-features
 
-Ding does _NOT_ ...
-
-- do deployments: Different task, different software. Ding exports released
-files which can be picked up by deployment tools.
-- want to be all things to everybody: Ding does not integrate with every
-VCS/SCM, does not have a plugin infrastructure, and does not hold your hand.
-- use docker images: Ding assumes you create self-contained programs, such as
-statically linked Go binaries or JVM .jar files. If you need other services, say
-a database server, just configure it when setting up your repository in Ding. If
-you need certain OS dependencies installed, first try to get rid of those
-dependencies. If that isn't an option, install the dependencies on the build
-server.
-- call itself "continuous integration" or CI server. Mostly because that term
-doesn't seem to be describing what Ding do, it's not integrating anything, it's
-just building software.
+- Deployments: Different task, different software. Ding exports released files
+which can be picked up by deployment tools.
+- Be all things to everybody: Ding does not integrate with every VCS/SCM, does
+not have a plugin infrastructure.
+- Use docker images: Ding assumes you create self-contained programs, such as
+statically linked Go binaries or JVM .jar files. If you need other services to
+run tests, say a database server, just configure it when setting up your
+repository in Ding. If you need certain OS dependencies installed, first try to
+get rid of those dependencies, as a last resort install the dependencies on the
+machine running ding.
 
 # License
 
@@ -79,16 +75,14 @@ Ding is released under an MIT license. See LICENSE..
 ## Q: Why yet another build server? There are so many already.
 
 Several reasons:
-- Some existing tools are too complicated. They try to be everything to
-everyone. This makes it hard to get started. Hard to do simple things. You have
-to invest a lot of time to learn how to use their plugin systems, or their
-configuration/scripting languages. Ding is for developers who know how to write
-a shell script and don't need more hand-holding.
-- This build server works securely on different unixes. Many "modern" build
-servers depend on docker, making them Linux-only. Ding also works on BSD's.
-- Finally, it's fun creating software like this.
+- Some existing tools are too complicated, requiring a big time investment to
+use (plugin systems, own configuration languages). Ding is for developers who
+know how to write a shell script.
+- Ding works on different unixes. Many "modern" build servers depend on docker,
+making them Linux-only.
+- It is fun creating software like this.
 
-## Q: Does Ding have its own website?
+## Q: Does Ding have a website?
 
 No.
 
@@ -96,29 +90,25 @@ No.
 
 - The README you are reading right now.
 - INSTALL.txt with installation instructions, also available with "ding help".
-- Documentation behind the "Help" button in the top-right corner in Ding.
+- Documentation behind the "Help" button in the top-right corner in the Ding web UI.
 - API documentation at /ding/ when you've started Ding.
 
 ## Q: What does "Ding" mean?
 
 Ding is named after the dent in a surfboard. It needs to be repaired, or the
-board will soak up water and become useless or break. Likewise, broken software
-builds need to be repaired soon, or the quality of your software goes down.
-
-## Q: I have another question.
-
-That's not a question. But please do send the actual question in.
+board will soak up water and become useless or break. Likewise, software needs
+to be built regularly, with the latest toolchains, and issues need to be
+resolved before the software becomes a lost cause.
 
 For feedback, bug reports and questions, please contact mechiel@ueber.net.
 
 
 # Developing
 
-You obviously need a Go compiler.  But you'll also need to run "make
-setup" to install jshint and node-sass through npm (nodejs), to
-check the JavaScript code and compile SASS.
+You need a Go compiler and nodejs+npm with jshint and node-sass.  Run "make
+setup" to install the js dependencies.
 
-Now run: "make build test release"
+Now run: "make build test"
 
 
 # Todo
@@ -135,5 +125,4 @@ Now run: "make build test release"
 - attempt to detect pushes of commits+tag, don't build for both the commit and the tag if they're about the same thing.
 - allow configuring a cleanup script, that is run when a builddir is removed. eg for dropping a database that was created in build.sh.
 - think about adding support for updating toolchains, like go get golang.org/dl/go1.2.3 && go1.2.3 download
-- add authentication to application. need to figure out how to keep a dashboard. and how to do auth on /events
-- more ways to send out notifications? eg webhook, telegram, slack.
+- add authentication to the web ui. need to figure out how to keep a dashboard. and how to do auth on /events. and if this is really worthwhile.
