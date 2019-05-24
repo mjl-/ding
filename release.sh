@@ -9,6 +9,7 @@ export COMMIT=${COMMIT:-$(git rev-parse HEAD)}
 export TAG=${TAG:-$(git describe --exact-match --tags 2>/dev/null)}
 export GOVERSION=${GOVERSION:-$(go version | cut -f3 -d' ')}
 export BUILDID=${BUILDID:-$(printf %x $(date +%s))}
+echo version: $VERSION
 
 make clean
 make build
@@ -28,7 +29,6 @@ function release() {
 	echo release: $NAME $GOOS $GOARCH $GOVERSION $DEST
 }
 
-echo version: $VERSION
 release linux amd64
 release linux 386
 release linux arm64
