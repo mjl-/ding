@@ -129,7 +129,7 @@ func main() {
 		err := sconf.Describe(os.Stdout, &config)
 		check(err, "describe")
 	case "help":
-		printFile("INSTALL.txt")
+		printFile("/INSTALL.txt")
 	case "serve":
 		serve(args)
 	case "serve-http":
@@ -142,7 +142,7 @@ func main() {
 	case "version":
 		fmt.Printf("%s\ndatabase schema version %d\n", version, databaseVersion)
 	case "license":
-		printFile("web/LICENSES")
+		printFile("/web/LICENSES")
 	default:
 		flag.Usage()
 		os.Exit(2)
@@ -151,7 +151,7 @@ func main() {
 
 func printFile(name string) {
 	f, err := httpFS.Open(name)
-	check(err, "opening file")
+	check(err, "opening file "+name)
 	_, err = io.Copy(os.Stdout, f)
 	check(err, "copy")
 	check(f.Close(), "close")
