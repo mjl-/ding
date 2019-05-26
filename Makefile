@@ -7,11 +7,11 @@ run-root: build
 build:
 	go build
 	go vet
-	go run fabricate/*.go -- install
+	PATH=$(PATH):$(PWD)/node_modules/.bin go run fabricate/*.go -- install
 	go run vendor/github.com/mjl-/sherpadoc/cmd/sherpadoc/*.go Ding >assets/ding.json
 
 frontend:
-	go run fabricate/*.go -- install
+	PATH=$(PATH):$(PWD)/node_modules/.bin go run fabricate/*.go -- install
 
 test:
 	golint

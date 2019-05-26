@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 	"path"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -66,7 +65,7 @@ func build(dest string) {
 		dirlist("www-src/js/filters", ".js", ""),
 		dirlist("www-src/js/services", ".js", ""),
 	)
-	if dirty(d, s) && jshint(s...) {
+	if dirty(d, s) && run("jshint", s...) {
 		copy(d, s...)
 	}
 
@@ -97,7 +96,7 @@ func build(dest string) {
 	)
 	if dirty(d, s) {
 		os.MkdirAll(path.Dir(d), os.ModePerm)
-		run(filepath.Join("node_modules", ".bin", "node-sass"), "--style", "compact", s[0], d)
+		run("node-sass", "--style", "compact", s[0], d)
 	}
 
 	// fonts

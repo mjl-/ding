@@ -45,11 +45,6 @@ func write(p, contents string) {
 	check(f.Close(), "close")
 }
 
-func jshint(paths ...string) bool {
-	jshintPath := filepath.Join("node_modules", ".bin", "jshint")
-	return run(jshintPath, paths...)
-}
-
 func read(path string) string {
 	buf, err := ioutil.ReadFile(path)
 	check(err, "readfile")
