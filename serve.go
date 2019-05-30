@@ -20,6 +20,7 @@ var (
 	serveFlag            = flag.NewFlagSet("serve", flag.ExitOnError)
 	listenAddress        = serveFlag.String("listen", "localhost:6084", "address to listen on")
 	listenWebhookAddress = serveFlag.String("listenwebhook", "localhost:6085", "address to listen on for webhooks, like from github; set empty for no listening")
+	listenAdminAddress   = serveFlag.String("listenadmin", "localhost:6086", "address to listen on for monitoring endpoints like prometheus /metrics and /info")
 	dbmigrate            = serveFlag.Bool("dbmigrate", true, "perform database migrations if not yet at latest schema version at startup")
 
 	rootRequests chan request // for http-serve
@@ -62,8 +63,8 @@ func serve(args []string) {
 		if !ok {
 			log.Fatalf("underlying fileinfo for data dir %q: sys is a %T", dingDataDir, sysinfo)
 		}
-		if info.Mode()&077 != 050 || st.Gid != config.IsolateBuilds.DingGID {
-			log.Fatalf("data dir %q must have permissions g=rx,o= and ding gid %d, but has permissions %#o and gid %d", dingDataDir, config.IsolateBuilds.DingGID, info.Mode()&os.ModePerm, st.Gid)
+		if info.Mode()&077 != 070 || st.Gid != config.IsolateBuilds.DingGID {
+			log.Fatalf("data dir %q must have permissions g=rwx,o= and ding gid %d, but has permissions %#o and gid %d", dingDataDir, config.IsolateBuilds.DingGID, info.Mode()&os.ModePerm, st.Gid)
 		}
 	} else {
 		if os.Getuid() == 0 {

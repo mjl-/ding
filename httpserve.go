@@ -128,15 +128,16 @@ func servehttp(args []string) {
 		Full:       version,
 	}
 	http.Handle("/info", httpinfo.NewHandler(info, nil))
-
-	http.HandleFunc("/", serveAsset)
-	http.Handle("/ding/", handler)
 	http.Handle("/metrics", promhttp.Handler())
-	http.HandleFunc("/release/", serveRelease)
-	http.HandleFunc("/result/", serveResult)
-	http.HandleFunc("/download/", serveDownload) // Old
-	http.HandleFunc("/dl/", serveDownload)       // New
-	http.HandleFunc("/events", serveEvents)
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", serveAsset)
+	mux.Handle("/ding/", handler)
+	mux.HandleFunc("/release/", serveRelease)
+	mux.HandleFunc("/result/", serveResult)
+	mux.HandleFunc("/download/", serveDownload) // Old
+	mux.HandleFunc("/dl/", serveDownload)       // New
+	mux.HandleFunc("/events", serveEvents)
 
 	go eventMux()
 
@@ -229,20 +230,29 @@ func servehttp(args []string) {
 		}(repoBuild.Repo, repoBuild.Build)
 	}
 
+	msg := fmt.Sprintf("ding version %s, listening on %s", version, *listenAddress)
 	if *listenWebhookAddress != "" {
-		log.Printf("ding version %s, listening on %s and for webhooks on %s\n", version, *listenAddress, *listenWebhookAddress)
-		webhookHandler := http.NewServeMux()
-		webhookHandler.HandleFunc("/github/", githubHookHandler)
-		webhookHandler.HandleFunc("/bitbucket/", bitbucketHookHandler)
+		msg += fmt.Sprintf(", for webhooks on %s", *listenWebhookAddress)
+	}
+	if *listenAdminAddress != "" {
+		msg += fmt.Sprintf(", for admin on %s", *listenAdminAddress)
+	}
+	log.Print(msg)
+	if *listenWebhookAddress != "" {
+		webhookMux := http.NewServeMux()
+		webhookMux.HandleFunc("/github/", githubHookHandler)
+		webhookMux.HandleFunc("/bitbucket/", bitbucketHookHandler)
 		go func() {
-			server := &http.Server{Addr: *listenWebhookAddress, Handler: webhookHandler}
-			log.Fatal(server.ListenAndServe())
+			log.Fatal(http.ListenAndServe(*listenWebhookAddress, webhookMux))
 		}()
-	} else {
-		log.Printf("ding version %s, listening on %s\n", version, *listenAddress)
+	}
+	if *listenAdminAddress != "" {
+		go func() {
+			log.Fatal(http.ListenAndServe(*listenAdminAddress, nil))
+		}()
 	}
 	go func() {
-		log.Fatal(http.ListenAndServe(*listenAddress, nil))
+		log.Fatal(http.ListenAndServe(*listenAddress, mux))
 	}()
 
 	enc := gob.NewEncoder(msgfile)

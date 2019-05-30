@@ -1,16 +1,26 @@
 # Installing
 
-Make a new config file. You can get an example by running:
+Make a new config file. Get an example:
 
 	ding config >ding.conf
 
-Now fill in the blanks and check if the config is correct:
+Create a postgres user:
+
+	sudo -u postgres createuser --no-createdb --pwprompt ding
+	sudo -u postgres createdb -O ding ding
+	sudo -u postgres psql -d ding -c 'revoke connect on database ding from public; alter user ding with connection limit 40;'
+
+Create a data directory:
+
+	sudo install -d -g ding -m u=rwx,g=srwx,o= data
+
+Fill in the blanks in the config file and check if the config is correct:
 
 	ding testconfig ding.conf
 
-You'll need to have postgres configured. Create a data directory. Ensure the
-ding gid can execute ding, create directories in data, and is private otherwise.
-I recommend creating your ding and data directory setgid.
+Run ding:
+
+	ding serve ding.conf
 
 Make sure you have git or mercurial (hg) installed.
 
@@ -95,15 +105,14 @@ For bitbucket:
 /bitbucket/<repoName>/<bitbucketWebhookSecret>. Bitbucket does not
 sign its requests, so the authentication is in the URL.
 
-If you don't want to listen for webhook events, pass an empty string
-to the -listenwebhook flag.
+If you don't want to listen for webhook events, pass an empty string to the
+-listenwebhook flag.
 
 
 # Webserver configuration
 
-You might want to run a HTTP proxy in front of Ding. Nginx is a
-popular choice. Here is an example config file that keeps server-sent
-events working:
+You might want to run a HTTP proxy in front of Ding. Nginx is a popular choice.
+Here is an example config file that keeps server-sent events working:
 
 	server {
 		listen 10.0.0.1:80;
@@ -159,5 +168,6 @@ Example service file for systemd:
 	[Install]
 	WantedBy=multi-user.target
 
-This listens only on the loopback IP. We do not keep the binary and config in
-the (mostly empty) ding user home directory /home/ding.
+This listens only on the loopback IP. I typically run from /home/service/ding,
+where ding only has read access to the binary and config file, and write access
+to data, all through group permissions.
