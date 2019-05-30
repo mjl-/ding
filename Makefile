@@ -1,3 +1,7 @@
+export CGO_ENABLED=0
+export GOFLAGS=-mod=vendor
+export GOPROXY=off
+
 run: build
 	./ding serve -dbmigrate=false local/local.conf
 
