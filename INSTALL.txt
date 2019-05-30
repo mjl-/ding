@@ -1,7 +1,6 @@
 # Installing
 
-Set up an empty postgres database. Make a new config file. You can get an
-example by running:
+Make a new config file. You can get an example by running:
 
 	ding config >ding.conf
 
@@ -9,12 +8,9 @@ Now fill in the blanks and check if the config is correct:
 
 	ding testconfig ding.conf
 
-Now initialize the database:
-
-	ding upgrade config.json
-
-You may need to run "upgrade" for future ding updates too, possibly with the
--dryrun flag.
+You'll need to have postgres configured. Create a data directory. Ensure the
+ding gid can execute ding, create directories in data, and is private otherwise.
+I recommend creating your ding and data directory setgid.
 
 Make sure you have git or mercurial (hg) installed.
 
