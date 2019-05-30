@@ -52,7 +52,7 @@ func (Ding) Status() {
 			err = f.Close()
 		}
 		if err != nil {
-			log.Printf("status: file system unavailable: %s\n", err)
+			log.Printf("status: file system unavailable: %s", err)
 			errors <- done{filesystem, true}
 			return
 		}
@@ -63,7 +63,7 @@ func (Ding) Status() {
 		var one int
 		err := database.QueryRow("select 1").Scan(&one)
 		if err != nil {
-			log.Printf("status: database unavailable: %s\n", err)
+			log.Printf("status: database unavailable: %s", err)
 			errors <- done{xdatabase, true}
 			return
 		}

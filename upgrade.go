@@ -28,7 +28,7 @@ func parseSQLScripts() (scripts []script) {
 
 	lastScript := scripts[len(scripts)-1]
 	if lastScript.Version != databaseVersion {
-		log.Fatalf("databaseVersion %d does not match last upgrade script with version %d\n", databaseVersion, lastScript.Version)
+		log.Fatalf("databaseVersion %d does not match last upgrade script with version %d", databaseVersion, lastScript.Version)
 	}
 	return scripts
 }
@@ -45,7 +45,7 @@ func runScripts(tx *sql.Tx, dbVersion int, scripts []script, committing bool) {
 		err = tx.QueryRow("select max(version) from schema_upgrades").Scan(&version)
 		check(err, "fetching database schema version after upgrade")
 		if version != script.Version {
-			log.Fatalf("invalid upgrade script %s: database not at version %d after running, but at %d\n", script.Filename, script.Version, version)
+			log.Fatalf("invalid upgrade script %s: database not at version %d after running, but at %d", script.Filename, script.Version, version)
 		}
 
 		switch script.Version {
@@ -62,7 +62,7 @@ func runScripts(tx *sql.Tx, dbVersion int, scripts []script, committing bool) {
 				var id int
 				err = tx.QueryRow(`update repo set build_script=$1 where name=$2 returning id`, buildSh, repoName).Scan(&id)
 				if err != nil {
-					log.Printf("setting repo.build_script for repo %s: %s\n", repoName, err)
+					log.Printf("setting repo.build_script for repo %s: %s", repoName, err)
 				}
 			}
 
@@ -92,7 +92,7 @@ func runScripts(tx *sql.Tx, dbVersion int, scripts []script, committing bool) {
 
 				files, err := ioutil.ReadDir(path)
 				if err != nil {
-					log.Printf("upgrade 9, gzipping released files: listing %s: %s (skipping)\n", path, err)
+					log.Printf("upgrade 9, gzipping released files: listing %s: %s (skipping)", path, err)
 					continue
 				}
 
@@ -101,25 +101,25 @@ func runScripts(tx *sql.Tx, dbVersion int, scripts []script, committing bool) {
 					npath := opath + ".gz"
 					f, err := os.Open(opath)
 					if err != nil {
-						log.Printf("upgrade 9, gzipping released files: opening %s: %s (skipping)\n", opath, err)
+						log.Printf("upgrade 9, gzipping released files: opening %s: %s (skipping)", opath, err)
 						return
 					}
 					defer f.Close()
 					nf, err := os.Create(npath)
 					if err != nil {
-						log.Printf("upgrade 9, gzipping released files: creating %s: %s (skipping)\n", npath, err)
+						log.Printf("upgrade 9, gzipping released files: creating %s: %s (skipping)", npath, err)
 						return
 					}
 					defer func() {
 						if nf != nil || !committing {
 							err = os.Remove(npath)
 							if err != nil {
-								log.Printf("upgrade 9, gzipping released files: removing partial new file %s: %s\n", npath, err)
+								log.Printf("upgrade 9, gzipping released files: removing partial new file %s: %s", npath, err)
 							}
 						} else {
 							err = os.Remove(opath)
 							if err != nil {
-								log.Printf("upgrade 9, gzipping released files: removing old file %s: %s\n", opath, err)
+								log.Printf("upgrade 9, gzipping released files: removing old file %s: %s", opath, err)
 							}
 						}
 					}()
@@ -130,7 +130,7 @@ func runScripts(tx *sql.Tx, dbVersion int, scripts []script, committing bool) {
 					if err == nil {
 						nf = nil
 					} else {
-						log.Printf("upgrade 9, gzipping released files: gzip %s: %s\n", opath, err)
+						log.Printf("upgrade 9, gzipping released files: gzip %s: %s", opath, err)
 						return
 					}
 				}

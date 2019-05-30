@@ -38,7 +38,7 @@ func serveDownload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fail := func(err error) {
-		log.Printf("download: %s\n", err)
+		log.Printf("download: %s", err)
 		http.Error(w, "internal error", 500)
 	}
 
@@ -275,7 +275,7 @@ func _serveDownload(w http.ResponseWriter, r *http.Request, name string, files [
 			}
 			f, err := os.Open(lpath)
 			if err != nil {
-				log.Printf("download: open %s to add to zip: %s\n", lpath, err)
+				log.Printf("download: open %s to add to zip: %s", lpath, err)
 				return false
 			}
 			defer f.Close()
@@ -283,13 +283,13 @@ func _serveDownload(w http.ResponseWriter, r *http.Request, name string, files [
 			filename := path.Base(file.Path)
 			fw, err := zw.Create(base + "/" + filename)
 			if err != nil {
-				log.Printf("download: adding file to zip: %s\n", err)
+				log.Printf("download: adding file to zip: %s", err)
 				return false
 			}
 			_, err = io.Copy(fw, f)
 			if err != nil {
 				// probably just a closed connection
-				log.Printf("download: copying data: %s\n", err)
+				log.Printf("download: copying data: %s", err)
 				return false
 			}
 			return true
@@ -302,7 +302,7 @@ func _serveDownload(w http.ResponseWriter, r *http.Request, name string, files [
 		// errors would probably be closed connections
 		err := zw.Close()
 		if err != nil {
-			log.Printf("download: finishing write: %s\n", err)
+			log.Printf("download: finishing write: %s", err)
 		}
 	} else if strings.HasSuffix(name, ".tgz") {
 		base := strings.TrimSuffix(name, ".tgz")
@@ -316,20 +316,20 @@ func _serveDownload(w http.ResponseWriter, r *http.Request, name string, files [
 			}
 			f, err := os.Open(lpath)
 			if err != nil {
-				log.Printf("download: open %s to add to tgz: %s\n", lpath, err)
+				log.Printf("download: open %s to add to tgz: %s", lpath, err)
 				return false
 			}
 			defer f.Close()
 			fi, err := f.Stat()
 			if err != nil {
-				log.Printf("download: stat %s to add to tgz: %s\n", lpath, err)
+				log.Printf("download: stat %s to add to tgz: %s", lpath, err)
 				return false
 			}
 			var gzr io.Reader = f
 			if isGzip {
 				gzr, err = gzip.NewReader(f)
 				if err != nil {
-					log.Printf("download: reading gzip %s: %s\n", lpath, err)
+					log.Printf("download: reading gzip %s: %s", lpath, err)
 					return false
 				}
 			}
@@ -343,7 +343,7 @@ func _serveDownload(w http.ResponseWriter, r *http.Request, name string, files [
 			}
 			err = tw.WriteHeader(hdr)
 			if err != nil {
-				log.Printf("download: adding file to tgz: %s\n", err)
+				log.Printf("download: adding file to tgz: %s", err)
 				return false
 			}
 			_, err = io.Copy(tw, gzr)

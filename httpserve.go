@@ -198,7 +198,7 @@ func servehttp(args []string) {
 
 		qMarkStale := `update build set finish=now(), error_message=$1, disk_usage=$2 where finish is null and status!='new' returning id`
 		checkRow(database.QueryRow(qMarkStale, unfinishedMsg, du), &stale.BuildID, "marking stale build in database")
-		log.Printf("marked %s stale build as failed\n", buildDir)
+		log.Printf("marked %s stale build as failed", buildDir)
 	}
 
 	var newBuilds []struct {
@@ -287,7 +287,7 @@ func servehttp(args []string) {
 			fds, err := unix.ParseUnixRights(&scms[0])
 			check(err, "parse unix rights")
 			if len(fds) != 3 {
-				log.Fatalf("wanted 3 fds; got %d fds\n", len(fds))
+				log.Fatalf("wanted 3 fds; got %d fds", len(fds))
 			}
 
 			stdout := os.NewFile(uintptr(fds[0]), fmt.Sprintf("build-%d-stdout", req.msg.Build.BuildID))
@@ -316,14 +316,14 @@ func serveAsset(w http.ResponseWriter, r *http.Request) {
 			http.NotFound(w, r)
 			return
 		}
-		log.Printf("serving asset %s: %s\n", r.URL.Path, err)
+		log.Printf("serving asset %s: %s", r.URL.Path, err)
 		http.Error(w, "500 - Server error", 500)
 		return
 	}
 	defer f.Close()
 	info, err := f.Stat()
 	if err != nil {
-		log.Printf("serving asset %s: %s\n", r.URL.Path, err)
+		log.Printf("serving asset %s: %s", r.URL.Path, err)
 		http.Error(w, "500 - Server error", 500)
 		return
 	}
@@ -383,7 +383,7 @@ func serveRelease(w http.ResponseWriter, r *http.Request) {
 	} else {
 		gzr, err := gzip.NewReader(f)
 		if err != nil {
-			log.Printf("release: reading gzip file %s: %s\n", path, err)
+			log.Printf("release: reading gzip file %s: %s", path, err)
 			http.Error(w, "server error", 500)
 			return
 		}

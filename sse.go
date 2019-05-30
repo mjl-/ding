@@ -112,7 +112,7 @@ func eventMux() {
 			} else {
 				event, evbuf, err := ev.eventString()
 				if err != nil {
-					log.Printf("sse: marshalling event: %s\n", err)
+					log.Printf("sse: marshalling event: %s", err)
 					continue
 				}
 				buf = []byte(fmt.Sprintf("event: %s\ndata: %s\n\n", event, evbuf))

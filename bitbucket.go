@@ -30,7 +30,7 @@ func bitbucketHookHandler(w http.ResponseWriter, r *http.Request) {
 	repoName := t[0]
 	key := t[1]
 	if key != config.BitbucketWebhookSecret {
-		log.Printf("bitbucket webhook: invalid secret in request for repoName %s\n", repoName)
+		log.Printf("bitbucket webhook: invalid secret in request for repoName %s", repoName)
 		http.NotFound(w, r)
 		return
 	}
@@ -81,12 +81,12 @@ func bitbucketHookHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	err := json.NewDecoder(r.Body).Decode(&event)
 	if err != nil {
-		log.Printf("bitbucket webhook: parsing JSON body: %s\n", err)
+		log.Printf("bitbucket webhook: parsing JSON body: %s", err)
 		http.Error(w, "bad json", 400)
 		return
 	}
 	if event.Repository.Name != repoName {
-		log.Printf("bitbucket webhook: unexpected repoName %s at endpoint for repoName %s\n", event.Repository.Name, repoName)
+		log.Printf("bitbucket webhook: unexpected repoName %s at endpoint for repoName %s", event.Repository.Name, repoName)
 		http.Error(w, "bad request", 400)
 		return
 	}
@@ -98,17 +98,17 @@ func bitbucketHookHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		log.Printf("bitbucket webhook: reading vcs from database: %s\n", err)
+		log.Printf("bitbucket webhook: reading vcs from database: %s", err)
 		http.Error(w, "error", 500)
 		return
 	}
 	if event.Repository.SCM == "hg" && !(vcs == "mercurial" || vcs == "command") {
-		log.Printf("bitbucket webhook: misconfigured repository type, bitbucket thinks mercurial, ding thinks %s\n", vcs)
+		log.Printf("bitbucket webhook: misconfigured repository type, bitbucket thinks mercurial, ding thinks %s", vcs)
 		http.Error(w, "misconfigured webhook", 500)
 		return
 	}
 	if event.Repository.SCM == "git" && !(vcs == "git" || vcs == "command") {
-		log.Printf("bitbucket webhook: misconfigured repository type, bitbucket thinks git, ding thinks %s\n", vcs)
+		log.Printf("bitbucket webhook: misconfigured repository type, bitbucket thinks git, ding thinks %s", vcs)
 		http.Error(w, "misconfigured webhook", 500)
 		return
 	}
@@ -141,7 +141,7 @@ func bitbucketHookHandler(w http.ResponseWriter, r *http.Request) {
 				commit := head.Hash
 				repo, build, buildDir, err := prepareBuild(repoName, branch, commit)
 				if err != nil {
-					log.Printf("bitbucket webhook: error starting build for push event for repo %s, branch %s, commit %s\n", repoName, branch, commit)
+					log.Printf("bitbucket webhook: error starting build for push event for repo %s, branch %s, commit %s", repoName, branch, commit)
 					http.Error(w, "could not create build", 500)
 					return
 				}

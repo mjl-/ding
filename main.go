@@ -83,7 +83,7 @@ func init() {
 
 func check(err error, msg string) {
 	if err != nil {
-		log.Fatalf("%s: %s\n", msg, err)
+		log.Fatalf("%s: %s", msg, err)
 	}
 }
 

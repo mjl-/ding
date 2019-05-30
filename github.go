@@ -35,12 +35,12 @@ func githubHookHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		log.Printf("github webhook: reading vcs from database: %s\n", err)
+		log.Printf("github webhook: reading vcs from database: %s", err)
 		http.Error(w, "error", 500)
 		return
 	}
 	if !(vcs == "git" || vcs == "command") {
-		log.Printf("github webhook: push event for a non-git repository\n")
+		log.Printf("github webhook: push event for a non-git repository")
 		http.Error(w, "misconfigured repositories", 500)
 		return
 	}
@@ -65,7 +65,7 @@ func githubHookHandler(w http.ResponseWriter, r *http.Request) {
 	mac.Write(buf)
 	exp := mac.Sum(nil)
 	if !hmac.Equal(exp, sig) {
-		log.Printf("github webhook: bad signature, refusing message\n")
+		log.Printf("github webhook: bad signature, refusing message")
 		http.Error(w, "invalid signature", 400)
 		return
 	}
@@ -78,12 +78,12 @@ func githubHookHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	err = json.Unmarshal(buf, &event)
 	if err != nil {
-		log.Printf("github webhook: bad JSON body: %s\n", err)
+		log.Printf("github webhook: bad JSON body: %s", err)
 		http.Error(w, "bad json", 400)
 		return
 	}
 	if event.Repository.Name != repoName {
-		log.Printf("github webhook: repository does not match, github sent %s for URL for %s\n", event.Repository.Name, repoName)
+		log.Printf("github webhook: repository does not match, github sent %s for URL for %s", event.Repository.Name, repoName)
 		http.Error(w, "repository mismatch", 400)
 		return
 	}
@@ -94,7 +94,7 @@ func githubHookHandler(w http.ResponseWriter, r *http.Request) {
 	commit := event.After
 	repo, build, buildDir, err := prepareBuild(repoName, branch, commit)
 	if err != nil {
-		log.Printf("github webhook: error starting build for push event for repo %s, branch %s, commit %s\n", repoName, branch, commit)
+		log.Printf("github webhook: error starting build for push event for repo %s, branch %s, commit %s", repoName, branch, commit)
 		http.Error(w, "could not create build", 500)
 		return
 	}
