@@ -2,21 +2,31 @@ package sconf
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
+
+	"github.com/mjl-/xfmt"
 )
+
+var errNoElem = errors.New("no elements")
 
 type writeError error
 
 type writer struct {
 	out    *bufio.Writer
 	prefix string
+	full   bool // If set, we also write default values and comments.
+}
+
+func (w *writer) error(err error) {
+	panic(writeError(err))
 }
 
 func (w *writer) check(err error) {
 	if err != nil {
-		panic(writeError(err))
+		w.error(err)
 	}
 }
 
@@ -53,24 +63,32 @@ func (w *writer) describeStruct(v reflect.Value) {
 	n := t.NumField()
 	for i := 0; i < n; i++ {
 		f := t.Field(i)
-		doc := f.Tag.Get("sconf-doc")
-		optional := isOptional(f.Tag.Get("sconf"))
-		if doc != "" || optional {
-			w.write(w.prefix)
-			w.write("# ")
-			w.write(doc)
-			if optional {
-				opt := "(optional)"
-				if doc != "" {
-					opt = " " + opt
+		fv := v.Field(i)
+		if !w.full && isOptional(f.Tag.Get("sconf")) && reflect.DeepEqual(reflect.Zero(fv.Type()).Interface(), fv.Interface()) {
+			continue
+		}
+		if w.full {
+			doc := f.Tag.Get("sconf-doc")
+			optional := isOptional(f.Tag.Get("sconf"))
+			if doc != "" || optional {
+				s := "\n" + w.prefix + "# " + doc
+				if optional {
+					opt := "(optional)"
+					if doc != "" {
+						opt = " " + opt
+					}
+					s += opt
 				}
-				w.write(opt)
+				s += "\n"
+				b := &strings.Builder{}
+				err := xfmt.Format(b, strings.NewReader(s), xfmt.Config{MaxWidth: 80})
+				w.check(err)
+				w.write(b.String())
 			}
-			w.write("\n")
 		}
 		w.write(w.prefix)
 		w.write(f.Name + ":")
-		w.describeValue(v.Field(i))
+		w.describeValue(fv)
 	}
 }
 
@@ -101,7 +119,13 @@ func (w *writer) describeValue(v reflect.Value) {
 		w.unindent()
 
 	case reflect.Ptr:
-		w.describeValue(reflect.New(t.Elem()).Elem())
+		var pv reflect.Value
+		if v.IsNil() {
+			pv = reflect.New(t.Elem()).Elem()
+		} else {
+			pv = v.Elem()
+		}
+		w.describeValue(pv)
 
 	case reflect.Struct:
 		w.write("\n")
@@ -112,10 +136,22 @@ func (w *writer) describeValue(v reflect.Value) {
 }
 
 func (w *writer) describeSlice(v reflect.Value) {
-	n := v.Len()
-	for i := 0; i < n; i++ {
+	describeElem := func(vv reflect.Value) {
 		w.write(w.prefix)
 		w.write("-")
-		w.describeValue(v.Index(i))
+		w.describeValue(vv)
+	}
+
+	n := v.Len()
+	if n == 0 {
+		if w.full {
+			describeElem(reflect.New(v.Type().Elem()))
+		} else {
+			w.error(errNoElem)
+		}
+	}
+
+	for i := 0; i < n; i++ {
+		describeElem(v.Index(i))
 	}
 }

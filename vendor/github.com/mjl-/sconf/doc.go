@@ -7,7 +7,8 @@ is inspired by JSON and yaml, but easier to write and use correctly.
 Sconf goals:
 
 	- Make the application self-documenting about its configuration requirements.
-	- Require full configuration of an application via a config file, finding mistakes by the operator.
+	- Require full configuration of an application via a config file, finding
+	  mistakes by the operator.
 	- Make it easy to write a correct config file, no surprises.
 
 Workflow for using this package:
@@ -57,7 +58,8 @@ The top-level is always a map. Maps start with a key, followed by a colon,
 followed by a value. Basic values like strings, ints, bools run to the end of
 the line. The leading space after a colon or dash is removed. Other values like
 maps and lists start on a new line, with an additional level of indenting. List
-values start with a dash.
+values start with a dash. Empty lines are allowed. Multiline strings are not
+possible. Strings do not have escaped characters.
 
 And the struct that generated this:
 
@@ -91,14 +93,13 @@ In practice, you will mostly have nested maps:
 			TLS: true
 			Host: mail.example.org
 
-Sconf only parses config files. It does not deal with cli flags or environment
-variables. Flags and environment variables are too limiting in data types.
-Especially environment variables are error prone: Applications usually have
-default values they fall back to, so will not notice typo's. For server
-applications you will almost always have a config file, allowing many ways to
-specify config parameters is often unhelpful. Config files also have the nice
-property of being easy to diff, copy around, store in a VCS. OF course in
-practice, it is common to store cli flags and environment variables in config
-files. Sconf goes straight to the config files.
+Sconf only parses config files. It does not deal with command-line flags or
+environment variables. Flags and environment variables are too limiting in data
+types. Especially environment variables are error prone: Applications typically
+have default values they fall back to, so will not notice typo's or unrecognized
+variables. Config files also have the nice property of being easy to diff, copy
+around, store in a VCS. In practice, command-line flags and environment
+variables are commonly stored in config files. Sconf goes straight to the config
+files.
 */
 package sconf

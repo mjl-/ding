@@ -23,8 +23,19 @@ func Parse(src io.Reader, dst interface{}) error {
 	return parse("", src, dst)
 }
 
-// Describe writes a valid sconf file describing v to w.
-func Describe(w io.Writer, v interface{}) (err error) {
+// Describe writes an example sconf file describing v to w. The file includes all
+// fields and documentation on the fields as configured with the "sconf-doc" tags.
+func Describe(w io.Writer, v interface{}) error {
+	return describe(w, v, true)
+}
+
+// Write writes a valid sconf file describing v to w, without comments and without
+// optional fields set to their zero values.
+func Write(w io.Writer, v interface{}) error {
+	return describe(w, v, false)
+}
+
+func describe(w io.Writer, v interface{}, full bool) (err error) {
 	value := reflect.ValueOf(v)
 	t := value.Type()
 	if t.Kind() == reflect.Ptr {
@@ -45,7 +56,7 @@ func Describe(w io.Writer, v interface{}) (err error) {
 			panic(x)
 		}
 	}()
-	wr := &writer{out: bufio.NewWriter(w)}
+	wr := &writer{out: bufio.NewWriter(w), full: full}
 	wr.describeStruct(value)
 	wr.flush()
 	return nil
