@@ -1,6 +1,6 @@
 // don't warn about "use strict"
 /* jshint -W097 */
-/* global app, api, _, console, window */
+/* global app, api, _, console, window, document, $ */
 'use strict';
 
 app.controller('Build', function($scope, $rootScope, $q, $location, $timeout, Msg, Util, repo, buildResult) {
@@ -56,7 +56,14 @@ app.controller('Build', function($scope, $rootScope, $q, $location, $timeout, Ms
 				};
 				$scope.steps.push(step);
 			}
+			var slack = 3;
+			var scroll = $(window).scrollTop() + $(window).height()  >= $(document).height() - slack;
 			step.output += e.text;
+			if (scroll) {
+				$timeout(function() {
+					$(window).scrollTop($(document).height() - $(window).height());
+				});
+			}
 		});
 	});
 
