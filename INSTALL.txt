@@ -3,11 +3,11 @@
 Set up an empty postgres database. Make a new config file. You can get an
 example by running:
 
-	ding config-describe >ding.conf
+	ding config >ding.conf
 
 Now fill in the blanks and check if the config is correct:
 
-	ding config-test ding.conf
+	ding testconfig ding.conf
 
 Now initialize the database:
 

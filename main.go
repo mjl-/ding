@@ -108,7 +108,7 @@ func initDingDataDir() {
 func main() {
 	log.SetFlags(0)
 	flag.Usage = func() {
-		log.Fatalf("usage: ding { config-test | config-describe | help | kick | serve | upgrade | version | license }")
+		log.Fatalf("usage: ding { config | testconfig | help | kick | serve | upgrade | version | license }")
 	}
 	if len(os.Args) <= 1 {
 		flag.Usage()
@@ -118,16 +118,17 @@ func main() {
 	cmd := os.Args[1]
 	args := os.Args[2:]
 	switch cmd {
-	case "config-test":
+	case "config":
+		fmt.Println("# Example config file")
+		err := sconf.Describe(os.Stdout, &config)
+		check(err, "describe")
+	case "testconfig":
 		if len(args) != 1 {
-			log.Fatalf("usage: ding config-test config.conf")
+			log.Fatalf("usage: ding testconfig config.conf")
 		}
 		err := sconf.ParseFile(args[0], &config)
 		check(err, "parsing file")
 		fmt.Println("config OK")
-	case "config-describe":
-		err := sconf.Describe(os.Stdout, &config)
-		check(err, "describe")
 	case "help":
 		printFile("/INSTALL.txt")
 	case "serve":
