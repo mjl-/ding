@@ -178,11 +178,11 @@ func _doBuild(repo Repo, build Build, buildDir string) {
 
 	_updateStatus := func(status string, isStart bool) {
 		transact(func(tx *sql.Tx) {
-			_, err := tx.Exec("update build set status=$1 where id=$2", status, build.ID)
+			var one int
+			err := tx.QueryRow("update build set status=$1 where id=$2 returning 1", status, build.ID).Scan(&one)
 			sherpaCheck(err, "updating build status in database")
 
 			if isStart {
-				var one int
 				q := "update build set start=now() where id=$1 returning 1"
 				sherpaCheckRow(tx.QueryRow(q, build.ID), &one, "marking start time for build in database")
 			}
@@ -334,7 +334,8 @@ func _doBuild(repo Repo, build Build, buildDir string) {
 			sherpaCheck(err, "inserting result into database")
 		}
 
-		_, err = tx.Exec("update build set status='success', coverage=$1, coverage_report_file=$2, version=$3 where id=$4", coverage, coverageReportFile, version, build.ID)
+		var one int
+		err = tx.QueryRow("update build set status='success', coverage=$1, coverage_report_file=$2, version=$3 where id=$4 returning 1", coverage, coverageReportFile, version, build.ID).Scan(&one)
 		sherpaCheck(err, "marking build as success in database")
 
 		events <- EventBuild{repo.Name, _build(tx, repo.Name, build.ID)}

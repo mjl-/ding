@@ -19,7 +19,7 @@ frontend:
 
 test:
 	golint
-	go test -race -coverprofile cover.out -- local/local-test.conf
+	CGO_ENABLED=1 go test -race -coverprofile cover.out -- local/local-test.conf
 	go tool cover -html=cover.out -o cover.html
 
 clean:
