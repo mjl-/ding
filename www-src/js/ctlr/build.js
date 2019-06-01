@@ -101,4 +101,8 @@ app.controller('Build', function($scope, $rootScope, $q, $location, $timeout, Ms
 			$location.path('/repo/' + repo.name + '/');
 		});
 	};
+
+	$scope.cancelBuild = function() {
+		return api.cancelBuild(repo.name, $scope.build.id);
+	};
 });

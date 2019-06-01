@@ -38,6 +38,11 @@ type msgRemoveSharedHome struct {
 	RepoName string
 }
 
+// Cancel potentially running command by buildID.
+type msgCancelCommand struct {
+	BuildID int32
+}
+
 // Message from unprivileged webserver to root process.
 // Only the first non-nil field is handled.
 type msg struct {
@@ -46,6 +51,7 @@ type msg struct {
 	RemoveBuilddir   *msgRemoveBuilddir
 	RemoveRepo       *msgRemoveRepo
 	RemoveSharedHome *msgRemoveSharedHome
+	CancelCommand    *msgCancelCommand
 }
 
 // request from one of the http handlers to httpserve's request mux

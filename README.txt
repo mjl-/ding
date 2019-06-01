@@ -113,7 +113,6 @@ Now run: "make build test"
 
 # Todo
 
-- allow aborting a build
 - add button to queue a build, low prio. then only run one low-prio job at a time. for rebuilds of all repo's after a toolchain update.
 - write test code
 - on reconnect after sse failure, make sure our state is up to date again. it isn't now.

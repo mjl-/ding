@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"syscall"
 
@@ -142,6 +143,8 @@ func serve(args []string) {
 			err = doMsgRemoveRepo(msg.RemoveRepo, enc)
 		case msg.RemoveSharedHome != nil:
 			err = doMsgRemoveSharedHome(msg.RemoveSharedHome, enc)
+		case msg.CancelCommand != nil:
+			err = doMsgCancelCommand(msg.CancelCommand, enc)
 		default:
 			log.Fatalf("no field set in msg %v", msg)
 		}
@@ -236,7 +239,20 @@ func doMsgRemoveSharedHome(msg *msgRemoveSharedHome, enc *gob.Encoder) error {
 	return err
 }
 
+func doMsgCancelCommand(msg *msgCancelCommand, enc *gob.Encoder) error {
+	buildIDCommandCancel(msg.BuildID)
+	return nil
+}
+
 func doMsgBuild(msg *msgBuild, enc *gob.Encoder, unixconn *net.UnixConn) error {
+	buildCommand := buildIDCommandRegister(msg.BuildID)
+	needCancel := true
+	defer func() {
+		if needCancel {
+			buildIDCommandCancel(msg.BuildID)
+		}
+	}()
+
 	outr, outw, err := os.Pipe()
 	check(err, "create stdout pipe")
 	defer outr.Close()
@@ -253,25 +269,16 @@ func doMsgBuild(msg *msgBuild, enc *gob.Encoder, unixconn *net.UnixConn) error {
 		return errBadParams
 	}
 
-	devnull, err := os.Open("/dev/null")
-	check(err, "opening /dev/null")
-	defer devnull.Close()
-
-	argv := []string{buildDir + "/scripts/build.sh"}
-	attr := &os.ProcAttr{
-		Dir: workDir,
-		Env: msg.Env,
-		Files: []*os.File{
-			devnull,
-			outw,
-			errw,
-		},
-	}
+	cmd := exec.CommandContext(buildCommand.ctx, buildDir+"/scripts/build.sh")
+	cmd.Dir = workDir
+	cmd.Env = msg.Env
+	cmd.Stdout = outw
+	cmd.Stderr = errw
 	if config.IsolateBuilds.Enabled {
 		if msg.UID < config.IsolateBuilds.UIDStart || msg.UID >= config.IsolateBuilds.UIDEnd {
 			return errBadParams
 		}
-		attr.Sys = &syscall.SysProcAttr{
+		cmd.SysProcAttr = &syscall.SysProcAttr{
 			Credential: &syscall.Credential{
 				Uid:    msg.UID,
 				Gid:    config.IsolateBuilds.DingGID,
@@ -279,7 +286,8 @@ func doMsgBuild(msg *msgBuild, enc *gob.Encoder, unixconn *net.UnixConn) error {
 			},
 		}
 	}
-	proc, err := os.StartProcess(argv[0], argv, attr)
+
+	err = cmd.Start()
 	if err != nil {
 		return err
 	}
@@ -293,13 +301,13 @@ func doMsgBuild(msg *msgBuild, enc *gob.Encoder, unixconn *net.UnixConn) error {
 	check(err, "sending fds from root to http")
 	statusr.Close()
 
+	needCancel = false
+
 	go func() {
 		defer statusw.Close()
+		defer buildIDCommandCancel(msg.BuildID)
 
-		state, err := proc.Wait()
-		if err == nil && !state.Success() {
-			err = fmt.Errorf(state.String())
-		}
+		err := cmd.Wait()
 		err = gob.NewEncoder(statusw).Encode(errstr(err))
 		check(err, "writing status to http-serve")
 	}()

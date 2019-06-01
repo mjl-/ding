@@ -14,10 +14,52 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/mjl-/sherpa"
 )
+
+// We run commands under a context, so we can cancel is from the UI. The context
+// for these commands are separate from the regular context that is used for
+// requests to initiate builds. Both the root serve process as the ding http-serve
+// process have their own bookkeeping of commands running for a build. The ding
+// httpserve process can run commands to clone a repository. The root serve process
+// runs the actual builds.
+type buildCommand struct {
+	ctx    context.Context
+	cancel func()
+}
+
+var buildIDCommands = struct {
+	sync.Mutex
+	commands map[int32]buildCommand
+}{
+	commands: make(map[int32]buildCommand),
+}
+
+// buildIDCommandRegister makes a new context for a buildID.
+// Once the build is done, buildIDCommandCancel must be called.
+func buildIDCommandRegister(buildID int32) buildCommand {
+	ctx, cancel := context.WithCancel(context.Background())
+	bc := buildCommand{ctx, cancel}
+	buildIDCommands.Lock()
+	buildIDCommands.commands[buildID] = bc
+	buildIDCommands.Unlock()
+	return bc
+}
+
+// buildIDCommandCancel must be called to cleanup the context-with-cancel. It is
+// also called to abort a running command.
+func buildIDCommandCancel(buildID int32) {
+	buildIDCommands.Lock()
+	bc, ok := buildIDCommands.commands[buildID]
+	delete(buildIDCommands.commands, buildID)
+	buildIDCommands.Unlock()
+	if ok {
+		bc.cancel()
+	}
+}
 
 func _prepareBuild(ctx context.Context, repoName, branch, commit string) (repo Repo, build Build, buildDir string) {
 	transact(ctx, func(tx *sql.Tx) {
@@ -104,6 +146,9 @@ func doBuild(ctx context.Context, repo Repo, build Build, buildDir string) {
 }
 
 func _doBuild(ctx context.Context, repo Repo, build Build, buildDir string) {
+	buildCmd := buildIDCommandRegister(build.ID)
+	defer buildIDCommandCancel(build.ID)
+
 	var homeDir string
 	if repo.UID != nil {
 		homeDir = fmt.Sprintf("%s/home/%s", dingDataDir, repo.Name)
@@ -206,10 +251,6 @@ func _doBuild(ctx context.Context, repo Repo, build Build, buildDir string) {
 	}
 	env = append(env, config.Environment...)
 
-	execCommand := func(args ...string) *exec.Cmd {
-		return exec.Command(args[0], args[1:]...)
-	}
-
 	runPrefix := func(args ...string) []string {
 		if len(config.Run) > 0 {
 			args = append(config.Run, args...)
@@ -223,7 +264,7 @@ func _doBuild(ctx context.Context, repo Repo, build Build, buildDir string) {
 	case "git":
 		// we clone without hard links because we chown later, don't want to mess up local git source repo's
 		// we have to clone as the user running ding. otherwise, git clone won't work due to ssh refusing to run as a user without a username ("No user exists for uid ...")
-		err = run(build.ID, env, "clone", buildDir, buildDir, runPrefix("git", "clone", "--recursive", "--no-hardlinks", "--branch", build.Branch, repo.Origin, "checkout/"+repo.CheckoutPath)...)
+		err = run(buildCmd.ctx, build.ID, env, "clone", buildDir, buildDir, runPrefix("git", "clone", "--recursive", "--no-hardlinks", "--branch", build.Branch, repo.Origin, "checkout/"+repo.CheckoutPath)...)
 		sherpaUserCheck(err, "cloning git repository")
 	case "mercurial":
 		cmd := []string{"hg", "clone", "--branch", build.Branch}
@@ -231,10 +272,10 @@ func _doBuild(ctx context.Context, repo Repo, build Build, buildDir string) {
 			cmd = append(cmd, "--rev", build.CommitHash, "--updaterev", build.CommitHash)
 		}
 		cmd = append(cmd, repo.Origin, "checkout/"+repo.CheckoutPath)
-		err = run(build.ID, env, "clone", buildDir, buildDir, runPrefix(cmd...)...)
+		err = run(buildCmd.ctx, build.ID, env, "clone", buildDir, buildDir, runPrefix(cmd...)...)
 		sherpaUserCheck(err, "cloning mercurial repository")
 	case "command":
-		err = run(build.ID, env, "clone", buildDir, buildDir, runPrefix("sh", "-c", repo.Origin)...)
+		err = run(buildCmd.ctx, build.ID, env, "clone", buildDir, buildDir, runPrefix("sh", "-c", repo.Origin)...)
 		sherpaUserCheck(err, "cloning repository from command")
 	default:
 		serverError("unexpected VCS " + repo.VCS)
@@ -262,7 +303,9 @@ func _doBuild(ctx context.Context, repo Repo, build Build, buildDir string) {
 			default:
 				serverError("unexpected VCS " + repo.VCS)
 			}
-			cmd := execCommand(runPrefix(command...)...)
+
+			argv := runPrefix(command...)
+			cmd := exec.CommandContext(buildCmd.ctx, argv[0], argv[1:]...)
 			cmd.Dir = checkoutDir
 			buf, err := cmd.Output()
 			sherpaCheck(err, "finding commit hash")
@@ -279,7 +322,7 @@ func _doBuild(ctx context.Context, repo Repo, build Build, buildDir string) {
 	}
 
 	if repo.VCS == "git" {
-		err = run(build.ID, env, "clone", buildDir, checkoutDir, runPrefix("git", "checkout", build.CommitHash)...)
+		err = run(buildCmd.ctx, build.ID, env, "clone", buildDir, checkoutDir, runPrefix("git", "checkout", build.CommitHash)...)
 		sherpaUserCheck(err, "checkout revision")
 	}
 
@@ -324,7 +367,7 @@ func _doBuild(ctx context.Context, repo Repo, build Build, buildDir string) {
 		wait <- err
 	}()
 	err = track(build.ID, "build", buildDir, result.stdout, result.stderr, wait)
-	sherpaUserCheck(err, "running command")
+	sherpaUserCheck(err, "build.sh")
 
 	transact(ctx, func(tx *sql.Tx) {
 		outputDir := buildDir + "/output"
@@ -432,12 +475,12 @@ func parseResults(repo Repo, build Build, checkoutDir, path string) (version str
 
 // start a command and return readers for its output and the final result of the command.
 // it mimics a command started through the root process under a unique uid.
-func setupCmd(buildID int32, env []string, step, buildDir, workDir string, path string, args ...string) (stdout, stderr io.ReadCloser, wait <-chan error, rerr error) {
+func setupCmd(cmdCtx context.Context, buildID int32, env []string, step, buildDir, workDir string, args ...string) (stdout, stderr io.ReadCloser, wait <-chan error, rerr error) {
 	type Error struct {
 		err error
 	}
 
-	var devnull, stdoutr, stdoutw, stderrr, stderrw *os.File
+	var stdoutr, stdoutw, stderrr, stderrw *os.File
 	defer func() {
 		close := func(f *os.File) {
 			if f != nil {
@@ -445,7 +488,6 @@ func setupCmd(buildID int32, env []string, step, buildDir, workDir string, path 
 			}
 		}
 		// always close subprocess-part of the fd's
-		close(devnull)
 		close(stdoutw)
 		close(stderrw)
 
@@ -472,49 +514,30 @@ func setupCmd(buildID int32, env []string, step, buildDir, workDir string, path 
 	}
 
 	var err error
-	devnull, err = os.Open("/dev/null")
-	xcheck(err, "open /dev/null")
-
 	stdoutr, stdoutw, err = os.Pipe()
 	xcheck(err, "pipe for stdout")
 
 	stderrr, stderrw, err = os.Pipe()
 	xcheck(err, "pipe for stderr")
 
-	attr := &os.ProcAttr{
-		Dir: workDir,
-		Env: env,
-		Files: []*os.File{
-			devnull,
-			stdoutw,
-			stderrw,
-		},
-	}
-	proc, err := os.StartProcess(path, args, attr)
-	xcheck(err, "command start")
+	cmd := exec.CommandContext(cmdCtx, args[0], args...)
+	cmd.Dir = workDir
+	cmd.Env = env
+	cmd.Stdout = stdoutw
+	cmd.Stderr = stderrw
+
+	err = cmd.Start()
+	xcheck(err, "starting command")
 
 	c := make(chan error, 1)
 	go func() {
-		state, err := proc.Wait()
-		if err == nil && !state.Success() {
-			err = fmt.Errorf(state.String())
-		}
-		c <- err
+		c <- cmd.Wait()
 	}()
 	return stdoutr, stderrr, c, nil
 }
 
-func run(buildID int32, env []string, step, buildDir, workDir string, args ...string) error {
-	path := args[0]
-	if filepath.Base(path) == path {
-		var err error
-		path, err = exec.LookPath(path)
-		if err != nil {
-			return fmt.Errorf("looking up path to command: %s", err)
-		}
-	}
-
-	cmdstdout, cmdstderr, wait, err := setupCmd(buildID, env, step, buildDir, workDir, path, args...)
+func run(cmdCtx context.Context, buildID int32, env []string, step, buildDir, workDir string, args ...string) error {
+	cmdstdout, cmdstderr, wait, err := setupCmd(cmdCtx, buildID, env, step, buildDir, workDir, args...)
 	if err != nil {
 		return fmt.Errorf("setting up command: %s", err)
 	}
@@ -648,8 +671,7 @@ func track(buildID int32, step, buildDir string, cmdstdout, cmdstderr io.ReadClo
 	}
 
 	// second, we wait for the command result
-	xcheck(<-wait, "command failed")
-	return
+	return <-wait
 }
 
 // disk usage, best effort

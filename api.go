@@ -158,6 +158,25 @@ func (Ding) CreateBuild(ctx context.Context, repoName, branch, commit string) Bu
 	return build
 }
 
+// CancelBuild cancels a currently running build.
+func (Ding) CancelBuild(ctx context.Context, repoName string, buildID int32) {
+	transact(ctx, func(tx *sql.Tx) {
+		repo := _repo(tx, repoName)
+
+		build := _build(tx, repo.Name, buildID)
+		if build.Finish != nil {
+			userError("Build has already finished")
+		}
+	})
+
+	// Cancel any commands in the http-serve process, like cloning.
+	buildIDCommandCancel(buildID)
+
+	// And cancel the actual build command controlled by the serve process.
+	cancelMsg := msg{CancelCommand: &msgCancelCommand{buildID}}
+	go requestPrivileged(cancelMsg)
+}
+
 func toJSON(v interface{}) string {
 	buf, err := json.Marshal(v)
 	sherpaCheck(err, "encoding to json")
@@ -171,10 +190,10 @@ func (Ding) CreateRelease(ctx context.Context, repoName string, buildID int32) (
 
 		build = _build(tx, repo.Name, buildID)
 		if build.Finish == nil {
-			panic(&sherpa.Error{Code: "userError", Message: "Build has not finished yet"})
+			userError("Build has not finished yet")
 		}
 		if build.Status != "success" {
-			panic(&sherpa.Error{Code: "userError", Message: "Build was not successful"})
+			userError("Build was not successful")
 		}
 
 		br := _buildResult(repo.Name, build)
@@ -463,7 +482,7 @@ func (Ding) RemoveBuild(ctx context.Context, buildID int32) {
 
 		build := _build(tx, repoName, buildID)
 		if build.Released != nil {
-			panic(&sherpa.Error{Code: "userError", Message: "Build has been released, cannot be removed"})
+			userError("Build has been released, cannot be removed")
 		}
 
 		_removeBuild(tx, repoName, buildID)
@@ -477,7 +496,7 @@ func (Ding) CleanupBuilddir(ctx context.Context, repoName string, buildID int32)
 	transact(ctx, func(tx *sql.Tx) {
 		build = _build(tx, repoName, buildID)
 		if build.BuilddirRemoved {
-			panic(&sherpa.Error{Code: "userError", Message: "Builddir already removed"})
+			userError("Builddir already removed")
 		}
 
 		err := tx.QueryRow("update build set builddir_removed=true where id=$1 returning id", buildID).Scan(&buildID)
