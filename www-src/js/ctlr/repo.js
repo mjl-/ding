@@ -8,7 +8,6 @@ app.controller('Repo', function($scope, $rootScope, $q, $location, $timeout, Msg
 		Util.crumb('repo/' + repo.name, 'Repo ' + repo.name)
 	]);
 
-
 	$scope.repo = repo;
 	$scope.repoUID = repo.uid !== null;
 	$scope.builds = builds;
@@ -95,6 +94,10 @@ app.controller('Repo', function($scope, $rootScope, $q, $location, $timeout, Msg
 		.then(function(nbuild) {
 			$location.path('/repo/' + repoName + '/build/' + nbuild.id + '/');
 		});
+	};
+
+	$scope.createBuildLowPrio = function(repoName, branch, commit) {
+		return api.createBuildLowPrio(repoName, branch, commit);
 	};
 
 	$scope.cleanupBuilddir = function(build) {

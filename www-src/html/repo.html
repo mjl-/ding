@@ -2,7 +2,7 @@
 	<div class="col-xs-12">
 		<div class="page-buttons btn-group">
 			<button btn="danger" icon="trash" loading-click="removeRepo()" uib-tooltip="Remove entire repository, including all builds and releases.">Remove repo</button>
-			<button btn="danger" icon="trash" loading-click="clearRepoHomedir()" uib-tooltip="Remove shared home directory (across builds">Clear home directory</button>
+			<button btn="danger" icon="trash" loading-click="clearRepoHomedir()" uib-tooltip="Remove shared home directory (across builds)">Clear home directory</button>
 			<div class="btn-group" uib-dropdown>
 				<button btn="default" icon="play" loading-click="createBuild(repo.name, repo.vcs === 'mercurial' ? 'default' : 'master')" uib-tooltip="Build latest commit on {{ repo.vcs === 'mercurial' ? 'default' : 'master' }} branch">Build {{ repo.vcs === 'mercurial' ? 'default' : 'master' }}</button>
 				<button type="button" btn="default" uib-dropdown-toggle>
@@ -12,6 +12,8 @@
 				<ul class="dropdown-menu" uib-dropdown-menu role="menu" aria-labelledby="split-button">
 					<li role="menuitem">
 						<a icon="play" loading-click="createBuild(repo.name, 'develop')" uib-tooltip="Build latest commit on develop branch">Build develop</a>
+						<a icon="play" loading-click="createBuildLowPrio(repo.name, repo.vcs === 'mercurial' ? 'default' : 'master')" uib-tooltip="Build latest commit on {{ repo.vcs === 'mercurial' ? 'default' : 'master'  }} branch with low priority">Build {{ repo.vcs === 'mercurial' ? 'default' : 'master' }} (low prio)</a>
+						<a icon="play" loading-click="createBuildLowPrio(repo.name, 'develop')" uib-tooltip="Build latest commit on develop branch with low priority">Build develop (low prio)</a>
 					</li>
 				</ul>
 			</div>
@@ -109,7 +111,7 @@ make release"></textarea>
 						<td><span ng-if="build.results.length === 1">1 file</span><span ng-if="build.results.length > 1">{{ build.results.length }} files</span></td>
 						<td>{{ build.version }}</td>
 						<td>{{ build.id }}</td>
-						<td><age time="build.start"></age></td>
+						<td><age time="build.created"></age></td>
 						<td>
 							<a ng-href="#/repo/{{ repo.name }}/release/{{ build.id }}/" btn="primary sm" icon="folder-open" uib-tooltip="Open release"></a>
 						</td>
@@ -146,7 +148,7 @@ make release"></textarea>
 				</tbody>
 				<tbody ng-repeat="build in builds | orderBy:'-id'">
 					<tr>
-						<td><build-status status="build.status" finish="build.finish" released="build.released"></build-status></td>
+						<td><build-status status="build.status" finish="build.finish" released="build.released" lowprio="build.low_prio"></build-status></td>
 						<td>{{ build.branch }}</td>
 						<td>{{ build.version }}</td>
 						<td><span ng-if="build.results.length === 1">1 file</span><span ng-if="build.results.length > 1">{{ build.results.length }} files</span></td>
@@ -156,7 +158,7 @@ make release"></textarea>
 						<td>
 							<filesize size="build.disk_usage"></filesize><span ng-if="build.home_disk_usage_delta &gt; 0">{{ build.home_disk_usage_delta &gt; 0 ? '+' : '' }}<filesize size="build.home_disk_usage_delta"></filesize></span>
 						</td>
-						<td><age time="build.start"></age></td>
+						<td><age time="build.created"></age></td>
 						<td style="min-width: 15rem">
 							<div class="btn-group">
 								<button type="button" btn="default sm" icon="repeat" saving-click="createBuild(repo.name, build.branch, build.commit_hash)" uib-tooltip="Rebuild this revision"></button>

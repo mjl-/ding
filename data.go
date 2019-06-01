@@ -49,6 +49,10 @@ type Build struct {
 	CoverageReportFile string     `json:"coverage_report_file"` // Relative to URL /dl/<reponame>/<buildid>.
 	Version            string     `json:"version"`              // Version if this build, typically contains a semver version, with optional commit count/hash, perhaps a branch.
 
+	// Low-prio builds run after regular builds for a repo have finished. And we only
+	// run one low-prio build in ding at a time. Useful after a toolchain update.
+	LowPrio bool `json:"low_prio"`
+
 	LastLine  string `json:"last_line"`  // Last line from last steps output.
 	DiskUsage int64  `json:"disk_usage"` // Disk usage for build.
 

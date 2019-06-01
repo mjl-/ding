@@ -2,6 +2,8 @@
 	<div class="col-xs-12">
 		<div class="page-buttons">
 			<div class="btn-group">
+				<button btn="danger" icon="trash" loading-click="clearRepoHomedirs()" uib-tooltip="Remove shared home directories (across builds) for all repositories">Clear home directories</button>
+				<button btn="default" icon="play" loading-click="createLowPrioBuilds()" uib-tooltip="Create low priority builds for all repositories for the main branch (master for git, develop for mercurial). Only one low priority build runs at a time in ding. And per repository always after regular builds.">Build all ↓</button>
 				<button loading-click="newRepo()" btn="success" icon="plus-circle">New repository</button>
 			</div>
 		</div>
@@ -46,7 +48,7 @@
 						</td>
 						<td>{{ build.branch }}</td>
 						<td>
-							<build-status status="build.status" finish="build.finish" released="build.released"></build-status>
+							<build-status status="build.status" finish="build.finish" released="build.released" lowprio="build.low_prio"></build-status>
 							<span ng-if="build.results.length > 0">{{ build.results.length === 1 ? '1 file' : '' + build.results.length + ' files' }}</span>
 							<div ng-if="build.finish && build.status !== 'success'" style="white-space: pre-wrap; margin-bottom: 2rem">{{ build.last_line }}
 {{ build.error_message }}</div>
@@ -56,7 +58,7 @@
 						<td><coverage build="build" repo="repoBuild.repo"></coverage></td>
 						<td><buildtime start="build.start" finish="build.finish"></buildtime></td>
 						<td><filesize size="build.disk_usage"></filesize></td>
-						<td><age time="build.start"></age></td>
+						<td><age time="build.created"></age></td>
 						<td>
 							<a class="btn btn-default" ng-href="#/repo/{{ repoBuild.repo.name }}/build/{{ build.id }}/" link-disabled="build.builddir_removed">Open</a>
 						</td>

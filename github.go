@@ -93,7 +93,7 @@ func githubHookHandler(w http.ResponseWriter, r *http.Request) {
 		branch = event.Ref[len("refs/heads/"):]
 	}
 	commit := event.After
-	repo, build, buildDir, err := prepareBuild(r.Context(), repoName, branch, commit)
+	repo, build, buildDir, err := prepareBuild(r.Context(), repoName, branch, commit, false)
 	if err != nil {
 		log.Printf("github webhook: error starting build for push event for repo %s, branch %s, commit %s", repoName, branch, commit)
 		http.Error(w, "could not create build", 500)

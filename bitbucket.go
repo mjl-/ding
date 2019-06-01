@@ -140,7 +140,7 @@ func bitbucketHookHandler(w http.ResponseWriter, r *http.Request) {
 		for _, head := range change.New.Heads {
 			if head.Type == "commit" {
 				commit := head.Hash
-				repo, build, buildDir, err := prepareBuild(r.Context(), repoName, branch, commit)
+				repo, build, buildDir, err := prepareBuild(r.Context(), repoName, branch, commit, false)
 				if err != nil {
 					log.Printf("bitbucket webhook: error starting build for push event for repo %s, branch %s, commit %s", repoName, branch, commit)
 					http.Error(w, "could not create build", 500)

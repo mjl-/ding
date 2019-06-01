@@ -3,7 +3,7 @@
 /* global app, api, _, console */
 'use strict';
 
-app.controller('Index', function($scope, $rootScope, $q, $uibModal, $location, $timeout, Util, repoBuilds) {
+app.controller('Index', function($scope, $rootScope, $q, $uibModal, $location, $timeout, Msg, Util, repoBuilds) {
 	$rootScope.breadcrumbs = Util.crumbs([]);
 
 	$scope.repoBuilds = repoBuilds;
@@ -118,6 +118,16 @@ app.controller('Index', function($scope, $rootScope, $q, $uibModal, $location, $
 			return new Date().getTime() - new Date(tm).getTime();
 		}
 		return Infinity;
+	};
+
+	$scope.clearRepoHomedirs = function() {
+		return Msg.confirm('Are you sure?', function() {
+			return api.clearRepoHomedirs();
+		});
+	};
+
+	$scope.createLowPrioBuilds = function() {
+		return api.createLowPrioBuilds();
 	};
 
 	$scope.newRepo = function() {

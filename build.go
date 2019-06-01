@@ -61,12 +61,12 @@ func buildIDCommandCancel(buildID int32) {
 	}
 }
 
-func _prepareBuild(ctx context.Context, repoName, branch, commit string) (repo Repo, build Build, buildDir string) {
+func _prepareBuild(ctx context.Context, repoName, branch, commit string, lowPrio bool) (repo Repo, build Build, buildDir string) {
 	transact(ctx, func(tx *sql.Tx) {
 		repo = _repo(tx, repoName)
 
-		q := `insert into build (repo_id, branch, commit_hash, status) values ($1, $2, $3, $4) returning id`
-		sherpaCheckRow(tx.QueryRow(q, repo.ID, branch, commit, "new"), &build.ID, "inserting new build into database")
+		q := `insert into build (repo_id, branch, commit_hash, status, low_prio) values ($1, $2, $3, $4, $5) returning id`
+		sherpaCheckRow(tx.QueryRow(q, repo.ID, branch, commit, "new", lowPrio), &build.ID, "inserting new build into database")
 
 		buildDir = fmt.Sprintf("%s/build/%s/%d", dingDataDir, repo.Name, build.ID)
 		err := os.MkdirAll(buildDir, 0777)
@@ -112,7 +112,7 @@ func writeFile(path, content string) {
 	sherpaCheck(err, "writing file")
 }
 
-func prepareBuild(ctx context.Context, repoName, branch, commit string) (repo Repo, build Build, buildDir string, err error) {
+func prepareBuild(ctx context.Context, repoName, branch, commit string, lowPrio bool) (repo Repo, build Build, buildDir string, err error) {
 	if branch == "" {
 		err = fmt.Errorf("branch cannot be empty")
 		return
@@ -128,13 +128,14 @@ func prepareBuild(ctx context.Context, repoName, branch, commit string) (repo Re
 			panic(xerr)
 		}
 	}()
-	repo, build, buildDir = _prepareBuild(ctx, repoName, branch, commit)
+	repo, build, buildDir = _prepareBuild(ctx, repoName, branch, commit, lowPrio)
 	return repo, build, buildDir, nil
 }
 
 func doBuild(ctx context.Context, repo Repo, build Build, buildDir string) {
 	job := job{
 		repo.Name,
+		build.LowPrio,
 		make(chan struct{}),
 	}
 	newJobs <- job

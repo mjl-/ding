@@ -27,15 +27,15 @@ app
 				if (sec < 60) {
 					age = 'now';
 				} else if (sec < 120*60) {
-					age = Math.round(sec / 60) + 'm';
+					age = Math.floor(sec / 60) + 'm';
 				} else if (sec < 48*3600) {
-					age = Math.round(sec / 3600) + 'h';
+					age = Math.floor(sec / 3600) + 'h';
 					wait = 60 * 1000;
 				} else if (sec < 21*24*3600) {
-					age = Math.round(sec / (24*3600)) + 'd';
+					age = Math.floor(sec / (24*3600)) + 'd';
 					wait = 3600 * 1000;
 				} else {
-					age = Math.round(sec / (7*24*3600)) + 'w';
+					age = Math.floor(sec / (7*24*3600)) + 'w';
 					wait = 24 * 3600 * 1000;
 				}
 				$timeout(function() {

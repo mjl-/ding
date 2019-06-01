@@ -136,11 +136,21 @@ func _build(tx *sql.Tx, repoName string, id int32) (b Build) {
 // CreateBuild builds a specific commit in the background, returning immediately.
 // `Commit` can be empty, in which case the origin is cloned and the checked out commit is looked up.
 func (Ding) CreateBuild(ctx context.Context, repoName, branch, commit string) Build {
+	return createBuildPrio(ctx, repoName, branch, commit, false)
+}
+
+// CreateBuildLowPrio creates a build, but with low priority.
+// Low priority builds are executed after regular builds. And only one low priority build is running over all repo's.
+func (Ding) CreateBuildLowPrio(ctx context.Context, repoName, branch, commit string) Build {
+	return createBuildPrio(ctx, repoName, branch, commit, true)
+}
+
+func createBuildPrio(ctx context.Context, repoName, branch, commit string, lowPrio bool) Build {
 	if branch == "" {
 		userError("Branch cannot be empty.")
 	}
 
-	repo, build, buildDir := _prepareBuild(ctx, repoName, branch, commit)
+	repo, build, buildDir := _prepareBuild(ctx, repoName, branch, commit, lowPrio)
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
@@ -156,6 +166,41 @@ func (Ding) CreateBuild(ctx context.Context, repoName, branch, commit string) Bu
 		doBuild(context.Background(), repo, build, buildDir)
 	}()
 	return build
+}
+
+// CreateLowPrioBuilds creates low priority builds for each repository, for the master/default branch.
+func (Ding) CreateLowPrioBuilds(ctx context.Context) {
+	var repos []Repo
+	transact(ctx, func(tx *sql.Tx) {
+		q := `select coalesce(json_agg(repo.* order by id desc), '[]') from repo where uid is not null`
+		sherpaCheckRow(tx.QueryRow(q), &repos, "fetching repo names to clear from database")
+	})
+
+	lowPrio := true
+	commit := ""
+
+	for _, repo := range repos {
+		branch := "default"
+		if repo.VCS != "mercurial" {
+			branch = "master"
+		}
+
+		repo, build, buildDir := _prepareBuild(ctx, repo.Name, branch, commit, lowPrio)
+		go func() {
+			defer func() {
+				if err := recover(); err != nil {
+					if serr, ok := err.(*sherpa.Error); ok {
+						if serr.Code != "userError" {
+							log.Println("background build failed:", serr.Message)
+						}
+					} else {
+						panic(err)
+					}
+				}
+			}()
+			doBuild(context.Background(), repo, build, buildDir)
+		}()
+	}
 }
 
 // CancelBuild cancels a currently running build.
@@ -389,8 +434,29 @@ func (Ding) ClearRepoHomedir(ctx context.Context, repoName string) {
 	transact(context.Background(), func(tx *sql.Tx) {
 		q := `update repo set home_disk_usage=0 where id=$1 returning 1`
 		var one int
-		sherpaCheckRow(tx.QueryRow(q, r.ID), &one, "updating repo in database")
+		sherpaCheckRow(tx.QueryRow(q, r.ID), &one, "updating repo home disk usage in database")
 	})
+}
+
+// ClearRepoHomedirs removes the home directory of all repositories.
+func (Ding) ClearRepoHomedirs(ctx context.Context) {
+	var repos []Repo
+	transact(ctx, func(tx *sql.Tx) {
+		q := `select coalesce(json_agg(repo.*), '[]') from repo where uid is not null`
+		sherpaCheckRow(tx.QueryRow(q), &repos, "fetching repo names to clear from database")
+	})
+
+	for _, repo := range repos {
+		msg := msg{RemoveSharedHome: &msgRemoveSharedHome{repo.Name}}
+		err := requestPrivileged(msg)
+		sherpaCheck(err, "privileged RemoveSharedHome")
+
+		transact(context.Background(), func(tx *sql.Tx) {
+			q := `update repo set home_disk_usage=0 where id=$1 returning 1`
+			var one int
+			sherpaCheckRow(tx.QueryRow(q, repo.ID), &one, "updating repo home disk usage in database")
+		})
+	}
 }
 
 // RemoveRepo removes a repository and all its builds.

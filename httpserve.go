@@ -27,6 +27,7 @@ import (
 
 type job struct {
 	repoName string
+	lowPrio  bool
 	rc       chan struct{}
 }
 
@@ -145,8 +146,10 @@ func servehttp(args []string) {
 	newJobs = make(chan job, 1)
 	finishedJobs = make(chan string, 1)
 	go func() {
-		active := map[string]struct{}{}
+		active := map[string]bool{} // Repo name -> is low prio
 		pending := map[string][]job{}
+		pendingLowPrio := []job{}
+		lowPrioBusy := false
 
 		kick := func(repoName string) {
 			if _, ok := active[repoName]; ok {
@@ -158,19 +161,45 @@ func servehttp(args []string) {
 			}
 			job := jobs[0]
 			pending[repoName] = jobs[1:]
-			active[repoName] = struct{}{}
+			active[repoName] = false
 			job.rc <- struct{}{}
+		}
+
+		kickLowPrio := func() {
+			if lowPrioBusy {
+				return
+			}
+			for i, job := range pendingLowPrio {
+				_, ok := active[job.repoName]
+				if len(pending[job.repoName]) == 0 && !ok {
+					lowPrioBusy = true
+					pendingLowPrio = append(pendingLowPrio[:i], pendingLowPrio[i+1:]...)
+					active[job.repoName] = true
+					job.rc <- struct{}{}
+					return
+				}
+			}
 		}
 
 		for {
 			select {
 			case job := <-newJobs:
-				pending[job.repoName] = append(pending[job.repoName], job)
-				kick(job.repoName)
+				if job.lowPrio {
+					pendingLowPrio = append(pendingLowPrio, job)
+					kickLowPrio()
+				} else {
+					pending[job.repoName] = append(pending[job.repoName], job)
+					kick(job.repoName)
+				}
 
 			case repoName := <-finishedJobs:
+				lowPrio := active[repoName]
 				delete(active, repoName)
 				kick(repoName)
+				if lowPrio {
+					lowPrioBusy = false
+					kickLowPrio()
+				}
 			}
 		}
 	}()
@@ -216,6 +245,7 @@ func servehttp(args []string) {
 		func(repo Repo, build Build) {
 			job := job{
 				repo.Name,
+				build.LowPrio,
 				make(chan struct{}),
 			}
 			newJobs <- job
