@@ -2,6 +2,7 @@ package main
 
 import (
 	"compress/gzip"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -30,7 +31,7 @@ type Ding struct {
 
 // Status checks the health of the application.
 // If backend connectivity is broken, this sherpa call results in a 500 internal server error. Useful for monitoring tools.
-func (Ding) Status() {
+func (Ding) Status(ctx context.Context) {
 	type what int
 	const (
 		filesystem what = iota
@@ -134,12 +135,12 @@ func _build(tx *sql.Tx, repoName string, id int32) (b Build) {
 
 // CreateBuild builds a specific commit in the background, returning immediately.
 // `Commit` can be empty, in which case the origin is cloned and the checked out commit is looked up.
-func (Ding) CreateBuild(repoName, branch, commit string) Build {
+func (Ding) CreateBuild(ctx context.Context, repoName, branch, commit string) Build {
 	if branch == "" {
 		userError("Branch cannot be empty.")
 	}
 
-	repo, build, buildDir := _prepareBuild(repoName, branch, commit)
+	repo, build, buildDir := _prepareBuild(ctx, repoName, branch, commit)
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
@@ -152,7 +153,7 @@ func (Ding) CreateBuild(repoName, branch, commit string) Build {
 				}
 			}
 		}()
-		doBuild(repo, build, buildDir)
+		doBuild(context.Background(), repo, build, buildDir)
 	}()
 	return build
 }
@@ -164,8 +165,8 @@ func toJSON(v interface{}) string {
 }
 
 // CreateRelease release a build.
-func (Ding) CreateRelease(repoName string, buildID int32) (build Build) {
-	transact(func(tx *sql.Tx) {
+func (Ding) CreateRelease(ctx context.Context, repoName string, buildID int32) (build Build) {
+	transact(ctx, func(tx *sql.Tx) {
 		repo := _repo(tx, repoName)
 
 		build = _build(tx, repo.Name, buildID)
@@ -231,7 +232,7 @@ func fileCopy(src, dst string) {
 // A branch is active if its name is "master" (for git), "default" (for hg), or
 // "develop", or if the last build was less than 4 weeks ago. The most recent
 // completed build is returned, and optionally the first build in progress.
-func (Ding) RepoBuilds() (rb []RepoBuilds) {
+func (Ding) RepoBuilds(ctx context.Context) (rb []RepoBuilds) {
 	q := `
 		with repo_branch_builds as (
 				select *
@@ -264,7 +265,7 @@ func (Ding) RepoBuilds() (rb []RepoBuilds) {
 			group by repo.id
 		) repobuilds
 	`
-	sherpaCheckRow(database.QueryRow(q), &rb, "fetching repobuilds")
+	sherpaCheckRow(database.QueryRowContext(ctx, q), &rb, "fetching repobuilds")
 	for _, e := range rb {
 		for i, b := range e.Builds {
 			fillBuild(e.Repo.Name, &b)
@@ -275,17 +276,17 @@ func (Ding) RepoBuilds() (rb []RepoBuilds) {
 }
 
 // Repo returns the named repository.
-func (Ding) Repo(repoName string) (repo Repo) {
-	transact(func(tx *sql.Tx) {
+func (Ding) Repo(ctx context.Context, repoName string) (repo Repo) {
+	transact(ctx, func(tx *sql.Tx) {
 		repo = _repo(tx, repoName)
 	})
 	return
 }
 
 // Builds returns builds for a repo.
-func (Ding) Builds(repoName string) (builds []Build) {
+func (Ding) Builds(ctx context.Context, repoName string) (builds []Build) {
 	q := `select coalesce(json_agg(bwr.* order by start desc), '[]') from build_with_result bwr join repo on bwr.repo_id = repo.id where repo.name=$1`
-	sherpaCheckRow(database.QueryRow(q, repoName), &builds, "fetching builds")
+	sherpaCheckRow(database.QueryRowContext(ctx, q, repoName), &builds, "fetching builds")
 	for i, b := range builds {
 		fillBuild(repoName, &b)
 		builds[i] = b
@@ -311,10 +312,10 @@ func _assignRepoUID(tx *sql.Tx) (uid uint32) {
 
 // CreateRepo creates a new repository.
 // If repo.UID is not null, a unique uid is assigned.
-func (Ding) CreateRepo(repo Repo) (r Repo) {
+func (Ding) CreateRepo(ctx context.Context, repo Repo) (r Repo) {
 	_checkRepo(repo)
 
-	transact(func(tx *sql.Tx) {
+	transact(ctx, func(tx *sql.Tx) {
 		var uid interface{}
 		if repo.UID != nil {
 			uid = _assignRepoUID(tx)
@@ -331,10 +332,10 @@ func (Ding) CreateRepo(repo Repo) (r Repo) {
 }
 
 // SaveRepo changes a repository.
-func (Ding) SaveRepo(repo Repo) (r Repo) {
+func (Ding) SaveRepo(ctx context.Context, repo Repo) (r Repo) {
 	_checkRepo(repo)
 
-	transact(func(tx *sql.Tx) {
+	transact(ctx, func(tx *sql.Tx) {
 		r = _repo(tx, repo.Name)
 		var uid interface{}
 		if r.UID == nil && repo.UID != nil {
@@ -353,9 +354,9 @@ func (Ding) SaveRepo(repo Repo) (r Repo) {
 }
 
 // ClearRepoHomedir removes the home directory this repository shares across builds.
-func (Ding) ClearRepoHomedir(repoName string) {
+func (Ding) ClearRepoHomedir(ctx context.Context, repoName string) {
 	var r Repo
-	transact(func(tx *sql.Tx) {
+	transact(ctx, func(tx *sql.Tx) {
 		r = _repo(tx, repoName)
 		if r.UID == nil {
 			userError("repo does not share home directory across builds")
@@ -366,7 +367,7 @@ func (Ding) ClearRepoHomedir(repoName string) {
 	err := requestPrivileged(msg)
 	sherpaCheck(err, "privileged RemoveSharedHome")
 
-	transact(func(tx *sql.Tx) {
+	transact(context.Background(), func(tx *sql.Tx) {
 		q := `update repo set home_disk_usage=0 where id=$1 returning 1`
 		var one int
 		sherpaCheckRow(tx.QueryRow(q, r.ID), &one, "updating repo in database")
@@ -374,8 +375,8 @@ func (Ding) ClearRepoHomedir(repoName string) {
 }
 
 // RemoveRepo removes a repository and all its builds.
-func (Ding) RemoveRepo(repoName string) {
-	transact(func(tx *sql.Tx) {
+func (Ding) RemoveRepo(ctx context.Context, repoName string) {
+	transact(ctx, func(tx *sql.Tx) {
 		_repo(tx, repoName)
 
 		_, err := tx.Exec(`delete from result where build_id in (select id from build where repo_id in (select id from repo where name=$1))`, repoName)
@@ -431,9 +432,9 @@ func _buildResult(repoName string, build Build) (br BuildResult) {
 }
 
 // BuildResult returns the results of the requested build.
-func (Ding) BuildResult(repoName string, buildID int32) (br BuildResult) {
+func (Ding) BuildResult(ctx context.Context, repoName string, buildID int32) (br BuildResult) {
 	var build Build
-	transact(func(tx *sql.Tx) {
+	transact(ctx, func(tx *sql.Tx) {
 		build = _build(tx, repoName, buildID)
 	})
 	br = _buildResult(repoName, build)
@@ -442,8 +443,8 @@ func (Ding) BuildResult(repoName string, buildID int32) (br BuildResult) {
 }
 
 // Release fetches the build config and results for a release.
-func (Ding) Release(repoName string, buildID int32) (br BuildResult) {
-	transact(func(tx *sql.Tx) {
+func (Ding) Release(ctx context.Context, repoName string, buildID int32) (br BuildResult) {
+	transact(ctx, func(tx *sql.Tx) {
 		build := _build(tx, repoName, buildID)
 
 		q := `select row_to_json(release.*) from release where build_id=$1`
@@ -454,9 +455,9 @@ func (Ding) Release(repoName string, buildID int32) (br BuildResult) {
 }
 
 // RemoveBuild removes a build completely. Both from database and all local files.
-func (Ding) RemoveBuild(buildID int32) {
+func (Ding) RemoveBuild(ctx context.Context, buildID int32) {
 	var repoName string
-	transact(func(tx *sql.Tx) {
+	transact(ctx, func(tx *sql.Tx) {
 		qrepo := `select to_json(repo.name) from build join repo on build.repo_id = repo.id where build.id = $1`
 		sherpaCheckRow(tx.QueryRow(qrepo, buildID), &repoName, "fetching repo name from database")
 
@@ -472,8 +473,8 @@ func (Ding) RemoveBuild(buildID int32) {
 
 // CleanupBuilddir cleans up (removes) a build directory.
 // This does not remove the build itself from the database.
-func (Ding) CleanupBuilddir(repoName string, buildID int32) (build Build) {
-	transact(func(tx *sql.Tx) {
+func (Ding) CleanupBuilddir(ctx context.Context, repoName string, buildID int32) (build Build) {
+	transact(ctx, func(tx *sql.Tx) {
 		build = _build(tx, repoName, buildID)
 		if build.BuilddirRemoved {
 			panic(&sherpa.Error{Code: "userError", Message: "Builddir already removed"})

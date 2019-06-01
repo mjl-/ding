@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"database/sql"
 	"encoding/gob"
 	"fmt"
@@ -18,8 +19,8 @@ import (
 	"github.com/mjl-/sherpa"
 )
 
-func _prepareBuild(repoName, branch, commit string) (repo Repo, build Build, buildDir string) {
-	transact(func(tx *sql.Tx) {
+func _prepareBuild(ctx context.Context, repoName, branch, commit string) (repo Repo, build Build, buildDir string) {
+	transact(ctx, func(tx *sql.Tx) {
 		repo = _repo(tx, repoName)
 
 		q := `insert into build (repo_id, branch, commit_hash, status) values ($1, $2, $3, $4) returning id`
@@ -69,7 +70,7 @@ func writeFile(path, content string) {
 	sherpaCheck(err, "writing file")
 }
 
-func prepareBuild(repoName, branch, commit string) (repo Repo, build Build, buildDir string, err error) {
+func prepareBuild(ctx context.Context, repoName, branch, commit string) (repo Repo, build Build, buildDir string, err error) {
 	if branch == "" {
 		err = fmt.Errorf("branch cannot be empty")
 		return
@@ -81,13 +82,15 @@ func prepareBuild(repoName, branch, commit string) (repo Repo, build Build, buil
 		}
 		if serr, ok := xerr.(*sherpa.Error); ok {
 			err = fmt.Errorf("%s", serr.Error())
+		} else {
+			panic(xerr)
 		}
 	}()
-	repo, build, buildDir = _prepareBuild(repoName, branch, commit)
+	repo, build, buildDir = _prepareBuild(ctx, repoName, branch, commit)
 	return repo, build, buildDir, nil
 }
 
-func doBuild(repo Repo, build Build, buildDir string) {
+func doBuild(ctx context.Context, repo Repo, build Build, buildDir string) {
 	job := job{
 		repo.Name,
 		make(chan struct{}),
@@ -97,10 +100,10 @@ func doBuild(repo Repo, build Build, buildDir string) {
 	defer func() {
 		finishedJobs <- job.repoName
 	}()
-	_doBuild(repo, build, buildDir)
+	_doBuild(ctx, repo, build, buildDir)
 }
 
-func _doBuild(repo Repo, build Build, buildDir string) {
+func _doBuild(ctx context.Context, repo Repo, build Build, buildDir string) {
 	var homeDir string
 	if repo.UID != nil {
 		homeDir = fmt.Sprintf("%s/home/%s", dingDataDir, repo.Name)
@@ -117,7 +120,7 @@ func _doBuild(repo Repo, build Build, buildDir string) {
 			homeDiskUsageDelta = homeDiskUsage - repo.HomeDiskUsage
 		}
 
-		transact(func(tx *sql.Tx) {
+		transact(ctx, func(tx *sql.Tx) {
 			var one int
 			qBuild := `update build set finish=NOW(), disk_usage=$1, home_disk_usage_delta=$2 where id=$3 returning 1`
 			err := tx.QueryRow(qBuild, build.DiskUsage, homeDiskUsageDelta, build.ID).Scan(&one)
@@ -132,12 +135,12 @@ func _doBuild(repo Repo, build Build, buildDir string) {
 			events <- EventBuild{repo.Name, _build(tx, repo.Name, build.ID)}
 		})
 
-		_cleanupBuilds(repo.Name, build.Branch)
+		_cleanupBuilds(ctx, repo.Name, build.Branch)
 
 		r := recover()
 		if r != nil {
 			if serr, ok := r.(*sherpa.Error); ok && serr.Code == "userError" {
-				transact(func(tx *sql.Tx) {
+				transact(ctx, func(tx *sql.Tx) {
 					err := tx.QueryRow(`update build set error_message=$1 where id=$2 returning id`, serr.Message, build.ID).Scan(&build.ID)
 					sherpaCheck(err, "updating error message in database")
 					events <- EventBuild{repo.Name, _build(tx, repo.Name, build.ID)}
@@ -148,11 +151,11 @@ func _doBuild(repo Repo, build Build, buildDir string) {
 		}
 
 		var prevStatus string
-		err := database.QueryRow("select status from build join repo on build.repo_id = repo.id and repo.name = $1 and build.branch = $2 order by build.id desc offset 1 limit 1", repo.Name, build.Branch).Scan(&prevStatus)
+		err := database.QueryRowContext(ctx, "select status from build join repo on build.repo_id = repo.id and repo.name = $1 and build.branch = $2 order by build.id desc offset 1 limit 1", repo.Name, build.Branch).Scan(&prevStatus)
 		if r != nil && (err != nil || prevStatus == "success") {
 
 			// for build.LastLine
-			transact(func(tx *sql.Tx) {
+			transact(ctx, func(tx *sql.Tx) {
 				build = _build(tx, repo.Name, build.ID)
 			})
 			fillBuild(repo.Name, &build)
@@ -177,7 +180,7 @@ func _doBuild(repo Repo, build Build, buildDir string) {
 	}()
 
 	_updateStatus := func(status string, isStart bool) {
-		transact(func(tx *sql.Tx) {
+		transact(ctx, func(tx *sql.Tx) {
 			var one int
 			err := tx.QueryRow("update build set status=$1 where id=$2 returning 1", status, build.ID).Scan(&one)
 			sherpaCheck(err, "updating build status in database")
@@ -268,7 +271,7 @@ func _doBuild(repo Repo, build Build, buildDir string) {
 		if build.CommitHash == "" {
 			sherpaCheck(fmt.Errorf("cannot find commit hash"), "finding commit hash")
 		}
-		transact(func(tx *sql.Tx) {
+		transact(ctx, func(tx *sql.Tx) {
 			err = tx.QueryRow(`update build set commit_hash=$1 where id=$2 returning id`, build.CommitHash, build.ID).Scan(&build.ID)
 			sherpaCheck(err, "updating commit hash in database")
 			events <- EventBuild{repo.Name, _build(tx, repo.Name, build.ID)}
@@ -323,7 +326,7 @@ func _doBuild(repo Repo, build Build, buildDir string) {
 	err = track(build.ID, "build", buildDir, result.stdout, result.stderr, wait)
 	sherpaUserCheck(err, "running command")
 
-	transact(func(tx *sql.Tx) {
+	transact(ctx, func(tx *sql.Tx) {
 		outputDir := buildDir + "/output"
 		version, results, coverage, coverageReportFile := parseResults(repo, build, checkoutDir, outputDir+"/build.stdout")
 
@@ -342,7 +345,7 @@ func _doBuild(repo Repo, build Build, buildDir string) {
 	})
 }
 
-func _cleanupBuilds(repoName, branch string) {
+func _cleanupBuilds(ctx context.Context, repoName, branch string) {
 	var builds []Build
 	q := `
 		select coalesce(json_agg(x.* order by x.id desc), '[]')
@@ -352,14 +355,14 @@ func _cleanupBuilds(repoName, branch string) {
 			where repo.name=$1 and build.branch=$2
 		) x
 	`
-	sherpaCheckRow(database.QueryRow(q, repoName, branch), &builds, "fetching builds from database")
+	sherpaCheckRow(database.QueryRowContext(ctx, q, repoName, branch), &builds, "fetching builds from database")
 	now := time.Now()
 	for index, b := range builds {
 		if index == 0 || b.Released != nil {
 			continue
 		}
 		if index >= 10 || (b.Finish != nil && now.Sub(*b.Finish) > 14*24*3600*time.Second) {
-			transact(func(tx *sql.Tx) {
+			transact(ctx, func(tx *sql.Tx) {
 				_removeBuild(tx, repoName, b.ID)
 			})
 			events <- EventRemoveBuild{repoName, b.ID}

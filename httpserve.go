@@ -2,6 +2,7 @@ package main
 
 import (
 	"compress/gzip"
+	"context"
 	"database/sql"
 	"encoding/gob"
 	"encoding/json"
@@ -225,7 +226,7 @@ func servehttp(args []string) {
 				}()
 
 				buildDir := fmt.Sprintf("%s/build/%s/%d", dingDataDir, repo.Name, build.ID)
-				_doBuild(repo, build, buildDir)
+				_doBuild(context.Background(), repo, build, buildDir)
 			}()
 		}(repoBuild.Repo, repoBuild.Build)
 	}
@@ -442,7 +443,7 @@ func serveResult(w http.ResponseWriter, r *http.Request) {
 		Filenames    []string `json:"filenames"`
 	}
 	var buf []byte
-	err = database.QueryRow(q, repoName, buildID).Scan(&buf)
+	err = database.QueryRowContext(r.Context(), q, repoName, buildID).Scan(&buf)
 	if err == sql.ErrNoRows {
 		http.NotFound(w, r)
 		return

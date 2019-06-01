@@ -1,19 +1,17 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"log"
 )
 
-func transact(fn func(tx *sql.Tx)) {
-	tx, err := database.Begin()
+func transact(ctx context.Context, fn func(tx *sql.Tx)) {
+	tx, err := database.BeginTx(ctx, nil)
 	sherpaCheck(err, "starting database transaction")
-	defer func() {
-		if e := recover(); e != nil {
-			defer func() {
-				panic(e)
-			}()
 
+	defer func() {
+		if tx != nil {
 			ee := tx.Rollback()
 			if ee != nil {
 				log.Println("rolling back:", ee)
@@ -22,5 +20,6 @@ func transact(fn func(tx *sql.Tx)) {
 	}()
 	fn(tx)
 	err = tx.Commit()
+	tx = nil
 	sherpaCheck(err, "committing database transaction")
 }

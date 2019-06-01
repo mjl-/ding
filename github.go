@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/sha1"
 	"database/sql"
@@ -29,7 +30,7 @@ func githubHookHandler(w http.ResponseWriter, r *http.Request) {
 	repoName := r.URL.Path[len("/github/"):]
 
 	var vcs string
-	err := database.QueryRow("select vcs from repo where name=$1", repoName).Scan(&vcs)
+	err := database.QueryRowContext(r.Context(), "select vcs from repo where name=$1", repoName).Scan(&vcs)
 	if err == sql.ErrNoRows {
 		http.NotFound(w, r)
 		return
@@ -92,12 +93,12 @@ func githubHookHandler(w http.ResponseWriter, r *http.Request) {
 		branch = event.Ref[len("refs/heads/"):]
 	}
 	commit := event.After
-	repo, build, buildDir, err := prepareBuild(repoName, branch, commit)
+	repo, build, buildDir, err := prepareBuild(r.Context(), repoName, branch, commit)
 	if err != nil {
 		log.Printf("github webhook: error starting build for push event for repo %s, branch %s, commit %s", repoName, branch, commit)
 		http.Error(w, "could not create build", 500)
 		return
 	}
-	go doBuild(repo, build, buildDir)
+	go doBuild(context.Background(), repo, build, buildDir)
 	w.WriteHeader(204)
 }
