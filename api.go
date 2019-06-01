@@ -212,6 +212,10 @@ func (Ding) CancelBuild(ctx context.Context, repoName string, buildID int32) {
 		if build.Finish != nil {
 			userError("Build has already finished")
 		}
+
+		q := `update build set finish=now(), status='cancelled' where id=$1 and finish is null`
+		_, err := tx.Exec(q, buildID)
+		sherpaCheck(err, "marking build as cancelled in database")
 	})
 
 	// Cancel any commands in the http-serve process, like cloning.

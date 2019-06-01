@@ -150,6 +150,16 @@ func _doBuild(ctx context.Context, repo Repo, build Build, buildDir string) {
 	buildCmd := buildIDCommandRegister(build.ID)
 	defer buildIDCommandCancel(build.ID)
 
+	// We may have been cancelled in the mean time. If so, do not even start working.
+	var abort bool
+	transact(ctx, func(tx *sql.Tx) {
+		q := `select finish is not null from build where id=$1`
+		sherpaCheckRow(tx.QueryRow(q, &build.ID), &abort, "fetching finish status from database")
+	})
+	if abort {
+		return
+	}
+
 	var homeDir string
 	if repo.UID != nil {
 		homeDir = fmt.Sprintf("%s/home/%s", dingDataDir, repo.Name)

@@ -19,7 +19,9 @@ func fillBuild(repoName string, b *Build) {
 	path := fmt.Sprintf("%s/build/%s/%d/output/%s.output", dingDataDir, repoName, b.ID, b.Status)
 	f, err := os.Open(path)
 	if err != nil {
-		b.LastLine = fmt.Sprintf("(open for last line: %s)", err)
+		if !os.IsNotExist(err) {
+			b.LastLine = fmt.Sprintf("(open for last line: %s)", err)
+		}
 		return
 	}
 	defer f.Close()
