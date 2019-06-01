@@ -66,6 +66,7 @@ vcs id | sed 's/^/commit:/'"></textarea>
 
 					<div class="form-group">
 						<label><input type="checkbox" ng-model="repoUID" /> Reuse UID and $HOME for builds.</label>
+						<div ng-if="repo.home_disk_usage &gt; 0">Current home directory disk usage: <filesize size="repo.home_disk_usage"></filesize>.</div>
 					</div>
 
 					<div class="form-group">
@@ -152,7 +153,9 @@ make release"></textarea>
 						<td>{{ build.id }}</td>
 						<td><coverage repo="repo" build="build"></coverage></td>
 						<td><buildtime start="build.start" finish="build.finish"></buildtime></td>
-						<td><filesize size="build.disk_usage"></filesize></td>
+						<td>
+							<filesize size="build.disk_usage"></filesize><span ng-if="build.home_disk_usage_delta &gt; 0">{{ build.home_disk_usage_delta &gt; 0 ? '+' : '' }}<filesize size="build.home_disk_usage_delta"></filesize></span>
+						</td>
 						<td><age time="build.start"></age></td>
 						<td style="min-width: 15rem">
 							<div class="btn-group">

@@ -101,12 +101,34 @@ func doBuild(repo Repo, build Build, buildDir string) {
 }
 
 func _doBuild(repo Repo, build Build, buildDir string) {
+	var homeDir string
+	if repo.UID != nil {
+		homeDir = fmt.Sprintf("%s/home/%s", dingDataDir, repo.Name)
+	} else {
+		homeDir = fmt.Sprintf("%s/home", buildDir)
+	}
+
 	defer func() {
 		build.DiskUsage = buildDiskUsage(buildDir)
+
+		var homeDiskUsage, homeDiskUsageDelta int64
+		if repo.UID != nil {
+			homeDiskUsage = buildDiskUsage(homeDir)
+			homeDiskUsageDelta = homeDiskUsage - repo.HomeDiskUsage
+		}
+
 		transact(func(tx *sql.Tx) {
-			q := `update build set finish=NOW(), disk_usage=$1 where id=$2 and finish is null`
-			_, err := tx.Exec(q, build.DiskUsage, build.ID)
+			var one int
+			qBuild := `update build set finish=NOW(), disk_usage=$1, home_disk_usage_delta=$2 where id=$3 returning 1`
+			err := tx.QueryRow(qBuild, build.DiskUsage, homeDiskUsageDelta, build.ID).Scan(&one)
 			sherpaCheck(err, "marking build as finished in database")
+
+			if repo.UID != nil {
+				qRepo := `update repo set home_disk_usage=$1 where id=$2 returning 1`
+				err := tx.QueryRow(qRepo, homeDiskUsage, repo.ID).Scan(&one)
+				sherpaCheck(err, "storing home directory disk usage in database")
+			}
+
 			events <- EventBuild{repo.Name, _build(tx, repo.Name, build.ID)}
 		})
 
@@ -120,6 +142,8 @@ func _doBuild(repo Repo, build Build, buildDir string) {
 					sherpaCheck(err, "updating error message in database")
 					events <- EventBuild{repo.Name, _build(tx, repo.Name, build.ID)}
 				})
+			} else {
+				panic(r)
 			}
 		}
 
@@ -167,15 +191,8 @@ func _doBuild(repo Repo, build Build, buildDir string) {
 		})
 	}
 
-	var home string
-	if repo.UID != nil {
-		home = fmt.Sprintf("%s/home/%s", dingDataDir, repo.Name)
-	} else {
-		home = fmt.Sprintf("%s/home", buildDir)
-	}
-
 	env := []string{
-		"HOME=" + home,
+		"HOME=" + homeDir,
 		"DING_BUILDDIR=" + buildDir,
 		"DING_CHECKOUTPATH=" + repo.CheckoutPath,
 		"DING_DOWNLOADDIR=" + buildDir + "/dl",
@@ -306,7 +323,6 @@ func _doBuild(repo Repo, build Build, buildDir string) {
 	err = track(build.ID, "build", buildDir, result.stdout, result.stderr, wait)
 	sherpaUserCheck(err, "running command")
 
-	build.DiskUsage = buildDiskUsage(buildDir)
 	transact(func(tx *sql.Tx) {
 		outputDir := buildDir + "/output"
 		version, results, coverage, coverageReportFile := parseResults(repo, build, checkoutDir, outputDir+"/build.stdout")
@@ -318,7 +334,7 @@ func _doBuild(repo Repo, build Build, buildDir string) {
 			sherpaCheck(err, "inserting result into database")
 		}
 
-		_, err = tx.Exec("update build set status='success', finish=NOW(), disk_usage=$1, coverage=$2, coverage_report_file=$3, version=$4 where id=$5", build.DiskUsage, coverage, coverageReportFile, version, build.ID)
+		_, err = tx.Exec("update build set status='success', coverage=$1, coverage_report_file=$2, version=$3 where id=$4", coverage, coverageReportFile, version, build.ID)
 		sherpaCheck(err, "marking build as success in database")
 
 		events <- EventBuild{repo.Name, _build(tx, repo.Name, build.ID)}

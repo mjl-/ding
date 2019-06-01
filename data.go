@@ -6,13 +6,14 @@ import (
 
 // Repo is a repository as stored in the database.
 type Repo struct {
-	ID           int32   `json:"id"`
-	Name         string  `json:"name"`          // short name for repo, typically last element of repo URL/path
-	VCS          string  `json:"vcs"`           // `git`, `mercurial` or `command`
-	Origin       string  `json:"origin"`        // git/mercurial "URL" (as understood by the respective commands), often SSH or HTTPS. if `vcs` is `command`, this is executed using sh.
-	CheckoutPath string  `json:"checkout_path"` // path to place the checkout in.
-	BuildScript  string  `json:"build_script"`  // shell scripts that compiles the software, runs tests, and creates releasable files.
-	UID          *uint32 `json:"uid"`           // If set, fixed uid to use for builds, sharing a home directory where files can be cached, to speed up builds.
+	ID            int32   `json:"id"`
+	Name          string  `json:"name"`            // short name for repo, typically last element of repo URL/path
+	VCS           string  `json:"vcs"`             // `git`, `mercurial` or `command`
+	Origin        string  `json:"origin"`          // git/mercurial "URL" (as understood by the respective commands), often SSH or HTTPS. if `vcs` is `command`, this is executed using sh.
+	CheckoutPath  string  `json:"checkout_path"`   // path to place the checkout in.
+	BuildScript   string  `json:"build_script"`    // shell scripts that compiles the software, runs tests, and creates releasable files.
+	UID           *uint32 `json:"uid"`             // If set, fixed uid to use for builds, sharing a home directory where files can be cached, to speed up builds.
+	HomeDiskUsage int64   `json:"home_disk_usage"` // Disk usage of shared home directory after last finished build. Only if UID is set.
 }
 
 // RepoBuilds is a repository and its recent builds, per branch.
@@ -48,8 +49,12 @@ type Build struct {
 	CoverageReportFile string     `json:"coverage_report_file"` // Relative to URL /dl/<reponame>/<buildid>.
 	Version            string     `json:"version"`              // Version if this build, typically contains a semver version, with optional commit count/hash, perhaps a branch.
 
-	LastLine  string `json:"last_line"`  // last line from last steps output
-	DiskUsage int64  `json:"disk_usage"` // disk usage for build
+	LastLine  string `json:"last_line"`  // Last line from last steps output.
+	DiskUsage int64  `json:"disk_usage"` // Disk usage for build.
+
+	// Change in disk usage of shared home directory, if enabled for this repository.
+	// Disk usage can shrink, e.g. after a cleanup.
+	HomeDiskUsageDelta int64 `json:"home_disk_usage_delta"`
 
 	Results []Result `json:"results"`
 }

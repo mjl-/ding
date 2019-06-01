@@ -147,6 +147,8 @@ func (Ding) CreateBuild(repoName, branch, commit string) Build {
 					if serr.Code != "userError" {
 						log.Println("background build failed:", serr.Message)
 					}
+				} else {
+					panic(err)
 				}
 			}
 		}()
@@ -363,6 +365,12 @@ func (Ding) ClearRepoHomedir(repoName string) {
 	msg := msg{RemoveSharedHome: &msgRemoveSharedHome{repoName}}
 	err := requestPrivileged(msg)
 	sherpaCheck(err, "privileged RemoveSharedHome")
+
+	transact(func(tx *sql.Tx) {
+		q := `update repo set home_disk_usage=0 where id=$1 returning 1`
+		var one int
+		sherpaCheckRow(tx.QueryRow(q, r.ID), &one, "updating repo in database")
+	})
 }
 
 // RemoveRepo removes a repository and all its builds.

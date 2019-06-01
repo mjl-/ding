@@ -113,12 +113,11 @@ Now run: "make build test"
 
 # Todo
 
-- keep track of size of shared homedir. and growth of homedir after a build.
 - allow aborting a build
+- add button to queue a build, low prio. then only run one low-prio job at a time. for rebuilds of all repo's after a toolchain update.
 - write test code
 - on reconnect after sse failure, make sure our state is up to date again. it isn't now.
 - improve showing the cause of a failed build. 1. show then just last single line of output (make just prints that it failed at the end). 2. create files in output/ earlier? so we don't show errors about missing such files when the vcs clone failes (eg due to no git in path, or no permision to run build.sh (eg because a dir leading to build.sh isn't accessible).
-- add button to queue a build, low prio. then only run one low-prio job at a time. for rebuilds of all repo's after a toolchain update.
 - rewrite ui in typescript with tuit
 - when cloning, clone from previous checkout, then pull changes from remote as need, should be faster, especially for larger repo's.
 - attempt to detect pushes of commits+tag, don't build for both the commit and the tag if they're about the same thing.
