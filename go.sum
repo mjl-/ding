@@ -1,5 +1,5 @@
-bitbucket.org/mjl/httpasset v0.0.4 h1:RGC3qmLN7dy/+2IOK7+iEfcTdhLokv4tyHFL3qZKqtg=
-bitbucket.org/mjl/httpasset v0.0.4/go.mod h1:nSvZtCTm54qwqO2OEfDFjghxUp0v8Mh3KhPPFqe2pqI=
+bitbucket.org/mjl/httpasset v0.0.5 h1:pAmc8WcaSHRXrUiu44ogp2vf9ITVaX2fwRGejM9quhQ=
+bitbucket.org/mjl/httpasset v0.0.5/go.mod h1:U+z9mkmZoG/dHzv+CcNFUYbK+guM+3fpYXzDLIgmvk8=
 github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
 github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf/go.mod h1:ybxpYRFXyAe+OPACYpWeL0wqObRcbAqCMya13uyzqw0=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973 h1:xJ4a3vCFaGF/jqvzLMYoU8P317H5OQ+Via4RmuPwCS0=

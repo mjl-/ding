@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"net/http"
 	"os"
 	"path"
 
@@ -22,7 +21,7 @@ const (
 )
 
 var (
-	httpFS   http.FileSystem
+	httpFS   = httpasset.Init("assets")
 	database *sql.DB
 
 	version       = "dev"
@@ -84,14 +83,6 @@ func init() {
 func check(err error, msg string) {
 	if err != nil {
 		log.Fatalf("%s: %s", msg, err)
-	}
-}
-
-func init() {
-	httpFS = httpasset.Fs()
-	if err := httpasset.Error(); err != nil {
-		log.Println("falling back to local assets:", err)
-		httpFS = http.Dir("assets")
 	}
 }
 
