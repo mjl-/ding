@@ -35,32 +35,28 @@
 						<td colspan="9">No repos</td>
 					</tr>
 				</tbody>
-				<tbody ng-repeat="repoBuild in repoBuilds | orderBy:youngestBuild" ng-init="active = $odd">
-					<tr ng-if="repoBuild.builds.length === 0" ng-class="{active: active}">
-						<td>
-							<a ng-href="#/repo/{{ repoBuild.repo.name }}/">{{ repoBuild.repo.name }}</a>
-						</td>
-						<td colspan="8">No builds</td>
+				<tbody ng-repeat="rb in repoBuilds" ng-init="active = $odd">
+					<tr ng-if="rb.builds.length === 0" ng-class="{active: active}">
+						<td colspan="9">No builds</td>
 					</tr>
-					<tr ng-repeat="build in repoBuild.builds" ng-class="{active: active}">
+					<tr ng-repeat="b in rb.builds" ng-class="{active: active}">
 						<td>
-							<a ng-if="$first" ng-href="#/repo/{{ repoBuild.repo.name }}/">{{ repoBuild.repo.name }}</a>
+							<a ng-if="$first" ng-href="#/repo/{{ rb.repo.name }}/">{{ rb.repo.name }}</a>
 						</td>
-						<td>{{ build.branch }}</td>
+						<td>{{ b.branch }}</td>
 						<td>
-							<build-status status="build.status" finish="build.finish" released="build.released" lowprio="build.low_prio"></build-status>
-							<span ng-if="build.results.length > 0">{{ build.results.length === 1 ? '1 file' : '' + build.results.length + ' files' }}</span>
-							<div ng-if="build.finish && build.status !== 'success'" style="white-space: pre-wrap; margin-bottom: 2rem">{{ build.last_line }}
-{{ build.error_message }}</div>
-
+							<build-status status="b.status" finish="b.finish" released="b.released" lowprio="b.low_prio"></build-status>
+							<span ng-if="b.results.length > 0">{{ b.results.length === 1 ? '1 file' : '' + b.results.length + ' files' }}</span>
+							<div ng-if="b.finish && b.status !== 'success'" style="white-space: pre-wrap; margin-bottom: 2rem">{{ b.last_line }}
+{{ b.error_message }}</div>
 						</td>
-						<td>{{ build.version }}</td>
-						<td><coverage build="build" repo="repoBuild.repo"></coverage></td>
-						<td><buildtime start="build.start" finish="build.finish"></buildtime></td>
-						<td><filesize size="build.disk_usage"></filesize></td>
-						<td><age time="build.created"></age></td>
+						<td>{{ b.version }}</td>
+						<td><coverage build="b" repo="rb.repo"></coverage></td>
+						<td><buildtime start="b.start" finish="b.finish"></buildtime></td>
+						<td><filesize size="b.disk_usage"></filesize></td>
+						<td><age time="b.created"></age></td>
 						<td>
-							<a class="btn btn-default" ng-href="#/repo/{{ repoBuild.repo.name }}/build/{{ build.id }}/" link-disabled="build.builddir_removed">Open</a>
+							<a class="btn btn-default" ng-href="#/repo/{{ rb.repo.name }}/build/{{ b.id }}/" link-disabled="b.builddir_removed">Open</a>
 						</td>
 					</tr>
 				</tbody>

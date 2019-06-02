@@ -6,119 +6,159 @@
 app.controller('Index', function($scope, $rootScope, $q, $uibModal, $location, $timeout, Msg, Util, repoBuilds) {
 	$rootScope.breadcrumbs = Util.crumbs([]);
 
-	$scope.repoBuilds = repoBuilds;
+	var removeBuild = function(l, buildID) {
+		var i = _.findIndex(l, {id: buildID});
+		if(i >= 0) {
+			l.splice(i, 1);
+		}
+	};
+
+	// Sort builds by finish time descending first (if set), and id descending second.
+	var sortBuilds = function(l) {
+		l.sort(function(a, b) {
+			if (a.finish && b.finish) {
+				return new Date(b.finish).getTime() - new Date(a.finish).getTime();
+			}
+			return b.id-a.id;
+		});
+	};
+
+	// We transform repoBuilds into repoBranchBuilds consisting of a repo and per
+	// branch a  list of finished and unfinished builds.
+	// After a change, we generate $scope.repoBuilds with the information we want
+	// displayed. AngularJS templates cannot easily generate rows from nested data...
+	var repoBranchBuilds = _.map(repoBuilds, function(rb) {
+		var rbb = {
+			repo: rb.repo,
+			branchBuilds: {}
+		};
+		_.forEach(rb.builds, function(b) {
+			var bb = rbb.branchBuilds[b.branch];
+			if (!bb) {
+				bb = rbb.branchBuilds[b.branch] = {
+					finished: [],
+					unfinished: []
+				};
+			}
+			if (b.finish) {
+				bb.finished.push(b);
+				sortBuilds(bb.finished);
+			} else {
+				bb.unfinished.push(b);
+				sortBuilds(bb.unfinished);
+			}
+		});
+		return rbb;
+	});
+
+	var makeRepoBuilds = function() {
+		$scope.repoBuilds = _.map(repoBranchBuilds, function(rbb) {
+			var builds = [];
+			_.forEach(rbb.branchBuilds, function(bb, branch) {
+				_.forEach(bb.unfinished, function(b) {
+					builds.push(b);
+				});
+				if (bb.finished.length > 0) {
+					builds.push(bb.finished[0]);
+				}
+			});
+			return {
+				repo: rbb.repo,
+				builds: builds
+			};
+		});
+
+		var timestamp = function(s) {
+			if (!s) {
+				return 0;
+			}
+			return new Date(s).getTime();
+		};
+
+		var buildTimestamp = function(b) {
+			var ts = Math.max(timestamp(b.created), timestamp(b.start), timestamp(b.finish));
+			return ts;
+		};
+
+		var mostRecent = function(l) {
+			var ts = 0;
+			_.forEach(l, function(b) {
+				ts = Math.max(ts, buildTimestamp(b));
+			});
+			return ts;
+		};
+
+		// Sort repo's by most recent activity (most recent of created,start,finish of build).
+		$scope.repoBuilds.sort(function(a, b) {
+			return mostRecent(b.builds)-mostRecent(a.builds);
+		});
+	};
+	makeRepoBuilds();
 
 	$scope.$on('repo', function(x, e) {
 		$timeout(function() {
 			var r = e.repo;
-			var rr = _.find($scope.repoBuilds, function(rb) {
-				return rb.repo.name === r.name;
+			var rbb = _.find(repoBranchBuilds, function(rbb) {
+				return rbb.repo.name === r.name;
 			});
-			if (rr) {
-				rr.repo = r;
-				return;
+			if (rbb) {
+				rbb.repo = r;
+			} else {
+				repoBranchBuilds.push({
+					repo: r,
+					branchBuilds: {}
+				});
 			}
-			$scope.repoBuilds.push({
-				repo: r,
-				builds: []
-			});
+			makeRepoBuilds();
 		});
 	});
 
 	$scope.$on('removeRepo', function(x, e) {
 		$timeout(function() {
-			$scope.repoBuilds = _.filter($scope.repoBuilds, function(rb) {
-				return rb.repo.name !== e.repo_name;
+			repoBranchBuilds = _.filter(repoBranchBuilds, function(rbb) {
+				return rbb.repo.name !== e.repo_name;
 			});
+			makeRepoBuilds();
 		});
 	});
-
-	function buildsCleanup(rb) {
-		// For each branch, we want to newest finished build, and the oldest unfinished build.
-		var branches = {}; // branch -> branch
-		var finished = {}; // branch -> builds
-		var unfinished = {}; // branch -> builds
-		_.forEach(rb.builds, function(b) {
-			var br = b.branch;
-			branches[br] = br;
-			finished[br] = finished[br] || [];
-			unfinished[br] = unfinished[br] || [];
-			if (b.finish) {
-				finished[br].push(b);
-			} else {
-				unfinished[br].push(b);
-			}
-		});
-		var builds = [];
-		_.forEach(branches, function(br) {
-			var l = unfinished[br];
-			if (l.length > 0) {
-				l.sort(function(a, b) {
-					return new Date(a.created).getTime() - new Date(b.created).getTime();
-				});
-				builds.push(l[0]);
-			}
-			l = finished[br];
-			if (l.length > 0) {
-				l.sort(function(a, b) {
-					return new Date(b.finish).getTime() - new Date(a.finish).getTime();
-				});
-				builds.push(l[0]);
-			}
-		});
-		rb.builds = builds;
-	}
 
 	$scope.$on('build', function(x, e) {
 		var b = e.build;
 		var repoName = e.repo_name;
 		$timeout(function() {
-			var rb = _.find($scope.repoBuilds, function(rb) {
-				return rb.repo.name === repoName;
+			var rbb = _.find(repoBranchBuilds, function(rbb) {
+				return rbb.repo.name === repoName;
 			});
-			if (!rb) {
+			if (!rbb) {
 				console.log('build for unknown repo?', b, repoName);
 				return;
 			}
-			var i = _.findIndex(rb.builds, {id: b.id});
-			if(i >= 0) {
-				rb.builds.splice(i, 1, b);
+			var bb = rbb.branchBuilds[b.branch];
+			removeBuild(bb.finished, b.id);
+			removeBuild(bb.unfinished, b.id);
+			if (b.finish) {
+				bb.finished.push(b);
+				sortBuilds(bb.finished);
 			} else {
-				rb.builds.push(b);
+				bb.unfinished.push(b);
+				sortBuilds(bb.unfinished);
 			}
-			buildsCleanup(rb);
+			makeRepoBuilds();
 		});
 	});
 
 	$scope.$on('removeBuild', function(x, e) {
 		var build_id = e.build_id;
 		$timeout(function() {
-			// bug: when the most recent build is removed, this causes us to claim there are no builds (for the branch).
-			for (var i = 0; i < $scope.repoBuilds.length; i++) {
-				var rb = $scope.repoBuilds[i];
-				rb.builds = _.filter(rb.builds, function(b) {  // jshint ignore:line
-					return b.id !== build_id;
+			_.forEach(repoBranchBuilds, function(rbb) {
+				_.forEach(rbb.branchBuilds, function(bb) {
+					removeBuild(bb.finished, build_id);
+					removeBuild(bb.unfinished, build_id);
 				});
-			}
+			});
+			makeRepoBuilds();
 		});
 	});
-
-	$scope.youngestBuild = function(rb) {
-		var tm;
-		for(var i = 0; i < rb.builds.length; i++) {
-			var b = rb.builds[i];
-			if (!tm || b.start > tm) {
-				tm = b.start;
-			}
-			if (!tm || b.created > tm) {
-				tm = b.created;
-			}
-		}
-		if (tm) {
-			return new Date().getTime() - new Date(tm).getTime();
-		}
-		return Infinity;
-	};
 
 	$scope.clearRepoHomedirs = function() {
 		return Msg.confirm('Are you sure?', function() {
