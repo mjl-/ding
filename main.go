@@ -12,7 +12,7 @@ import (
 	"os"
 	"path"
 
-	"bitbucket.org/mjl/httpasset"
+	"github.com/mjl-/httpasset"
 	"github.com/mjl-/sconf"
 )
 

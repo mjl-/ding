@@ -54,7 +54,7 @@ given earlier.
 
 To make this work, an assumption about zip files is made: That the central
 directory (with a list of files inside the zip file) comes right before the "end
-of central directory" marker.  This is almost always the case with zip files. 
+of central directory" marker.  This is almost always the case with zip files.
 With this assumption, httpasset can locate the start and end of the zip file
 that is appended to the binary, which archive/zip needs in order to parse the
 zip file.

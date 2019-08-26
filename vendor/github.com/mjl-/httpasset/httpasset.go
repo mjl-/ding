@@ -5,10 +5,10 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"strings"
-	"log"
 )
 
 var (
