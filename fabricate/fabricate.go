@@ -158,7 +158,7 @@ func build(dest string) {
 			[]string{"www-src/licenses/ui-bootstrap-1.3.3"}},
 		{"", []string{"vendor/github.com/mjl-/httpinfo/LICENSE"}},
 		{"", []string{"vendor/github.com/mjl-/sherpa/LICENSE"}},
-		{"", []string{"vendor/bitbucket.org/mjl/httpasset/LICENSE"}},
+		{"", []string{"vendor/github.com/mjl-/httpasset/LICENSE"}},
 		{"", []string{"vendor/github.com/mjl-/sconf/LICENSE"}},
 		{"", []string{"vendor/github.com/beorn7/perks/LICENSE"}},
 		{"", []string{"vendor/github.com/golang/protobuf/LICENSE"}},
