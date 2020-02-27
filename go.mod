@@ -4,7 +4,7 @@ go 1.12
 
 require (
 	github.com/lib/pq v1.1.1
-	github.com/mjl-/httpasset v0.0.7-0.20190826095019-3280b78175bb
+	github.com/mjl-/httpasset v0.0.9
 	github.com/mjl-/httpinfo v0.0.2
 	github.com/mjl-/sconf v0.0.0-20190530143143-2f18fc19d601
 	github.com/mjl-/sherpa v0.6.0

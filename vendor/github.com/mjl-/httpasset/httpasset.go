@@ -89,7 +89,11 @@ func (d httpDir) Close() {
 // Open the zip file appended to the binary and return a FileSystem that reads files from the zip file.
 // If no zip file could be found, an error is returned.
 func ZipFS() (FileSystem, error) {
-	bin, err := binself()
+	p, err := os.Executable()
+	if err != nil {
+		return nil, err
+	}
+	bin, err := os.Open(p)
 	if err != nil {
 		return nil, err
 	}
