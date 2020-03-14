@@ -1,7 +1,10 @@
 # Ding - simple secure self-hosted build server for developers
 
 Ding lets you configure repositories and build scripts and compile your
-software. For a build, ding:
+software.
+
+For a build, ding:
+
 - Fetches the sources code, with a git or hg clone, or with a script of your
   choosing.
 - Sets up directories to run the build, under a unique UID, so builds don't
@@ -77,10 +80,10 @@ Ding is released under an MIT license. See LICENSE..
 
 Several reasons:
 - Some existing tools are too complicated, requiring a big time investment to
-use (plugin systems, own configuration languages). Ding is for developers who
-know how to write a shell script.
+  use (plugin systems, own configuration languages). Ding is for developers who
+  know how to write a shell script.
 - Ding works on different unixes. Many "modern" build servers depend on docker,
-making them Linux-only.
+  making them Linux-only.
 - It is fun creating software like this.
 
 ## Q: Does Ding have a website?
