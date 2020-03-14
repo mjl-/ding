@@ -2,6 +2,8 @@ export CGO_ENABLED=0
 export GOFLAGS=-mod=vendor
 export GOPROXY=off
 
+PG=/usr/lib/postgresql/9.5
+
 run: build
 	./ding serve -dbmigrate=false local/local.conf
 
@@ -16,6 +18,19 @@ build:
 
 frontend:
 	PATH=$(PATH):$(PWD)/node_modules/.bin go run fabricate/*.go -- install
+
+
+postgres-init:
+	$(PG)/bin/initdb -D local/postgres95
+
+postgres-makeuser:
+	$(PG)/bin/createuser -h localhost -p 5437 --no-createdb --pwprompt ding
+	$(PG)/bin/createdb -h localhost -p 5437 -O ding ding
+	$(PG)/bin/createuser -h localhost -p 5437 --no-createdb --pwprompt ding_test
+	$(PG)/bin/createdb -h localhost -p 5437 -O ding_test ding_test
+
+postgres:
+	$(PG)/bin/postgres -D local/postgres95 -p 5437 -k '' 2>&1 | tee local/postgres95/postgres.log
 
 test:
 	golint
