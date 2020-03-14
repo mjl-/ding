@@ -137,8 +137,8 @@ Here is an example config file that keeps server-sent events working:
 
 # Monitoring
 
-Ding exposes Prometheus metrics at HTTP endpoint /metrics. This includes
-statistics on usage for the API.
+Ding exposes Prometheus metrics at HTTP endpoint /metrics on the address
+specified with -listenadmin. This includes statistics on usage for the API.
 
 You can also set up simple HTTP monitoring on /ding/status. It's the "status"
 API call and it will raise a 5xx status when one of its underlying services
@@ -163,7 +163,7 @@ Example service file for systemd:
 	User=root
 	Group=root
 	WorkingDirectory=/home/service/ding
-	ExecStart=/home/service/ding/ding serve -listen 127.0.0.1:6084 -listenwebhook 127.0.0.1:6085 ding.conf
+	ExecStart=/home/service/ding/ding serve -listen 127.0.0.1:6084 -listenwebhook 127.0.0.1:6085 -listenadmin 127.0.0.1:6086 ding.conf
 
 	[Install]
 	WantedBy=multi-user.target
