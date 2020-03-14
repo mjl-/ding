@@ -3,14 +3,14 @@
 Ding lets you configure repositories and build scripts and compile your
 software. For a build, ding:
 - Fetches the sources code, with a git or hg clone, or with a script of your
-choosing.
+  choosing.
 - Sets up directories to run the build, under a unique UID, so builds don't
-interfere with each other or the system.
+  interfere with each other or the system.
 - Runs the build script, capturing output and parsing it for instructions
-referencing the version of the software built, releasable files and test
-coverage.
+  referencing the version of the software built, releasable files and test
+  coverage.
 - Keeps track of the releasable files, allowing you to mark them as released so
-they are not cleaned up automatically.
+  they are not cleaned up automatically.
 
 Ding starts a web server with a UI for creating/configuring repositories,
 starting builds, seeing the output. Ding serves an API at /ding/, including
@@ -45,9 +45,9 @@ Get the latest version at https://github.com/mjl-/ding/releases/latest.
 
 - Self-hosted build server. Keep control over your code and builds!
 - Simple. Get started quickly, experience the power of simplicity, use your
-existing skills, avoid the burden of complex systems.
+  existing skills, avoid the burden of complex systems.
 - Secure, with isolated builds, each build starts under its own unix user id:
-extremely fast, and builds can't interfere with each other.
+  extremely fast, and builds can't interfere with each other.
 - (Web) API for all functionality (what the html5/js frontend is using).
 - Runs on most unix systems (Linux, BSD's).
 
@@ -55,15 +55,16 @@ extremely fast, and builds can't interfere with each other.
 # Non-features
 
 - Deployments: Different task, different software. Ding exports released files
-which can be picked up by deployment tools.
+  which can be picked up by deployment tools.
 - Be all things to everybody: Ding does not integrate with every VCS/SCM, does
-not have a plugin infrastructure.
+  not have a plugin infrastructure.
 - Use docker images: Ding assumes you create self-contained programs, such as
-statically linked Go binaries or JVM .jar files. If you need other services to
-run tests, say a database server, just configure it when setting up your
-repository in Ding. If you need certain OS dependencies installed, first try to
-get rid of those dependencies, as a last resort install the dependencies on the
-machine running ding.
+  statically linked Go binaries or JVM .jar files. If you need other services to
+  run tests, say a database server, just configure it when setting up your
+  repository in Ding. If you need certain OS dependencies installed, first try to
+  get rid of those dependencies, as a last resort install the dependencies on the
+  machine running ding.
+
 
 # License
 
@@ -122,3 +123,4 @@ Now run: "make build test"
 - allow configuring a cleanup script, that is run when a builddir is removed. eg for dropping a database that was created in build.sh.
 - think about adding support for updating toolchains, like go get golang.org/dl/go1.2.3 && go1.2.3 download
 - add authentication to the web ui. need to figure out how to keep a dashboard. and how to do auth on /events. and if this is really worthwhile.
+- parse & process the output of a build as it comes in, instead of when the build is done. allows making release-files earlier in the process, eg before slow tests are run.
