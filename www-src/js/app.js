@@ -76,9 +76,10 @@ var app = angular.module('app', [
 			});
 		});
 		eventSource.addEventListener('error', function(e) {
+			// On page reload we will receive this error event. By actually sleeping a bit, we (likely) wait until the page is reloaded, and we won't see an error flash and a seeming layout shift in that case.
 			$timeout(function() {
 				$rootScope.sseError = true;
-			});
+			}, 250);
 		});
 		return $q.resolve();
 	};
