@@ -185,7 +185,7 @@ make release"></textarea>
 			<p>Build.sh is run in a clean environment. It should exit with status 0 only when successful.</p>
 			<p>The working directory is set to $DING_BUILDDIR/checkout/$DING_CHECKOUTPATH.
 
-			<h5>Environment variables</h5>
+			<h5 style="font-weight: bold">Environment variables</h5>
 			<ul>
 				<li>$HOME, an initially empty directory; for repo's with per-build unique UIDs, equal to $DING_BUILDDIR/home, with shared UIDs set to data/home/$DING_REPONAME.</li>
 				<li>$DING_REPONAME, name of the repository</li>
@@ -198,7 +198,7 @@ make release"></textarea>
 				<li>any key/value pair from the "environment" object in the ding config file</li>
 			</ul>
 
-			<h5>Results</h5>
+			<h5 style="font-weight: bold">Results</h5>
 			<p>The standard output of the release script is parsed. The following lines are recognized:</p>
 
 			<p>Version of this build:</p>
@@ -220,7 +220,7 @@ make release"></textarea>
 			<p>A filename for more details about the code coverage can also be registered, the file must be relative to the $DING_DOWNLOADDIR:</p>
 			<blockquote style="font-size: inherit"><tt>coverage-report:</tt> <i>file</i></blockquote>
 
-			<h5>Webhooks</h5>
+			<h5 style="font-weight: bold">Webhooks</h5>
 			<p>You can configure github and bitbucket to send "push" events after they've received new commits. The URL paths you need to configure at the repositories:</p>
 			<ul>
 				<li>For github: <tt>/github/<i>repoName</i></tt></li>
