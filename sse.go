@@ -8,6 +8,7 @@ import (
 )
 
 // SSE is a real-time streaming updates API using server-sent event, available at /events.
+// Query string parameter "password" is required.
 // You'll receive the following events with a HTTP GET request to `/events`, encoded as JSON:
 // - `repo`, repository was updated or created
 // - `removeRepo`, repository was removed
@@ -39,6 +40,12 @@ func serveEvents(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method != "GET" {
 		http.Error(w, "method not allowed", 405)
+		return
+	}
+
+	password := r.FormValue("password")
+	if password != config.Password {
+		http.Error(w, "bad auth", 401)
 		return
 	}
 

@@ -15,8 +15,8 @@ app.config(function($routeProvider, $uibTooltipProvider) {
 		templateUrl: 'static/html/index.html',
 		controller: 'Index',
 		resolve: {
-			repoBuilds: function() {
-				return api.repoBuilds();
+			repoBuilds: function($rootScope) {
+				return api.repoBuilds($rootScope.password());
 			}
 		}
 	})
@@ -24,11 +24,11 @@ app.config(function($routeProvider, $uibTooltipProvider) {
 		templateUrl: 'static/html/repo.html',
 		controller: 'Repo',
 		resolve: {
-			repo: function($route) {
-				return api.repo($route.current.params.repoName);
+			repo: function($rootScope, $route) {
+				return api.repo($rootScope.password(), $route.current.params.repoName);
 			},
-			builds: function($route) {
-				return api.builds($route.current.params.repoName);
+			builds: function($rootScope, $route) {
+				return api.builds($rootScope.password(), $route.current.params.repoName);
 			}
 		}
 	})
@@ -36,11 +36,11 @@ app.config(function($routeProvider, $uibTooltipProvider) {
 		templateUrl: 'static/html/build.html',
 		controller: 'Build',
 		resolve: {
-			repo: function($route) {
-				return api.repo($route.current.params.repoName);
+			repo: function($rootScope, $route) {
+				return api.repo($rootScope.password(), $route.current.params.repoName);
 			},
-			buildResult: function($route) {
-				return api.buildResult($route.current.params.repoName, parseInt($route.current.params.buildId));
+			buildResult: function($rootScope, $route) {
+				return api.buildResult($rootScope.password(), $route.current.params.repoName, parseInt($route.current.params.buildId));
 			}
 		}
 	})
@@ -48,11 +48,11 @@ app.config(function($routeProvider, $uibTooltipProvider) {
 		templateUrl: 'static/html/release.html',
 		controller: 'Release',
 		resolve: {
-			repo: function($route) {
-				return api.repo($route.current.params.repoName);
+			repo: function($rootScope, $route) {
+				return api.repo($rootScope.password(), $route.current.params.repoName);
 			},
-			buildResult: function($route) {
-				return api.release($route.current.params.repoName, parseInt($route.current.params.buildId));
+			buildResult: function($rootScope, $route) {
+				return api.release($rootScope.password(), $route.current.params.repoName, parseInt($route.current.params.buildId));
 			}
 		}
 	})
@@ -60,11 +60,11 @@ app.config(function($routeProvider, $uibTooltipProvider) {
 		templateUrl: 'static/html/gotoolchains.html',
 		controller: 'Gotoolchains',
 		resolve: {
-			released: function() {
-				return api.listReleasedGoToolchains();
+			released: function($rootScope) {
+				return api.listReleasedGoToolchains($rootScope.password());
 			},
-			installed: function() {
-				return api.listInstalledGoToolchains();
+			installed: function($rootScope) {
+				return api.listInstalledGoToolchains($rootScope.password());
 			}
 		}
 	})

@@ -71,7 +71,7 @@ app.controller('Build', function($scope, $rootScope, $q, $location, $timeout, Ms
 	$scope.removeBuild = function() {
 		var build = $scope.build;
 		return Msg.confirm('Are you sure?', function() {
-			return api.removeBuild(build.id)
+			return api.removeBuild($rootScope.password(), build.id)
 			.then(function() {
 				$location.path('/repo/' + repo.name + '/');
 			});
@@ -80,7 +80,7 @@ app.controller('Build', function($scope, $rootScope, $q, $location, $timeout, Ms
 
 	$scope.retryBuild = function() {
 		var build = $scope.build;
-		return api.createBuild(repo.name, build.branch, build.commit_hash)
+		return api.createBuild($rootScope.password(), repo.name, build.branch, build.commit_hash)
 		.then(function(nbuild) {
 			$location.path('/repo/' + repo.name + '/build/' + nbuild.id + '/');
 		});
@@ -88,7 +88,7 @@ app.controller('Build', function($scope, $rootScope, $q, $location, $timeout, Ms
 
 	$scope.release = function() {
 		var build = $scope.build;
-		return api.createRelease(repo.name, build.id)
+		return api.createRelease($rootScope.password(), repo.name, build.id)
 		.then(function(nbuild) {
 			$location.path('/repo/' + repo.name + '/release/' + build.id + '/');
 		});
@@ -96,13 +96,13 @@ app.controller('Build', function($scope, $rootScope, $q, $location, $timeout, Ms
 
 	$scope.cleanupBuilddir = function() {
 		var build = $scope.build;
-		return api.cleanupBuilddir(repo.name, build.id)
+		return api.cleanupBuilddir($rootScope.password(), repo.name, build.id)
 		.then(function(nbuild) {
 			$location.path('/repo/' + repo.name + '/');
 		});
 	};
 
 	$scope.cancelBuild = function() {
-		return api.cancelBuild(repo.name, $scope.build.id);
+		return api.cancelBuild($rootScope.password(), repo.name, $scope.build.id);
 	};
 });

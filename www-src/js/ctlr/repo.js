@@ -56,7 +56,7 @@ app.controller('Repo', function($scope, $rootScope, $q, $location, $timeout, Msg
 
 	$scope.removeRepo = function() {
 		return Msg.confirm('Are you sure?', function() {
-			return api.removeRepo(repo.name)
+			return api.removeRepo($rootScope.password(), repo.name)
 			.then(function() {
 				$location.path('/');
 			});
@@ -65,14 +65,14 @@ app.controller('Repo', function($scope, $rootScope, $q, $location, $timeout, Msg
 
 	$scope.clearRepoHomedir = function() {
 		return Msg.confirm('Are you sure?', function() {
-			return api.clearRepoHomedir(repo.name);
+			return api.clearRepoHomedir($rootScope.password(), repo.name);
 		});
 	};
 
 	$scope.save = function() {
 		var repo = _.clone($scope.repo);
 		repo.uid = $scope.repoUID ? 1 : null;
-		return api.saveRepo(repo)
+		return api.saveRepo($rootScope.password(), repo)
 		.then(function(r) {
 			$scope.repo = r;
 		});
@@ -80,7 +80,7 @@ app.controller('Repo', function($scope, $rootScope, $q, $location, $timeout, Msg
 
 	$scope.removeBuild = function(build) {
 		return Msg.confirm('Are you sure?', function() {
-			return api.removeBuild(build.id)
+			return api.removeBuild($rootScope.password(), build.id)
 			.then(function() {
 				$scope.builds = _.filter($scope.builds, function(b) {
 					return b.id !== build.id;
@@ -90,18 +90,18 @@ app.controller('Repo', function($scope, $rootScope, $q, $location, $timeout, Msg
 	};
 
 	$scope.createBuild = function(repoName, branch, commit) {
-		return api.createBuild(repoName, branch, commit)
+		return api.createBuild($rootScope.password(), repoName, branch, commit)
 		.then(function(nbuild) {
 			$location.path('/repo/' + repoName + '/build/' + nbuild.id + '/');
 		});
 	};
 
 	$scope.createBuildLowPrio = function(repoName, branch, commit) {
-		return api.createBuildLowPrio(repoName, branch, commit);
+		return api.createBuildLowPrio($rootScope.password(), repoName, branch, commit);
 	};
 
 	$scope.cleanupBuilddir = function(build) {
-		return api.cleanupBuilddir(repo.name, build.id)
+		return api.cleanupBuilddir($rootScope.password(), repo.name, build.id)
 		.then(function(nbuild) {
 			$scope.builds = _.map($scope.builds, function(b) {
 				return b.id === build.id ? nbuild : b;

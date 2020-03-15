@@ -12,7 +12,7 @@ import (
 func kick(args []string) {
 	fs := flag.NewFlagSet("kick", flag.ExitOnError)
 	fs.Usage = func() {
-		fmt.Fprintln(os.Stderr, "usage: ding kick baseURL repoName branch commit")
+		fmt.Fprintln(os.Stderr, "usage: ding kick baseURL password repoName branch commit")
 		fs.PrintDefaults()
 	}
 	fs.Parse(args)
@@ -23,9 +23,10 @@ func kick(args []string) {
 	}
 
 	baseURL := args[0]
-	repoName := args[1]
-	branch := args[2]
-	commit := args[3]
+	password := args[1]
+	repoName := args[2]
+	branch := args[3]
+	commit := args[4]
 
 	client, err := client.New(baseURL, []string{"build"})
 	check(err, "initializing sherpa client")
@@ -33,7 +34,7 @@ func kick(args []string) {
 	var build struct {
 		ID int64
 	}
-	err = client.Call(context.Background(), &build, "createBuild", repoName, branch, commit)
+	err = client.Call(context.Background(), &build, "createBuild", password, repoName, branch, commit)
 	check(err, "building")
 	_, err = fmt.Println("buildId", build.ID)
 	check(err, "write")

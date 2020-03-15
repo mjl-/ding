@@ -25,9 +25,53 @@ var app = angular.module('app', [
 		$('.x-loadingsaved').show().delay(1500).fadeOut('slow');
 	};
 
+	var password = window.localStorage.getItem('password') || '';
+	var passwordPopupOpen = false;
+	var openLogin = function() {
+		if (passwordPopupOpen) {
+			return;
+		}
+		passwordPopupOpen = true;
+
+		$uibModal.open({
+			templateUrl: 'static/html/modals/password.html',
+			backdrop: 'static', // prevent closing popup
+			keyboard: false, // also prevent closing with escape...
+			controller: function($route, $scope, $uibModalInstance) {
+				$scope.password = '';
+				$scope.ok = function() {
+					password = $scope.password;
+					window.localStorage.setItem('password', password);
+					passwordPopupOpen = false;
+					$uibModalInstance.close();
+					$route.reload();
+					$rootScope.reconnect();
+					return $q.resolve();
+				};
+			}
+		});
+	};
+	$rootScope.password = function() {
+		if (!password) {
+			openLogin();
+		}
+		return password;
+	};
+
+	$rootScope.logout = function() {
+		window.localStorage.removeItem('password');
+		$rootScope.disconnect();
+		window.location.reload();
+		return $q.resolve();
+	};
+
 	var handleApiError = function(error) {
 		console.log('Error loading page', error);
 		var txt;
+		if (error.code === 'user:badAuth') {
+			openLogin();
+			return;
+		}
 		if(_.has(error, 'message')) {
 			txt = error.message;
 		} else {
@@ -52,11 +96,20 @@ var app = angular.module('app', [
 
 	var eventSource;
 
+	$rootScope.disconnect = function() {
+		if (eventSource) {
+			eventSource.close();
+			eventSource = null;
+		}
+	};
 	$rootScope.reconnect = function() {
+		if (!$rootScope.password()) {
+			return;
+		}
 		if (eventSource) {
 			eventSource.close();
 		}
-		eventSource = new window.EventSource('/events');
+		eventSource = new window.EventSource('/events?password=' + encodeURIComponent($rootScope.password()));
 		var kinds = [
 			'repo',
 			'removeRepo',

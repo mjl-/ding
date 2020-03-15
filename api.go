@@ -137,15 +137,23 @@ func _build(tx *sql.Tx, repoName string, id int32) (b Build) {
 	return
 }
 
+func _checkPassword(password string) {
+	if password != config.Password {
+		panic(&sherpa.Error{Code: "user:badAuth", Message: "bad password"})
+	}
+}
+
 // CreateBuild builds a specific commit in the background, returning immediately.
 // `Commit` can be empty, in which case the origin is cloned and the checked out commit is looked up.
-func (Ding) CreateBuild(ctx context.Context, repoName, branch, commit string) Build {
+func (Ding) CreateBuild(ctx context.Context, password, repoName, branch, commit string) Build {
+	_checkPassword(password)
 	return createBuildPrio(ctx, repoName, branch, commit, false)
 }
 
 // CreateBuildLowPrio creates a build, but with low priority.
 // Low priority builds are executed after regular builds. And only one low priority build is running over all repo's.
-func (Ding) CreateBuildLowPrio(ctx context.Context, repoName, branch, commit string) Build {
+func (Ding) CreateBuildLowPrio(ctx context.Context, password, repoName, branch, commit string) Build {
+	_checkPassword(password)
 	return createBuildPrio(ctx, repoName, branch, commit, true)
 }
 
@@ -173,7 +181,9 @@ func createBuildPrio(ctx context.Context, repoName, branch, commit string, lowPr
 }
 
 // CreateLowPrioBuilds creates low priority builds for each repository, for the master/default branch.
-func (Ding) CreateLowPrioBuilds(ctx context.Context) {
+func (Ding) CreateLowPrioBuilds(ctx context.Context, password string) {
+	_checkPassword(password)
+
 	var repos []Repo
 	transact(ctx, func(tx *sql.Tx) {
 		q := `select coalesce(json_agg(repo.* order by id desc), '[]') from repo where uid is not null`
@@ -208,7 +218,9 @@ func (Ding) CreateLowPrioBuilds(ctx context.Context) {
 }
 
 // CancelBuild cancels a currently running build.
-func (Ding) CancelBuild(ctx context.Context, repoName string, buildID int32) {
+func (Ding) CancelBuild(ctx context.Context, password, repoName string, buildID int32) {
+	_checkPassword(password)
+
 	transact(ctx, func(tx *sql.Tx) {
 		repo := _repo(tx, repoName)
 
@@ -237,7 +249,9 @@ func toJSON(v interface{}) string {
 }
 
 // CreateRelease release a build.
-func (Ding) CreateRelease(ctx context.Context, repoName string, buildID int32) (build Build) {
+func (Ding) CreateRelease(ctx context.Context, password, repoName string, buildID int32) (build Build) {
+	_checkPassword(password)
+
 	transact(ctx, func(tx *sql.Tx) {
 		repo := _repo(tx, repoName)
 
@@ -304,7 +318,9 @@ func fileCopy(src, dst string) {
 // A branch is active if its name is "master" (for git), "default" (for hg), or
 // "develop", or if the last build was less than 4 weeks ago. The most recent
 // completed build is returned, and optionally the first build in progress.
-func (Ding) RepoBuilds(ctx context.Context) (rb []RepoBuilds) {
+func (Ding) RepoBuilds(ctx context.Context, password string) (rb []RepoBuilds) {
+	_checkPassword(password)
+
 	q := `
 		with repo_branch_builds as (
 				select *
@@ -348,7 +364,9 @@ func (Ding) RepoBuilds(ctx context.Context) (rb []RepoBuilds) {
 }
 
 // Repo returns the named repository.
-func (Ding) Repo(ctx context.Context, repoName string) (repo Repo) {
+func (Ding) Repo(ctx context.Context, password, repoName string) (repo Repo) {
+	_checkPassword(password)
+
 	transact(ctx, func(tx *sql.Tx) {
 		repo = _repo(tx, repoName)
 	})
@@ -356,7 +374,9 @@ func (Ding) Repo(ctx context.Context, repoName string) (repo Repo) {
 }
 
 // Builds returns builds for a repo.
-func (Ding) Builds(ctx context.Context, repoName string) (builds []Build) {
+func (Ding) Builds(ctx context.Context, password, repoName string) (builds []Build) {
+	_checkPassword(password)
+
 	q := `select coalesce(json_agg(bwr.* order by start desc), '[]') from build_with_result bwr join repo on bwr.repo_id = repo.id where repo.name=$1`
 	sherpaCheckRow(database.QueryRowContext(ctx, q, repoName), &builds, "fetching builds")
 	for i, b := range builds {
@@ -384,7 +404,8 @@ func _assignRepoUID(tx *sql.Tx) (uid uint32) {
 
 // CreateRepo creates a new repository.
 // If repo.UID is not null, a unique uid is assigned.
-func (Ding) CreateRepo(ctx context.Context, repo Repo) (r Repo) {
+func (Ding) CreateRepo(ctx context.Context, password string, repo Repo) (r Repo) {
+	_checkPassword(password)
 	_checkRepo(repo)
 
 	transact(ctx, func(tx *sql.Tx) {
@@ -404,7 +425,8 @@ func (Ding) CreateRepo(ctx context.Context, repo Repo) (r Repo) {
 }
 
 // SaveRepo changes a repository.
-func (Ding) SaveRepo(ctx context.Context, repo Repo) (r Repo) {
+func (Ding) SaveRepo(ctx context.Context, password string, repo Repo) (r Repo) {
+	_checkPassword(password)
 	_checkRepo(repo)
 
 	transact(ctx, func(tx *sql.Tx) {
@@ -426,7 +448,9 @@ func (Ding) SaveRepo(ctx context.Context, repo Repo) (r Repo) {
 }
 
 // ClearRepoHomedir removes the home directory this repository shares across builds.
-func (Ding) ClearRepoHomedir(ctx context.Context, repoName string) {
+func (Ding) ClearRepoHomedir(ctx context.Context, password, repoName string) {
+	_checkPassword(password)
+
 	var r Repo
 	transact(ctx, func(tx *sql.Tx) {
 		r = _repo(tx, repoName)
@@ -447,7 +471,9 @@ func (Ding) ClearRepoHomedir(ctx context.Context, repoName string) {
 }
 
 // ClearRepoHomedirs removes the home directory of all repositories.
-func (Ding) ClearRepoHomedirs(ctx context.Context) {
+func (Ding) ClearRepoHomedirs(ctx context.Context, password string) {
+	_checkPassword(password)
+
 	var repos []Repo
 	transact(ctx, func(tx *sql.Tx) {
 		q := `select coalesce(json_agg(repo.*), '[]') from repo where uid is not null`
@@ -468,7 +494,9 @@ func (Ding) ClearRepoHomedirs(ctx context.Context) {
 }
 
 // RemoveRepo removes a repository and all its builds.
-func (Ding) RemoveRepo(ctx context.Context, repoName string) {
+func (Ding) RemoveRepo(ctx context.Context, password, repoName string) {
+	_checkPassword(password)
+
 	transact(ctx, func(tx *sql.Tx) {
 		_repo(tx, repoName)
 
@@ -525,7 +553,9 @@ func _buildResult(repoName string, build Build) (br BuildResult) {
 }
 
 // BuildResult returns the results of the requested build.
-func (Ding) BuildResult(ctx context.Context, repoName string, buildID int32) (br BuildResult) {
+func (Ding) BuildResult(ctx context.Context, password, repoName string, buildID int32) (br BuildResult) {
+	_checkPassword(password)
+
 	var build Build
 	transact(ctx, func(tx *sql.Tx) {
 		build = _build(tx, repoName, buildID)
@@ -536,7 +566,9 @@ func (Ding) BuildResult(ctx context.Context, repoName string, buildID int32) (br
 }
 
 // Release fetches the build config and results for a release.
-func (Ding) Release(ctx context.Context, repoName string, buildID int32) (br BuildResult) {
+func (Ding) Release(ctx context.Context, password, repoName string, buildID int32) (br BuildResult) {
+	_checkPassword(password)
+
 	transact(ctx, func(tx *sql.Tx) {
 		build := _build(tx, repoName, buildID)
 
@@ -548,7 +580,9 @@ func (Ding) Release(ctx context.Context, repoName string, buildID int32) (br Bui
 }
 
 // RemoveBuild removes a build completely. Both from database and all local files.
-func (Ding) RemoveBuild(ctx context.Context, buildID int32) {
+func (Ding) RemoveBuild(ctx context.Context, password string, buildID int32) {
+	_checkPassword(password)
+
 	var repoName string
 	transact(ctx, func(tx *sql.Tx) {
 		qrepo := `select to_json(repo.name) from build join repo on build.repo_id = repo.id where build.id = $1`
@@ -566,7 +600,9 @@ func (Ding) RemoveBuild(ctx context.Context, buildID int32) {
 
 // CleanupBuilddir cleans up (removes) a build directory.
 // This does not remove the build itself from the database.
-func (Ding) CleanupBuilddir(ctx context.Context, repoName string, buildID int32) (build Build) {
+func (Ding) CleanupBuilddir(ctx context.Context, password, repoName string, buildID int32) (build Build) {
+	_checkPassword(password)
+
 	transact(ctx, func(tx *sql.Tx) {
 		build = _build(tx, repoName, buildID)
 		if build.BuilddirRemoved {
@@ -590,7 +626,9 @@ func (Ding) CleanupBuilddir(ctx context.Context, repoName string, buildID int32)
 // ListInstalledGoToolchains returns the installed Go toolchains (eg "go1.13.8",
 // "go1.14") in GoToolchainDir, and current "active" versions with a shortname, eg
 // "go" as "go1.14" and "go-prev" as "go1.13.8".
-func (Ding) ListInstalledGoToolchains(ctx context.Context) (installed []string, active map[string]string) {
+func (Ding) ListInstalledGoToolchains(ctx context.Context, password string) (installed []string, active map[string]string) {
+	_checkPassword(password)
+
 	_checkGoToolchainDir()
 
 	files, err := ioutil.ReadDir(config.GoToolchainDir)
@@ -627,7 +665,9 @@ var releasedCache struct {
 
 // ListReleasedGoToolchains returns all known released Go toolchains available at
 // golang.org/dl/, eg "go1.13.8", "go1.14".
-func (Ding) ListReleasedGoToolchains(ctx context.Context) (released []string) {
+func (Ding) ListReleasedGoToolchains(ctx context.Context, password string) (released []string) {
+	_checkPassword(password)
+
 	releasedCache.Lock()
 	defer releasedCache.Unlock()
 
@@ -648,7 +688,9 @@ func (Ding) ListReleasedGoToolchains(ctx context.Context) (released []string) {
 // represented by goversion (eg "go1.13.8", "go1.14") into the GoToolchainDir, and
 // optionally "activates" the version under shortname ("go", "go-prev", ""; empty
 // string does nothing).
-func (Ding) InstallGoToolchain(ctx context.Context, goversion, shortname string) {
+func (Ding) InstallGoToolchain(ctx context.Context, password, goversion, shortname string) {
+	_checkPassword(password)
+
 	_checkGoToolchainDir()
 	if !validGoversion(goversion) {
 		userError("bad goversion")
@@ -681,7 +723,9 @@ func (Ding) InstallGoToolchain(ctx context.Context, goversion, shortname string)
 
 // RemoveGoToolchain removes a toolchain from go toolchain dir.
 // It does not remove a shortname symlink to this toolchain if it exists.
-func (Ding) RemoveGoToolchain(ctx context.Context, goversion string) {
+func (Ding) RemoveGoToolchain(ctx context.Context, password, goversion string) {
+	_checkPassword(password)
+
 	_checkGoToolchainDir()
 	if !validGoversion(goversion) {
 		userError("bad goversion")
@@ -694,7 +738,9 @@ func (Ding) RemoveGoToolchain(ctx context.Context, goversion string) {
 
 // ActivateGoToolchain activates goversion (eg "go1.13.8", "go1.14") under the name
 // shortname ("go" or "go-prev"), by creating a symlink in the GoToolchainDir.
-func (Ding) ActivateGoToolchain(ctx context.Context, goversion, shortname string) {
+func (Ding) ActivateGoToolchain(ctx context.Context, password, goversion, shortname string) {
+	_checkPassword(password)
+
 	_checkGoToolchainDir()
 	if !validGoversion(goversion) {
 		userError("bad goversion")

@@ -33,6 +33,7 @@ var (
 var config struct {
 	ShowSherpaErrors      bool     `sconf-doc:"If set, returns the full error message for sherpa calls failing with a server error. Otherwise, only returns generic error message."`
 	PrintSherpaErrorStack bool     `sconf-doc:"If set, prints error stack for sherpa server errors."`
+	Password              string   `sconf-doc:"For login to the web interface. Ding does not have users."`
 	DataDir               string   `sconf-doc:"Directory where all data is stored for builds, releases, home directories. In case of isolate builds, this must have a umask 027 and owned by the ding uid/gid. Can be an absolute path, or a path relative to the ding working directory."`
 	Database              string   `sconf-doc:"For example: dbname=ding host=localhost port=5432 user=ding password=secret sslmode=disable connect_timeout=3 application_name=ding"`
 	GoToolchainDir        string   `sconf:"optional" sconf-doc:"Directory containing Go toolchains, for easy installation of new Go versions. Go toolchains are assumed to be in directories named after their version, e.g. go1.13.8. All names starting with 'go' are assumed to be Go toolchains. Active versions are marked by a symlink named go or go-prev to one of the versioned directories. Ding needs write access to this directory to download new toolchains."`

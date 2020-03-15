@@ -162,12 +162,12 @@ app.controller('Index', function($scope, $rootScope, $q, $uibModal, $location, $
 
 	$scope.clearRepoHomedirs = function() {
 		return Msg.confirm('Are you sure?', function() {
-			return api.clearRepoHomedirs();
+			return api.clearRepoHomedirs($rootScope.password());
 		});
 	};
 
 	$scope.createLowPrioBuilds = function() {
-		return api.createLowPrioBuilds();
+		return api.createLowPrioBuilds($rootScope.password());
 	};
 
 	$scope.newRepo = function() {
@@ -199,7 +199,7 @@ app.controller('Index', function($scope, $rootScope, $q, $uibModal, $location, $
 				$scope.create = function() {
 					var repo = _.clone($scope.repo);
 					repo.uid = $scope.repoUID ? 1 : null;
-					return api.createRepo(repo)
+					return api.createRepo($rootScope.password(), repo)
 					.then(function(repo) {
 						$uibModalInstance.close();
 						$location.path('/repo/' + repo.name);
