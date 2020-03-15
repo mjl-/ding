@@ -121,9 +121,9 @@ Now run: "make build test"
 - on reconnect after sse failure, make sure our state is up to date again. it isn't now.
 - improve showing the cause of a failed build. 1. show then just last single line of output (make just prints that it failed at the end). 2. create files in output/ earlier? so we don't show errors about missing such files when the vcs clone failes (eg due to no git in path, or no permision to run build.sh (eg because a dir leading to build.sh isn't accessible).
 - rewrite ui in typescript with tuit
+- add authentication to the web ui. need to figure out how to keep a dashboard. and how to do auth on /events. and if this is really worthwhile.
+
+- parse & process the output of a build as it comes in, instead of when the build is done. allows making release-files earlier in the process, eg before slow tests are run.
 - when cloning, clone from previous checkout, then pull changes from remote as need, should be faster, especially for larger repo's.
 - attempt to detect pushes of commits+tag, don't build for both the commit and the tag if they're about the same thing.
 - allow configuring a cleanup script, that is run when a builddir is removed. eg for dropping a database that was created in build.sh.
-- think about adding support for updating toolchains, like go get golang.org/dl/go1.2.3 && go1.2.3 download
-- add authentication to the web ui. need to figure out how to keep a dashboard. and how to do auth on /events. and if this is really worthwhile.
-- parse & process the output of a build as it comes in, instead of when the build is done. allows making release-files earlier in the process, eg before slow tests are run.

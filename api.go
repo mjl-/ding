@@ -7,13 +7,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"path"
+	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/mjl-/goreleases"
 	"github.com/mjl-/sherpa"
 )
 
@@ -581,4 +585,143 @@ func (Ding) CleanupBuilddir(ctx context.Context, repoName string, buildID int32)
 	})
 	events <- EventBuild{repoName, build}
 	return
+}
+
+// ListInstalledGoToolchains returns the installed Go toolchains (eg "go1.13.8",
+// "go1.14") in GoToolchainDir, and current "active" versions with a shortname, eg
+// "go" as "go1.14" and "go-prev" as "go1.13.8".
+func (Ding) ListInstalledGoToolchains(ctx context.Context) (installed []string, active map[string]string) {
+	_checkGoToolchainDir()
+
+	files, err := ioutil.ReadDir(config.GoToolchainDir)
+	sherpaCheck(err, "listing files in go toolchain dir")
+
+	active = map[string]string{}
+	for _, f := range files {
+		if !strings.HasPrefix(f.Name(), "go") {
+			continue
+		}
+		if f.IsDir() {
+			installed = append(installed, f.Name())
+			continue
+		}
+		if f.Mode()&os.ModeSymlink != 0 {
+			switch f.Name() {
+			case "go", "go-prev":
+			default:
+				continue
+			}
+			goversion, err := os.Readlink(path.Join(config.GoToolchainDir, f.Name()))
+			sherpaCheck(err, "reading go symlink for active go toolchain")
+			active[f.Name()] = goversion
+		}
+	}
+	return
+}
+
+var releasedCache struct {
+	sync.Mutex
+	expires  time.Time
+	released []string
+}
+
+// ListReleasedGoToolchains returns all known released Go toolchains available at
+// golang.org/dl/, eg "go1.13.8", "go1.14".
+func (Ding) ListReleasedGoToolchains(ctx context.Context) (released []string) {
+	releasedCache.Lock()
+	defer releasedCache.Unlock()
+
+	if time.Now().After(releasedCache.expires) {
+		releases, err := goreleases.ListAll()
+		sherpaCheck(err, "fetching list of all released go toolchains")
+		releasedCache.released = []string{}
+		for _, rel := range releases {
+			releasedCache.released = append(releasedCache.released, rel.Version)
+		}
+		releasedCache.expires = time.Now().Add(time.Minute)
+	}
+	released = releasedCache.released
+	return
+}
+
+// InstallGoToolchain downloads, verifies and extracts the release Go toolchain
+// represented by goversion (eg "go1.13.8", "go1.14") into the GoToolchainDir, and
+// optionally "activates" the version under shortname ("go", "go-prev", ""; empty
+// string does nothing).
+func (Ding) InstallGoToolchain(ctx context.Context, goversion, shortname string) {
+	_checkGoToolchainDir()
+	if !validGoversion(goversion) {
+		userError("bad goversion")
+	}
+
+	switch shortname {
+	case "go", "go-prev", "":
+	default:
+		userError("invalid shortname")
+	}
+
+	// Check goversion isn't already installed.
+	versionDst := path.Join(config.GoToolchainDir, goversion)
+	_, err := os.Stat(versionDst)
+	if err == nil {
+		userError("already installed")
+	}
+
+	releases, err := goreleases.ListAll()
+	sherpaCheck(err, "fetching list of all released go toolchains")
+
+	rel := _findRelease(releases, goversion)
+	file, err := goreleases.FindFile(rel, runtime.GOOS, runtime.GOARCH, "archive")
+	sherpaCheck(err, "finding file for running os and arch")
+
+	msg := msg{InstallGoToolchain: &msgInstallGoToolchain{file, shortname}}
+	err = requestPrivileged(msg)
+	sherpaCheck(err, "install go toolchain")
+}
+
+// RemoveGoToolchain removes a toolchain from go toolchain dir.
+// It does not remove a shortname symlink to this toolchain if it exists.
+func (Ding) RemoveGoToolchain(ctx context.Context, goversion string) {
+	_checkGoToolchainDir()
+	if !validGoversion(goversion) {
+		userError("bad goversion")
+	}
+
+	msg := msg{RemoveGoToolchain: &msgRemoveGoToolchain{goversion}}
+	err := requestPrivileged(msg)
+	sherpaCheck(err, "removing go toolchain")
+}
+
+// ActivateGoToolchain activates goversion (eg "go1.13.8", "go1.14") under the name
+// shortname ("go" or "go-prev"), by creating a symlink in the GoToolchainDir.
+func (Ding) ActivateGoToolchain(ctx context.Context, goversion, shortname string) {
+	_checkGoToolchainDir()
+	if !validGoversion(goversion) {
+		userError("bad goversion")
+	}
+
+	switch shortname {
+	case "go", "go-prev":
+		msg := msg{ActivateGoToolchain: &msgActivateGoToolchain{goversion, shortname}}
+		err := requestPrivileged(msg)
+		sherpaCheck(err, "removing go toolchain")
+	default:
+		userError("invalid shortname")
+	}
+}
+
+func _checkGoToolchainDir() {
+	if config.GoToolchainDir == "" {
+		userError("GoToolchainDir not configured")
+	}
+}
+
+func _findRelease(releases []goreleases.Release, goversion string) goreleases.Release {
+	for _, rel := range releases {
+		if rel.Version == goversion {
+			return rel
+		}
+	}
+	userError("version not found")
+	return goreleases.Release{}
 }

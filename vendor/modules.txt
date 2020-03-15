@@ -8,6 +8,8 @@ github.com/lib/pq/oid
 github.com/lib/pq/scram
 # github.com/matttproud/golang_protobuf_extensions v1.0.1
 github.com/matttproud/golang_protobuf_extensions/pbutil
+# github.com/mjl-/goreleases v0.0.0-20200315133335-3f691cdac100
+github.com/mjl-/goreleases
 # github.com/mjl-/httpasset v0.0.9
 github.com/mjl-/httpasset
 # github.com/mjl-/httpinfo v0.0.2

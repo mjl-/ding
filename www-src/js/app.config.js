@@ -56,6 +56,18 @@ app.config(function($routeProvider, $uibTooltipProvider) {
 			}
 		}
 	})
+	.when('/gotoolchains/', {
+		templateUrl: 'static/html/gotoolchains.html',
+		controller: 'Gotoolchains',
+		resolve: {
+			released: function() {
+				return api.listReleasedGoToolchains();
+			},
+			installed: function() {
+				return api.listInstalledGoToolchains();
+			}
+		}
+	})
 	.when('/help/', {
 		templateUrl: 'static/html/help.html',
 		controller: function($rootScope, Util) {

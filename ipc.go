@@ -2,6 +2,8 @@ package main
 
 import (
 	"os"
+
+	"github.com/mjl-/goreleases"
 )
 
 // Start a build, running build.sh.
@@ -43,15 +45,35 @@ type msgCancelCommand struct {
 	BuildID int32
 }
 
+// Install released go toolchain into GoToolchainDir.
+type msgInstallGoToolchain struct {
+	File      goreleases.File
+	Shortname string // "go" or "go-prev"
+}
+
+// Remove installed go toolchain from GoToolchainDir, leaving shortname symlink untouched.
+type msgRemoveGoToolchain struct {
+	Goversion string // eg "go1.14" or "go1.13.8"
+}
+
+// Activate installed go toolchain in GoToolchainDir under shortname by creating a symlink.
+type msgActivateGoToolchain struct {
+	Goversion string // eg "go1.14 or "go1.13.8"
+	Shortname string // "go" or "go-prev"
+}
+
 // Message from unprivileged webserver to root process.
 // Only the first non-nil field is handled.
 type msg struct {
-	Build            *msgBuild
-	Chown            *msgChown
-	RemoveBuilddir   *msgRemoveBuilddir
-	RemoveRepo       *msgRemoveRepo
-	RemoveSharedHome *msgRemoveSharedHome
-	CancelCommand    *msgCancelCommand
+	Build               *msgBuild
+	Chown               *msgChown
+	RemoveBuilddir      *msgRemoveBuilddir
+	RemoveRepo          *msgRemoveRepo
+	RemoveSharedHome    *msgRemoveSharedHome
+	CancelCommand       *msgCancelCommand
+	InstallGoToolchain  *msgInstallGoToolchain
+	RemoveGoToolchain   *msgRemoveGoToolchain
+	ActivateGoToolchain *msgActivateGoToolchain
 }
 
 // request from one of the http handlers to httpserve's request mux

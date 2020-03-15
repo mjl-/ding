@@ -145,6 +145,12 @@ func serve(args []string) {
 			err = doMsgRemoveSharedHome(msg.RemoveSharedHome, enc)
 		case msg.CancelCommand != nil:
 			err = doMsgCancelCommand(msg.CancelCommand, enc)
+		case msg.InstallGoToolchain != nil:
+			err = installGoToolchain(msg.InstallGoToolchain.File, msg.InstallGoToolchain.Shortname)
+		case msg.RemoveGoToolchain != nil:
+			err = removeGoToolchain(msg.RemoveGoToolchain.Goversion)
+		case msg.ActivateGoToolchain != nil:
+			err = activateGoToolchain(msg.ActivateGoToolchain.Goversion, msg.ActivateGoToolchain.Shortname)
 		default:
 			log.Fatalf("no field set in msg %v", msg)
 		}

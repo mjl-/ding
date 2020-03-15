@@ -35,10 +35,11 @@ var config struct {
 	PrintSherpaErrorStack bool     `sconf-doc:"If set, prints error stack for sherpa server errors."`
 	DataDir               string   `sconf-doc:"Directory where all data is stored for builds, releases, home directories. In case of isolate builds, this must have a umask 027 and owned by the ding uid/gid. Can be an absolute path, or a path relative to the ding working directory."`
 	Database              string   `sconf-doc:"For example: dbname=ding host=localhost port=5432 user=ding password=secret sslmode=disable connect_timeout=3 application_name=ding"`
+	GoToolchainDir        string   `sconf:"optional" sconf-doc:"Directory containing Go toolchains, for easy installation of new Go versions. Go toolchains are assumed to be in directories named after their version, e.g. go1.13.8. All names starting with 'go' are assumed to be Go toolchains. Active versions are marked by a symlink named go or go-prev to one of the versioned directories. Ding needs write access to this directory to download new toolchains."`
 	Environment           []string `sconf-doc:"List of environment variables in form KEY=VALUE."`
 	Notify                struct {
 		Name  string `sconf-doc:"Name to use along Email address."`
-		Email string `sconf:"optiona" sconf-doc:"Address to send build failure notifications to, if Mail.Enabled is set."`
+		Email string `sconf:"optional" sconf-doc:"Address to send build failure notifications to, if Mail.Enabled is set."`
 	} `sconf:"optional"`
 	BaseURL                string   `sconf-doc:"URL to point to from notifications about failed builds."`
 	GithubWebhookSecret    string   `sconf:"optional" sconf-doc:"For github webhook push events, to create a build; configure the same secret in the github repository settings."`

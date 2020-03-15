@@ -4,6 +4,7 @@ go 1.12
 
 require (
 	github.com/lib/pq v1.1.1
+	github.com/mjl-/goreleases v0.0.0-20200315133335-3f691cdac100
 	github.com/mjl-/httpasset v0.0.9
 	github.com/mjl-/httpinfo v0.0.2
 	github.com/mjl-/sconf v0.0.0-20190530143143-2f18fc19d601
