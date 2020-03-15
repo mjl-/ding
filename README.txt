@@ -1,4 +1,4 @@
-# Ding - simple secure self-hosted build server for developers
+# Ding - simple secure self-hosted private build server for developers
 
 Ding lets you configure repositories and build scripts and compile your
 software.
@@ -71,7 +71,7 @@ Get the latest version at https://github.com/mjl-/ding/releases/latest.
 
 # License
 
-Ding is released under an MIT license. See LICENSE..
+Ding is released under an MIT license. See LICENSE.
 
 
 # FAQ
@@ -103,6 +103,9 @@ Ding is named after the dent in a surfboard. It needs to be repaired, or the
 board will soak up water and become useless or break. Likewise, software needs
 to be built regularly, with the latest toolchains, and issues need to be
 resolved before the software becomes a lost cause.
+
+
+# Contact
 
 For feedback, bug reports and questions, please contact mechiel@ueber.net.
 
