@@ -11,6 +11,12 @@ $color-success: #3c763d; // or #5cb85c with border #4cae4c
 @import "imagebackdrop";
 @import "loader";
 
+body {
+	// AngularJS UI Bootstrap modal sets a padding on body for some reason, it messes
+	// up the layout. Override its style.
+	padding-right: 0 !important;
+}
+
 .build-output {
 	white-space: pre-wrap;
 	font-size: 13px;
