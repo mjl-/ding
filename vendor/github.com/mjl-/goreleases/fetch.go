@@ -40,7 +40,7 @@ func Fetch(file File, dst string, permissions *Permissions) error {
 	if !fi.IsDir() {
 		return fmt.Errorf("dst is not a directory")
 	}
-	fi, err = os.Stat(path.Join(dst, "go"))
+	_, err = os.Stat(path.Join(dst, "go"))
 	if err == nil {
 		return fmt.Errorf(`directory "go" already exists`)
 	}

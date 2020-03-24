@@ -12,7 +12,7 @@ import (
 
 var errNoElem = errors.New("no elements")
 
-type writeError error
+type writeError struct{ error }
 
 type writer struct {
 	out    *bufio.Writer
@@ -21,7 +21,7 @@ type writer struct {
 }
 
 func (w *writer) error(err error) {
-	panic(writeError(err))
+	panic(writeError{err})
 }
 
 func (w *writer) check(err error) {
@@ -97,7 +97,7 @@ func (w *writer) describeValue(v reflect.Value) {
 	i := v.Interface()
 	switch t.Kind() {
 	default:
-		w.check(fmt.Errorf("unsupported value %v", t.Kind()))
+		w.error(fmt.Errorf("unsupported value %v", t.Kind()))
 		return
 
 	case reflect.Bool:
@@ -110,6 +110,9 @@ func (w *writer) describeValue(v reflect.Value) {
 		w.write(fmt.Sprintf(" %f\n", i))
 
 	case reflect.String:
+		if strings.Contains(v.String(), "\n") {
+			w.error(fmt.Errorf("unsupported multiline string"))
+		}
 		w.write(fmt.Sprintf(" %s\n", i))
 
 	case reflect.Slice:
