@@ -38,7 +38,10 @@
 				</tbody>
 				<tbody ng-repeat="rb in repoBuilds" ng-init="active = $odd">
 					<tr ng-if="rb.builds.length === 0" ng-class="{active: active}">
-						<td colspan="9">No builds</td>
+						<td>
+							<a ng-href="#/repo/{{ rb.repo.name }}/">{{ rb.repo.name }}</a>
+						</td>
+						<td colspan="8">No builds yet</td>
 					</tr>
 					<tr ng-repeat="b in rb.builds" ng-class="{active: active}">
 						<td>
