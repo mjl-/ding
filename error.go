@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"runtime/debug"
 
@@ -16,13 +17,17 @@ func sherpaCheck(err error, msg string) {
 	}
 
 	if pqe, ok := err.(*pq.Error); ok && !config.ShowSherpaErrors {
+		more := ""
+		if config.ShowSherpaErrors {
+			more = fmt.Sprintf(": %v", err)
+		}
 		switch pqe.Code {
 		case "23503":
-			userError("References to this object still present in database.")
+			userError("references to this object still present in database" + more)
 		case "23505":
-			userError("Values are not unique.")
+			userError("values are not unique" + more)
 		case "23514":
-			userError("Invalid value(s).")
+			userError("invalid value(s)" + more)
 		}
 	}
 
