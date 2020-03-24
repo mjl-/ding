@@ -37,6 +37,9 @@ test:
 	CGO_ENABLED=1 go test -race -coverprofile cover.out -args local/local-test.conf
 	go tool cover -html=cover.out -o cover.html
 
+fmt:
+	go fmt ./...
+
 clean:
 	go clean
 	-rm -r assets assets.zip 2>/dev/null
