@@ -3,7 +3,7 @@
 		<div class="btn-group page-buttons">
 			<button btn="danger" icon="trash" loading-click="removeBuild()" ng-disabled="build.released || !build.finish">Delete build</button>
 			<button btn="danger" icon="eraser" loading-click="cleanupBuilddir()" ng-disabled="build.builddir_removed || !build.finish">Clean up builddir</button>
-			<button btn="danger" icon="ban" loading-click="cancelBuild()" ng-disabled="build.finish">Cancel</button>
+			<button btn="danger" icon="ban" loading-click="cancelBuild()" ng-disabled="canceled || build.finish">Cancel</button>
 			<button btn="default" icon="repeat" saving-click="retryBuild()">Rebuild</button>
 			<button btn="primary" icon="check" saving-click="release()" ng-disabled="build.released || !build.finish || build.status !== 'success'">Release</button>
 		</div>

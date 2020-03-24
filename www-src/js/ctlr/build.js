@@ -13,6 +13,7 @@ app.controller('Build', function($scope, $rootScope, $q, $location, $timeout, Ms
 	$scope.buildResult = buildResult;
 	$scope.build = buildResult.build;
 	$scope.steps = buildResult.steps;
+	$scope.canceled = false;
 
 	$scope.newerBuild = null;
 	$scope.hideNewerBuild = function() {
@@ -103,6 +104,9 @@ app.controller('Build', function($scope, $rootScope, $q, $location, $timeout, Ms
 	};
 
 	$scope.cancelBuild = function() {
-		return api.cancelBuild($rootScope.password(), repo.name, $scope.build.id);
+		return api.cancelBuild($rootScope.password(), repo.name, $scope.build.id)
+		.then(function() {
+			$scope.canceled = true;
+		});
 	};
 });
