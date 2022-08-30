@@ -488,7 +488,7 @@ func serveResult(w http.ResponseWriter, r *http.Request) {
 	}
 	suffix := "/" + filename
 	for _, path := range buildResults.Filenames {
-		if path == filename || strings.HasSuffix(filename, suffix) {
+		if path == filename || strings.HasSuffix(path, suffix) {
 			p := fmt.Sprintf("%s/build/%s/%d/checkout/%s/%s", dingDataDir, repoName, buildID, buildResults.CheckoutPath, path)
 			http.ServeFile(w, r, p)
 			return
