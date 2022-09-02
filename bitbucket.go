@@ -36,32 +36,7 @@ func bitbucketHookHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	/*
-		https://confluence.atlassian.com/bitbucket/event-payloads-740262817.html#EventPayloads-Push
-		example of the relevant parts:
-		{
-			"push": {
-				"changes": [
-					{
-						"new": {
-							"heads": [
-								{
-									"hash": "2951856392c4ba466082948455bac7303404675f",
-									"type": "commit"
-								}
-							],
-							"name": "default",
-							"type": "named_branch"  # or "branch" or "tag" for git
-						}
-					}
-				]
-			},
-			"repository": {
-				"name": "bitbuckethgwebhooktest",
-				"scm": "hg"  # or "git"
-			}
-		}
-	*/
+	// See https://support.atlassian.com/bitbucket-cloud/docs/event-payloads/#Push
 	var event struct {
 		Push *struct {
 			Changes []struct {
