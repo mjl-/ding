@@ -36,40 +36,15 @@ func bitbucketHookHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	/*
-		https://confluence.atlassian.com/bitbucket/event-payloads-740262817.html#EventPayloads-Push
-		example of the relevant parts:
-		{
-			"push": {
-				"changes": [
-					{
-						"new": {
-							"heads": [
-								{
-									"hash": "2951856392c4ba466082948455bac7303404675f",
-									"type": "commit"
-								}
-							],
-							"name": "default",
-							"type": "named_branch"  # or "branch" or "tag" for git
-						}
-					}
-				]
-			},
-			"repository": {
-				"name": "bitbuckethgwebhooktest",
-				"scm": "hg"  # or "git"
-			}
-		}
-	*/
+	// See https://support.atlassian.com/bitbucket-cloud/docs/event-payloads/#Push
 	var event struct {
 		Push *struct {
 			Changes []struct {
 				New *struct {
-					Heads []struct {
-						Hash string `json:"hash"`
+					Target *struct {
 						Type string `json:"type"`
-					} `json:"heads"`
+						Hash string `json:"hash"`
+					} `json:"target"`
 					Name string `json:"name"`
 					Type string `json:"type"` // hg: named_branch, tag, bookmark; git: branch, tag
 				} `json:"new"` // null for branch deletes
@@ -124,8 +99,7 @@ func bitbucketHookHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		var branch string
 		switch change.New.Type {
-		case "branch":
-		case "named_branch":
+		case "branch", "named_branch":
 			branch = change.New.Name
 		case "tag":
 			// todo: fix for silly assumption that people only tag in master/default branch (eg after merge)
@@ -137,9 +111,10 @@ func bitbucketHookHandler(w http.ResponseWriter, r *http.Request) {
 			// we ignore bookmarks
 			continue
 		}
-		for _, head := range change.New.Heads {
-			if head.Type == "commit" {
-				commit := head.Hash
+
+		if change.New.Target != nil {
+			if change.New.Target.Type == "commit" {
+				commit := change.New.Target.Hash
 				repo, build, buildDir, err := prepareBuild(r.Context(), repoName, branch, commit, false)
 				if err != nil {
 					log.Printf("bitbucket webhook: error starting build for push event for repo %s, branch %s, commit %s", repoName, branch, commit)
@@ -147,6 +122,8 @@ func bitbucketHookHandler(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 				go doBuild(context.Background(), repo, build, buildDir)
+			} else {
+				http.Error(w, "New build target is empty", 500)
 			}
 		}
 	}
