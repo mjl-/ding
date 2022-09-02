@@ -47,4 +47,4 @@ clean:
 
 setup:
 	-mkdir -p node_modules/.bin
-	npm install jshint@2.9.3 node-sass@latest
+	npm install jshint@2.9.3 node-sass@7.0.1
