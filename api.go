@@ -180,7 +180,7 @@ func createBuildPrio(ctx context.Context, repoName, branch, commit string, lowPr
 	return build
 }
 
-// CreateLowPrioBuilds creates low priority builds for each repository, for the master/default branch.
+// CreateLowPrioBuilds creates low priority builds for each repository, for the default branch.
 func (Ding) CreateLowPrioBuilds(ctx context.Context, password string) {
 	_checkPassword(password)
 
@@ -194,12 +194,7 @@ func (Ding) CreateLowPrioBuilds(ctx context.Context, password string) {
 	commit := ""
 
 	for _, repo := range repos {
-		branch := "default"
-		if repo.VCS != "mercurial" {
-			branch = "master"
-		}
-
-		repo, build, buildDir := _prepareBuild(ctx, repo.Name, branch, commit, lowPrio)
+		repo, build, buildDir := _prepareBuild(ctx, repo.Name, repo.DefaultBranch, commit, lowPrio)
 		go func() {
 			defer func() {
 				if err := recover(); err != nil {
@@ -315,7 +310,7 @@ func fileCopy(src, dst string) {
 }
 
 // RepoBuilds returns all repositories and recent build info for "active" branches.
-// A branch is active if its name is "master" (for git), "default" (for hg), or
+// A branch is active if its name is "master" or "main" (for git), "default" (for hg), or
 // "develop", or if the last build was less than 4 weeks ago. The most recent
 // completed build is returned, and optionally the first build in progress.
 func (Ding) RepoBuilds(ctx context.Context, password string) (rb []RepoBuilds) {
@@ -329,7 +324,7 @@ func (Ding) RepoBuilds(ctx context.Context, password string) (rb []RepoBuilds) {
 					select max(id) as id
 					from build
 					where true
-						and (branch in ('master', 'default', 'develop') or start > now() - interval '4 weeks')
+						and (branch in ('main', 'master', 'default', 'develop') or start > now() - interval '4 weeks')
 						and build.finish is not null
 					group by repo_id, branch
 				)
@@ -340,7 +335,7 @@ func (Ding) RepoBuilds(ctx context.Context, password string) (rb []RepoBuilds) {
 					select min(id) as id
 					from build
 					where true
-						and (branch in ('master', 'default', 'develop') or start > now() - interval '4 weeks')
+						and (branch in ('main', 'master', 'default', 'develop') or start > now() - interval '4 weeks')
 						and build.finish is null
 					group by repo_id, branch
 				)
@@ -387,6 +382,9 @@ func (Ding) Builds(ctx context.Context, password, repoName string) (builds []Bui
 }
 
 func _checkRepo(repo Repo) {
+	if repo.DefaultBranch == "" {
+		userError("DefaultBranch path cannot be empty.")
+	}
 	if repo.CheckoutPath == "" {
 		userError("Checkout path cannot be empty.")
 	}
@@ -414,9 +412,9 @@ func (Ding) CreateRepo(ctx context.Context, password string, repo Repo) (r Repo)
 			uid = _assignRepoUID(tx)
 		}
 
-		q := `insert into repo (name, vcs, origin, checkout_path, uid, build_script) values ($1, $2, $3, $4, $5, '') returning id`
+		q := `insert into repo (name, vcs, origin, default_branch, checkout_path, uid, build_script) values ($1, $2, $3, $4, $5, $6, '') returning id`
 		var id int64
-		sherpaCheckRow(tx.QueryRow(q, repo.Name, repo.VCS, repo.Origin, repo.CheckoutPath, uid), &id, "inserting repository in database")
+		sherpaCheckRow(tx.QueryRow(q, repo.Name, repo.VCS, repo.Origin, repo.DefaultBranch, repo.CheckoutPath, uid), &id, "inserting repository in database")
 		r = _repo(tx, repo.Name)
 
 		events <- EventRepo{r}
@@ -438,8 +436,8 @@ func (Ding) SaveRepo(ctx context.Context, password string, repo Repo) (r Repo) {
 			uid = *r.UID
 		}
 
-		q := `update repo set name=$1, vcs=$2, origin=$3, checkout_path=$4, uid=$5, build_script=$6 where id=$7 returning row_to_json(repo.*)`
-		sherpaCheckRow(tx.QueryRow(q, repo.Name, repo.VCS, repo.Origin, repo.CheckoutPath, uid, repo.BuildScript, repo.ID), &r, "updating repo in database")
+		q := `update repo set name=$1, vcs=$2, origin=$3, default_branch=$4, checkout_path=$5, uid=$6, build_script=$7 where id=$8 returning row_to_json(repo.*)`
+		sherpaCheckRow(tx.QueryRow(q, repo.Name, repo.VCS, repo.Origin, repo.DefaultBranch, repo.CheckoutPath, uid, repo.BuildScript, repo.ID), &r, "updating repo in database")
 		r = _repo(tx, repo.Name)
 
 		events <- EventRepo{r}

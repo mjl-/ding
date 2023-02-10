@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	databaseVersion = 17
+	databaseVersion = 18
 )
 
 var (

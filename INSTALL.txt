@@ -67,7 +67,7 @@ file `.git/hooks/post-receive`. Example script:
 	while read oldrev newrev refname; do
 	        case $refname in
 	        refs/tags/*)
-	                branch='master'
+	                branch='main' # or master
 	                ding kick https://your-ding-server/ding/ "$repo" "$branch" "$newrev"
 	                ;;
 	        refs/heads/*)

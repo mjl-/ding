@@ -170,7 +170,7 @@ func upgrade(args []string) {
 	fs := flag.NewFlagSet("upgrade", flag.ExitOnError)
 	dryrun := fs.Bool("dryrun", false, "if set, does rolls back the transaction in which the migration is executed")
 	fs.Usage = func() {
-		fmt.Fprintln(os.Stderr, "usage: ding upgrade [flags] ding.json")
+		fmt.Fprintln(os.Stderr, "usage: ding upgrade [flags] ding.conf")
 		fs.PrintDefaults()
 	}
 	fs.Parse(args)

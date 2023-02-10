@@ -10,6 +10,7 @@ type Repo struct {
 	Name          string  `json:"name"`            // short name for repo, typically last element of repo URL/path
 	VCS           string  `json:"vcs"`             // `git`, `mercurial` or `command`
 	Origin        string  `json:"origin"`          // git/mercurial "URL" (as understood by the respective commands), often SSH or HTTPS. if `vcs` is `command`, this is executed using sh.
+	DefaultBranch string  `json:"default_branch"`  // Name of default branch, e.g. "main" or "master" for git, or "default" for mercurial.
 	CheckoutPath  string  `json:"checkout_path"`   // path to place the checkout in.
 	BuildScript   string  `json:"build_script"`    // shell scripts that compiles the software, runs tests, and creates releasable files.
 	UID           *uint32 `json:"uid"`             // If set, fixed uid to use for builds, sharing a home directory where files can be cached, to speed up builds.

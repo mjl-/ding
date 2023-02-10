@@ -29,8 +29,8 @@ func githubHookHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	repoName := r.URL.Path[len("/github/"):]
 
-	var vcs string
-	err := database.QueryRowContext(r.Context(), "select vcs from repo where name=$1", repoName).Scan(&vcs)
+	var vcs, defaultBranch string
+	err := database.QueryRowContext(r.Context(), "select vcs, default_branch from repo where name=$1", repoName).Scan(&vcs, &defaultBranch)
 	if err == sql.ErrNoRows {
 		http.NotFound(w, r)
 		return
@@ -88,7 +88,7 @@ func githubHookHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "repository mismatch", 400)
 		return
 	}
-	branch := "master"
+	branch := defaultBranch
 	if strings.HasPrefix(event.Ref, "refs/heads/") {
 		branch = event.Ref[len("refs/heads/"):]
 	}

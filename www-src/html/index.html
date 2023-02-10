@@ -3,7 +3,7 @@
 		<div class="page-buttons">
 			<div class="btn-group">
 				<button btn="danger" icon="trash" loading-click="clearRepoHomedirs()" uib-tooltip="Remove shared home directories (across builds) for all repositories">Clear home directories</button>
-				<button btn="default" icon="play" loading-click="createLowPrioBuilds()" uib-tooltip="Create low priority builds for all repositories for the main branch (master for git, develop for mercurial). Only one low priority build runs at a time in ding. And per repository always after regular builds.">Build all ↓</button>
+				<button btn="default" icon="play" loading-click="createLowPrioBuilds()" uib-tooltip="Create low priority builds for all repositories for the default branch. Only one low priority build runs at a time in ding. And per repository always after regular builds.">Build all ↓</button>
 				<button loading-click="newRepo()" btn="success" icon="plus-circle">New repository</button>
 				<a href="#/gotoolchains/" btn="default" icon="list">Go toolchains</a>
 			</div>

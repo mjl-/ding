@@ -4,7 +4,7 @@
 			<button btn="danger" icon="trash" loading-click="removeRepo()" uib-tooltip="Remove entire repository, including all builds and releases.">Remove repo</button>
 			<button btn="danger" icon="trash" loading-click="clearRepoHomedir()" uib-tooltip="Remove shared home directory (across builds)">Clear home directory</button>
 			<div class="btn-group" uib-dropdown>
-				<button btn="default" icon="play" loading-click="createBuild(repo.name, repo.vcs === 'mercurial' ? 'default' : 'master')" uib-tooltip="Build latest commit on {{ repo.vcs === 'mercurial' ? 'default' : 'master' }} branch">Build {{ repo.vcs === 'mercurial' ? 'default' : 'master' }}</button>
+				<button btn="default" icon="play" loading-click="createBuild(repo.name, repo.default_branch)" uib-tooltip="Build latest commit on {{ repo.default_branch }} branch">Build {{ repo.default_branch }}</button>
 				<button type="button" btn="default" uib-dropdown-toggle>
 					<span class="caret"></span>
 					<span class="sr-only">split button</span>
@@ -12,7 +12,7 @@
 				<ul class="dropdown-menu" uib-dropdown-menu role="menu" aria-labelledby="split-button">
 					<li role="menuitem">
 						<a icon="play" loading-click="createBuild(repo.name, 'develop')" uib-tooltip="Build latest commit on develop branch">Build develop</a>
-						<a icon="play" loading-click="createBuildLowPrio(repo.name, repo.vcs === 'mercurial' ? 'default' : 'master')" uib-tooltip="Build latest commit on {{ repo.vcs === 'mercurial' ? 'default' : 'master'  }} branch with low priority">Build {{ repo.vcs === 'mercurial' ? 'default' : 'master' }} (low prio)</a>
+						<a icon="play" loading-click="createBuildLowPrio(repo.name, repo.default_branch)" uib-tooltip="Build latest commit on {{ repo.default_branch  }} branch with low priority">Build {{ repo.default_branch }} (low prio)</a>
 						<a icon="play" loading-click="createBuildLowPrio(repo.name, 'develop')" uib-tooltip="Build latest commit on develop branch with low priority">Build develop (low prio)</a>
 					</li>
 				</ul>
@@ -41,10 +41,13 @@
 							<option value="command">Other (command)</option>
 						</select>
 					</div>
-
 					<div ng-if="repo.vcs !== 'command'" class="form-group">
 						<label>Origin</label>
 						<input type="text" ng-model="repo.origin" class="form-control" required placeholder="{{ repo.vcs === 'git' ? 'git.example.com:repo.git' : 'ssh://hg.example.com/repo' }}" />
+					</div>
+					<div ng-if="repo.vcs !== 'command'" class="form-group">
+						<label>Default branch</label>
+						<input type="text" ng-model="repo.default_branch" class="form-control" required placeholder="{{ repo.vcs === 'git' ? 'main or master' : 'default' }}" />
 					</div>
 					<div ng-if="repo.vcs === 'command'" class="form-group">
 						<label>Command</label>

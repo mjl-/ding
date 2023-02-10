@@ -15,6 +15,10 @@
 			<label>Origin</label>
 			<input type="text" class="form-control" placeholder="{{ repo.vcs === 'git' ? 'git.example.com:repo.git' : 'ssh://hg.example.com/repo' }}" ng-model="repo.origin" required autofocus />
 		</div>
+		<div ng-if="repo.vcs !== 'command'" class="form-group">
+			<label>Default branch</label>
+			<input type="text" ng-model="repo.default_branch" class="form-control" required placeholder="{{ repo.vcs === 'git' ? 'main or master' : 'default' }}" />
+		</div>
 		<div ng-if="repo.vcs === 'command'" class="form-group">
 			<label>Command</label>
 			<textarea ng-model="repo.origin" class="form-control"  rows="6" placeholder="#!/bin/bash
