@@ -96,7 +96,7 @@ func build(dest string) {
 	)
 	if dirty(d, s) {
 		os.MkdirAll(path.Dir(d), os.ModePerm)
-		run("node-sass", "--style", "compact", s[0], d)
+		run("sass", "--style", "expanded", s[0], d)
 	}
 
 	// fonts

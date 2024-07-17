@@ -112,7 +112,7 @@ For feedback, bug reports and questions, please contact mechiel@ueber.net.
 
 # Developing
 
-You need a Go compiler and nodejs+npm with jshint and node-sass.  Run "make
+You need a Go compiler and nodejs+npm with jshint and sass.  Run "make
 setup" to install the js dependencies.
 
 Now run: "make build test"

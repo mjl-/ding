@@ -32,6 +32,9 @@ postgres-makeuser:
 postgres:
 	$(PG)/bin/postgres -D local/postgres95 -p 5437 -k '' 2>&1 | tee local/postgres95/postgres.log
 
+psql:
+	$(PG)/bin/psql -h localhost -p 5437 -d ding
+
 test:
 	golint
 	CGO_ENABLED=1 go test -race -coverprofile cover.out -args local/local-test.conf
@@ -46,5 +49,8 @@ clean:
 	go run fabricate/*.go -- clean
 
 setup:
+	npm ci
+
+setup0:
 	-mkdir -p node_modules/.bin
-	npm install jshint@2.9.3 node-sass@7.0.1
+	npm install --save-dev --save-exact jshint@2.9.3 sass@1.71.1

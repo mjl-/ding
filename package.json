@@ -1,0 +1,6 @@
+{
+  "devDependencies": {
+    "jshint": "2.9.3",
+    "sass": "1.71.1"
+  }
+}
