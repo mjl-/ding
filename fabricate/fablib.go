@@ -4,7 +4,6 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -46,7 +45,7 @@ func write(p, contents string) {
 }
 
 func read(path string) string {
-	buf, err := ioutil.ReadFile(path)
+	buf, err := os.ReadFile(path)
 	check(err, "readfile")
 	return string(buf)
 }
@@ -95,7 +94,7 @@ func run(cmd string, args ...string) bool {
 }
 
 func readdir(dir string) (r []string) {
-	l, err := ioutil.ReadDir(dir)
+	l, err := os.ReadDir(dir)
 	check(err, "readdir")
 	for _, fi := range l {
 		r = append(r, fi.Name())
@@ -104,7 +103,7 @@ func readdir(dir string) (r []string) {
 }
 
 func dirlist(dir, suffix, prefix string) (r []string) {
-	l, err := ioutil.ReadDir(dir)
+	l, err := os.ReadDir(dir)
 	check(err, "readdir")
 	for _, fi := range l {
 		name := fi.Name()
