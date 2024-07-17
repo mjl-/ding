@@ -1,13 +1,13 @@
+//go:build !plan9
 // +build !plan9
 
 package sherpa
 
 import (
-	"net"
+	"errors"
 	"syscall"
 )
 
 func isConnectionClosed(err error) bool {
-	oe, ok := err.(*net.OpError)
-	return ok && (oe.Err == syscall.EPIPE || oe.Err == syscall.ECONNRESET)
+	return errors.Is(err, syscall.EPIPE) || errors.Is(err, syscall.ECONNRESET)
 }

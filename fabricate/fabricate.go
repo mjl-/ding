@@ -165,6 +165,10 @@ func build(dest string) {
 		{"", []string{"vendor/golang.org/x/sys/PATENTS"}},
 		{"", []string{"vendor/golang.org/x/crypto/LICENSE"}},
 		{"", []string{"vendor/golang.org/x/crypto/PATENTS"}},
+		{"", []string{"vendor/golang.org/x/mod/LICENSE"}},
+		{"", []string{"vendor/golang.org/x/mod/PATENTS"}},
+		{"", []string{"vendor/golang.org/x/tools/LICENSE"}},
+		{"", []string{"vendor/golang.org/x/tools/PATENTS"}},
 		{"", []string{"vendor/github.com/cespare/xxhash/v2/LICENSE.txt"}},
 		{"Prometheus Go client", []string{
 			"vendor/github.com/prometheus/client_golang/LICENSE",

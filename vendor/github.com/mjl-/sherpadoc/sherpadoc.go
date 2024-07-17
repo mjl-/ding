@@ -33,11 +33,11 @@ type Function struct {
 //
 // Production rules:
 //
-// 	basictype := "bool" | "int8", "uint8" | "int16" | "uint16" | "int32" | "uint32" | "int64" | "uint64" | "int64s" | "uint64s" | "float32" | "float64" | "string" | "timestamp"
-// 	array := "[]"
-// 	map := "{}"
-// 	identifier := [a-zA-Z][a-zA-Z0-9]*
-// 	type := "nullable"? ("any" | basictype | identifier | array type | map type)
+//	basictype := "bool" | "int8", "uint8" | "int16" | "uint16" | "int32" | "uint32" | "int64" | "uint64" | "int64s" | "uint64s" | "float32" | "float64" | "string" | "timestamp"
+//	array := "[]"
+//	map := "{}"
+//	identifier := [a-zA-Z][a-zA-Z0-9]*
+//	type := "nullable"? ("any" | basictype | identifier | array type | map type)
 //
 // It is not possible to have inline structs in an Arg. Those must be encoded as a
 // named type.
@@ -67,7 +67,7 @@ type Ints struct {
 	Docs   string
 	Values []struct {
 		Name  string
-		Value int
+		Value int64
 		Docs  string
 	}
 }

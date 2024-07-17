@@ -7,9 +7,9 @@ import (
 
 // Collector implements the Collector interface from the sherpa package.
 type Collector struct {
-	requests, errors, serverErrors *prometheus.CounterVec
-	protocolErrors, badFunction, javascript, json	prometheus.Counter
-	requestDuration *prometheus.HistogramVec
+	requests, errors                              *prometheus.CounterVec
+	protocolErrors, badFunction, javascript, json prometheus.Counter
+	requestDuration                               *prometheus.HistogramVec
 }
 
 // NewCollector creates a new collector for the named API.
@@ -19,9 +19,7 @@ type Collector struct {
 // 	sherpa_requests_total
 // 		calls, per function
 // 	sherpa_errors_total
-// 		error responses (including server errors), per function
-// 	sherpa_servererrors_total
-// 		server error responses, per function
+// 		error responses, per function,code
 // 	sherpa_protocol_errors_total
 // 		incorrect requests
 // 	sherpa_bad_function_total
@@ -39,48 +37,43 @@ func NewCollector(api string, reg prometheus.Registerer) (*Collector, error) {
 	apiLabel := prometheus.Labels{"api": api}
 	c := &Collector{
 		requests: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Name: "sherpa_requests_total",
-			Help: "Total sherpa requests.",
+			Name:        "sherpa_requests_total",
+			Help:        "Total sherpa requests.",
 			ConstLabels: apiLabel,
 		}, []string{"function"}),
-		errors:  prometheus.NewCounterVec(prometheus.CounterOpts{
-			Name: "sherpa_errors_total",
-			Help: "Total sherpa error responses.",
+		errors: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name:        "sherpa_errors_total",
+			Help:        "Total sherpa error responses.",
 			ConstLabels: apiLabel,
-		}, []string{"function"}),
-		serverErrors:  prometheus.NewCounterVec(prometheus.CounterOpts{
-			Name: "sherpa_servererrors_total",
-			Help: "Total sherpa server error responses.",
-			ConstLabels: apiLabel,
-		}, []string{"function"}),
+		}, []string{"function", "code"}),
 		protocolErrors: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: "sherpa_protocol_errors_total",
-			Help: "Total sherpa protocol errors.",
+			Name:        "sherpa_protocol_errors_total",
+			Help:        "Total sherpa protocol errors.",
 			ConstLabels: apiLabel,
 		}),
 		badFunction: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: "sherpa_bad_function_total",
-			Help: "Total sherpa bad function calls.",
+			Name:        "sherpa_bad_function_total",
+			Help:        "Total sherpa bad function calls.",
 			ConstLabels: apiLabel,
 		}),
 		javascript: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: "sherpa_javascript_request_total",
-			Help: "Total sherpa.js requests.",
+			Name:        "sherpa_javascript_request_total",
+			Help:        "Total sherpa.js requests.",
 			ConstLabels: apiLabel,
 		}),
 		json: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: "sherpa_json_requests_total",
-			Help: "Total sherpa.json requests.",
+			Name:        "sherpa_json_requests_total",
+			Help:        "Total sherpa.json requests.",
 			ConstLabels: apiLabel,
 		}),
 		requestDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
-			Name: "sherpa_requests_duration_seconds",
-			Help: "Sherpa request duration in seconds.",
+			Name:        "sherpa_requests_duration_seconds",
+			Help:        "Sherpa request duration in seconds.",
 			ConstLabels: apiLabel,
-			Buckets: []float64{.01, .05, .1, .2, .5, 1, 2, 4, 8, 16},
+			Buckets:     []float64{.01, .05, .1, .2, .5, 1, 2, 4, 8, 16},
 		}, []string{"function"}),
 	}
-	first := func(errors... error) error {
+	first := func(errors ...error) error {
 		for _, err := range errors {
 			if err != nil {
 				return err
@@ -91,7 +84,6 @@ func NewCollector(api string, reg prometheus.Registerer) (*Collector, error) {
 	err := first(
 		reg.Register(c.requests),
 		reg.Register(c.errors),
-		reg.Register(c.serverErrors),
 		reg.Register(c.protocolErrors),
 		reg.Register(c.badFunction),
 		reg.Register(c.javascript),
@@ -122,13 +114,10 @@ func (c *Collector) JavaScript() {
 }
 
 // FunctionCall increases "sherpa_requests_total" by one, adds the call duration to "sherpa_requests_duration_seconds" and possibly increases "sherpa_error_total" and "sherpa_servererror_total".
-func (c *Collector) FunctionCall(name string, error bool, serverError bool, duration float64) {
+func (c *Collector) FunctionCall(name string, duration float64, errorCode string) {
 	c.requests.WithLabelValues(name).Inc()
-	if error {
-		c.errors.WithLabelValues(name).Inc()
-		if serverError {
-			c.serverErrors.WithLabelValues(name).Inc()
-		}
+	if errorCode != "" {
+		c.errors.WithLabelValues(name, errorCode).Inc()
 	}
 	c.requestDuration.WithLabelValues(name).Observe(duration)
 }

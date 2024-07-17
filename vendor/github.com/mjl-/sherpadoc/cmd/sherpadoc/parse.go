@@ -8,18 +8,24 @@ import (
 	"go/token"
 	"log"
 	"os"
+	"path/filepath"
 	"reflect"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
+	"unicode"
+
+	"golang.org/x/tools/go/packages"
 
 	"github.com/mjl-/sherpadoc"
 )
 
 // ParsedPackage possibly includes some of its imports because the package that contains the section references it.
 type parsedPackage struct {
-	Path    string       // Of import, used for keeping duplicate type names from different packages unique.
-	Pkg     *ast.Package // Needed for its files: we need a file to find the package path and identifier used to reference other types.
+	Fset    *token.FileSet // Used with a token.Pos to get offending locations.
+	Path    string         // Of import, used for keeping duplicate type names from different packages unique.
+	Pkg     *ast.Package   // Needed for its files: we need a file to find the package path and identifier used to reference other types.
 	Docpkg  *doc.Package
 	Imports map[string]*parsedPackage // Package/import path to parsed packages.
 }
@@ -33,6 +39,16 @@ func (pp *parsedPackage) lookupType(name string) *doc.Type {
 		}
 	}
 	return nil
+}
+
+// Like log.Fatalf, but prefixes error message with offending file position (if known).
+// pp is the package where the position tok belongs to.
+func logFatalLinef(pp *parsedPackage, tok token.Pos, format string, args ...interface{}) {
+	if !tok.IsValid() {
+		log.Fatalf(format, args...)
+	}
+	msg := fmt.Sprintf(format, args...)
+	log.Fatalf("%s: %s", pp.Fset.Position(tok).String(), msg)
 }
 
 // Documentation for a single field, with text above the field, and
@@ -102,6 +118,7 @@ func parseDoc(apiName, packagePath string) *section {
 		for _, t := range docpkg.Types {
 			if t.Name == apiName {
 				par := &parsedPackage{
+					Fset:    fset,
 					Path:    packagePath,
 					Pkg:     pkg,
 					Docpkg:  docpkg,
@@ -111,7 +128,7 @@ func parseDoc(apiName, packagePath string) *section {
 			}
 		}
 	}
-	log.Fatalf("type %q not found\n", apiName)
+	log.Fatalf("type %q not found", apiName)
 	return nil
 }
 
@@ -145,7 +162,7 @@ func parseSection(t *doc.Type, pp *parsedPackage) *section {
 	st := expr.(*ast.StructType)
 	for _, f := range st.Fields.List {
 		ident, ok := f.Type.(*ast.Ident)
-		if !ok {
+		if !ok || !ast.IsExported(ident.Name) {
 			continue
 		}
 		name := ident.Name
@@ -154,7 +171,7 @@ func parseSection(t *doc.Type, pp *parsedPackage) *section {
 		}
 		subt := pp.lookupType(ident.Name)
 		if subt == nil {
-			log.Fatalf("subsection %q not found\n", ident.Name)
+			logFatalLinef(pp, ident.Pos(), "subsection %q not found", ident.Name)
 		}
 		subsec := parseSection(subt, pp)
 		subsec.Name = name
@@ -163,15 +180,25 @@ func parseSection(t *doc.Type, pp *parsedPackage) *section {
 	return sec
 }
 
-// Ensure type "t" - used in a field or argument - in package pp is parsed and added to the section.
-func ensureNamedType(t *doc.Type, sec *section, pp *parsedPackage) {
-	typePath := pp.Path + "." + t.Name
+// Ensure type "t" (used in a field or argument) defined in package pp is parsed
+// and added to the section. The returned string is the name as used in the
+// sherpadoc, it may have been renamed.
+func ensureNamedType(t *doc.Type, sec *section, pp *parsedPackage) (name string) {
+	if s, ok := renames[renameSrc{pp.Pkg.Name, t.Name}]; ok {
+		name = s
+		if sherpadoc.IsBasicType(s) {
+			return
+		}
+	} else {
+		name = t.Name
+	}
+	typePath := pp.Path + "." + name
 	if _, have := sec.Typeset[typePath]; have {
 		return
 	}
 
 	tt := &namedType{
-		Name: t.Name,
+		Name: name,
 		Text: strings.TrimSpace(t.Doc),
 	}
 	// add it early, so self-referencing types can't cause a loop
@@ -179,17 +206,80 @@ func ensureNamedType(t *doc.Type, sec *section, pp *parsedPackage) {
 	sec.Typeset[typePath] = struct{}{}
 
 	ts := t.Decl.Specs[0].(*ast.TypeSpec)
-	switch nt := ts.Type.(type) {
-	case *ast.StructType:
-		tt.Kind = typeStruct
+	if ts.Assign.IsValid() {
+		logFatalLinef(pp, t.Decl.TokPos, "type aliases not yet supported")
+	}
+
+	var gatherFields func(e ast.Expr, typeName string, xpp *parsedPackage)
+	var gatherStructFields func(nt *ast.StructType, typeName string, xpp *parsedPackage)
+
+	gatherFields = func(e ast.Expr, typeName string, xpp *parsedPackage) {
+		switch xt := e.(type) {
+		case *ast.Ident:
+			// Bare type name.
+			tt := xpp.lookupType(xt.Name)
+			if tt == nil {
+				log.Fatalf("could not find type %q used in type %q in package %q", xt.Name, typeName, xpp.Path)
+			}
+			tts := tt.Decl.Specs[0].(*ast.TypeSpec)
+			if ts.Assign.IsValid() {
+				logFatalLinef(xpp, tt.Decl.TokPos, "type aliases not yet supported")
+			}
+			tst, ok := tts.Type.(*ast.StructType)
+			if !ok {
+				logFatalLinef(xpp, tt.Decl.TokPos, "unexpected field type %T", tts.Type)
+			}
+			gatherStructFields(tst, tt.Name, xpp)
+		case *ast.StarExpr:
+			// Field with "*", handle as if without *.
+			gatherFields(xt.X, typeName, xpp)
+		case *ast.SelectorExpr:
+			// With package prefix, lookup the type in the package and gather its fields.
+			dt, nxpp := parseFieldSelector(useSrc{xpp, typeName}, xt)
+			tts := dt.Decl.Specs[0].(*ast.TypeSpec)
+			if ts.Assign.IsValid() {
+				logFatalLinef(nxpp, dt.Decl.TokPos, "type aliases not yet supported")
+			}
+			tst, ok := tts.Type.(*ast.StructType)
+			if !ok {
+				logFatalLinef(nxpp, dt.Decl.TokPos, "unexpected field type %T", tts.Type)
+			}
+			gatherStructFields(tst, dt.Name, nxpp)
+		default:
+			logFatalLinef(xpp, t.Decl.TokPos, "unsupported field with type %T", e)
+		}
+	}
+
+	gatherStructFields = func(nt *ast.StructType, typeName string, xpp *parsedPackage) {
 		for _, f := range nt.Fields.List {
+			if len(f.Names) == 0 {
+				// Embedded field. Treat its fields as if they were included.
+				gatherFields(f.Type, typeName, xpp)
+				continue
+			}
+
+			// Check if we need this type. Otherwise we may trip
+			// over an unhandled type that we wouldn't include in
+			// the output (eg due to a struct tag).
+			names := nameList(f.Names, f.Tag)
+			need := false
+			for _, name := range names {
+				if name != "" {
+					need = true
+					break
+				}
+			}
+			if !need {
+				continue
+			}
+
 			ff := &field{
 				"",
 				nil,
 				fieldDoc(f),
 				[]*field{},
 			}
-			ff.Typewords = gatherFieldType(t.Name, ff, f.Type, f.Tag, sec, pp)
+			ff.Typewords = gatherFieldType(t.Name, ff, f.Type, f.Tag, sec, xpp)
 			for _, name := range nameList(f.Names, f.Tag) {
 				nf := &field{}
 				*nf = *ff
@@ -197,6 +287,20 @@ func ensureNamedType(t *doc.Type, sec *section, pp *parsedPackage) {
 				tt.Fields = append(tt.Fields, nf)
 			}
 		}
+	}
+
+	switch nt := ts.Type.(type) {
+	case *ast.StructType:
+		tt.Kind = typeStruct
+		gatherStructFields(nt, t.Name, pp)
+
+	case *ast.ArrayType:
+		if ident, ok := nt.Elt.(*ast.Ident); ok && ident.Name == "byte" {
+			tt.Kind = typeBytes
+		} else {
+			logFatalLinef(pp, t.Decl.TokPos, "named type with unsupported element type %T", ts.Type)
+		}
+
 	case *ast.Ident:
 		if strings.HasSuffix(typePath, "sherpa.Int64s") || strings.HasSuffix(typePath, "sherpa.Uint64s") {
 			return
@@ -204,49 +308,50 @@ func ensureNamedType(t *doc.Type, sec *section, pp *parsedPackage) {
 
 		tt.Text = t.Doc + ts.Comment.Text()
 		switch nt.Name {
-		case "byte", "int16", "uint16", "int32", "uint32", "int", "uint":
+		case "byte", "int8", "uint8", "int16", "uint16", "int32", "uint32", "int64", "uint64", "int", "uint":
 			tt.Kind = typeInts
 		case "string":
 			tt.Kind = typeStrings
 		default:
-			log.Fatalf("unrecognized type identifier %#v\n", nt.Name)
+			logFatalLinef(pp, t.Decl.TokPos, "unrecognized type identifier %#v", nt.Name)
 		}
 
 		for _, c := range t.Consts {
 			for _, spec := range c.Decl.Specs {
 				vs, ok := spec.(*ast.ValueSpec)
 				if !ok {
-					log.Fatalf("unsupported non-ast.ValueSpec constant %#v\n", spec)
+					logFatalLinef(pp, spec.Pos(), "unsupported non-ast.ValueSpec constant %#v", spec)
 				}
 				if len(vs.Names) != 1 {
-					log.Fatalf("unsupported multiple .Names in %#v\n", vs)
+					logFatalLinef(pp, vs.Pos(), "unsupported multiple .Names in %#v", vs)
 				}
 				name := vs.Names[0].Name
 				if len(vs.Values) != 1 {
-					log.Fatalf("unsupported multiple .Values in %#v\n", vs)
+					logFatalLinef(pp, vs.Pos(), "unsupported multiple .Values in %#v", vs)
 				}
 				lit, ok := vs.Values[0].(*ast.BasicLit)
 				if !ok {
-					log.Fatalf("unsupported non-ast.BasicLit first .Values %#v\n", vs)
+					logFatalLinef(pp, vs.Pos(), "unsupported non-ast.BasicLit first .Values %#v", vs)
 				}
 
 				comment := vs.Doc.Text() + vs.Comment.Text()
 				switch lit.Kind {
 				case token.INT:
 					if tt.Kind != typeInts {
-						log.Fatalf("int value for for non-int-enum %s\n", t.Name)
+						logFatalLinef(pp, lit.Pos(), "int value for for non-int-enum %q", t.Name)
 					}
-					v, err := strconv.ParseInt(lit.Value, 10, 64)
+					// Given JSON/JS lack of integers, restrict to what it can represent in its float.
+					v, err := strconv.ParseInt(lit.Value, 10, 52)
 					check(err, "parse int literal")
 					iv := struct {
 						Name  string
-						Value int
+						Value int64
 						Docs  string
-					}{name, int(v), comment}
+					}{name, v, strings.TrimSpace(comment)}
 					tt.IntValues = append(tt.IntValues, iv)
 				case token.STRING:
 					if tt.Kind != typeStrings {
-						log.Fatalf("string for non-string-enum %s\n", t.Name)
+						logFatalLinef(pp, lit.Pos(), "string for non-string-enum %q", t.Name)
 					}
 					v, err := strconv.Unquote(lit.Value)
 					check(err, "unquote literal")
@@ -254,20 +359,29 @@ func ensureNamedType(t *doc.Type, sec *section, pp *parsedPackage) {
 						Name  string
 						Value string
 						Docs  string
-					}{name, v, comment}
+					}{name, v, strings.TrimSpace(comment)}
 					tt.StringValues = append(tt.StringValues, sv)
 				default:
-					log.Fatalf("unexpected literal kind %#v\n", lit.Kind)
+					logFatalLinef(pp, lit.Pos(), "unexpected literal kind %#v", lit.Kind)
 				}
 			}
 		}
 	default:
-		log.Fatalf("unsupported field/param/return type %T\n", ts.Type)
+		logFatalLinef(pp, t.Decl.TokPos, "unsupported field/param/return type %T", ts.Type)
 	}
+	return
+}
+
+func hasOmitEmpty(tag *ast.BasicLit) bool {
+	return hasJSONTagValue(tag, "omitempty")
 }
 
 // isCommaString returns whether the tag (may be nil) contains a "json:,string" directive.
 func isCommaString(tag *ast.BasicLit) bool {
+	return hasJSONTagValue(tag, "string")
+}
+
+func hasJSONTagValue(tag *ast.BasicLit, v string) bool {
 	if tag == nil {
 		return false
 	}
@@ -278,7 +392,7 @@ func isCommaString(tag *ast.BasicLit) bool {
 	}
 	t := strings.Split(s, ",")
 	for _, e := range t[1:] {
-		if e == "string" {
+		if e == v {
 			return true
 		}
 	}
@@ -286,8 +400,16 @@ func isCommaString(tag *ast.BasicLit) bool {
 }
 
 func gatherFieldType(typeName string, f *field, e ast.Expr, fieldTag *ast.BasicLit, sec *section, pp *parsedPackage) typewords {
-	name := checkReplacedType(e, sec, pp)
+	nullablePrefix := typewords{}
+	if hasOmitEmpty(fieldTag) {
+		nullablePrefix = typewords{"nullable"}
+	}
+
+	name := checkReplacedType(useSrc{pp, typeName}, e)
 	if name != nil {
+		if name[0] != "nullable" {
+			return append(nullablePrefix, name...)
+		}
 		return name
 	}
 
@@ -295,15 +417,15 @@ func gatherFieldType(typeName string, f *field, e ast.Expr, fieldTag *ast.BasicL
 	case *ast.Ident:
 		tt := pp.lookupType(t.Name)
 		if tt != nil {
-			ensureNamedType(tt, sec, pp)
-			return []string{t.Name}
+			name := ensureNamedType(tt, sec, pp)
+			return []string{name}
 		}
 		commaString := isCommaString(fieldTag)
 		name := t.Name
 		switch name {
 		case "byte":
 			name = "uint8"
-		case "bool", "int8", "uint8", "int16", "uint16", "int32", "uint32", "float32", "float64", "string":
+		case "bool", "int8", "uint8", "int16", "uint16", "int32", "uint32", "float32", "float64", "string", "any":
 		case "int64", "uint64":
 			if commaString {
 				name += "s"
@@ -311,36 +433,40 @@ func gatherFieldType(typeName string, f *field, e ast.Expr, fieldTag *ast.BasicL
 		case "int", "uint":
 			name += "32"
 		default:
-			log.Fatalf("unsupported type %q\n", name)
+			logFatalLinef(pp, t.Pos(), "unsupported field type %q used in type %q in package %q", name, typeName, pp.Path)
 		}
 		if commaString && name != "int64s" && name != "uint64s" {
-			log.Fatalf("unsupported tag `json:,\"string\"` for non-64bit int in %s.%s\n", typeName, f.Name)
+			logFatalLinef(pp, t.Pos(), "unsupported tag `json:,\"string\"` for non-64bit int in %s.%s", typeName, f.Name)
 		}
-		return []string{name}
+		return append(nullablePrefix, name)
 	case *ast.ArrayType:
-		return append([]string{"[]"}, gatherFieldType(typeName, f, t.Elt, nil, sec, pp)...)
+		return append(nullablePrefix, append([]string{"[]"}, gatherFieldType(typeName, f, t.Elt, nil, sec, pp)...)...)
 	case *ast.MapType:
 		_ = gatherFieldType(typeName, f, t.Key, nil, sec, pp)
 		vt := gatherFieldType(typeName, f, t.Value, nil, sec, pp)
-		return append([]string{"{}"}, vt...)
+		return append(nullablePrefix, append([]string{"{}"}, vt...)...)
 	case *ast.InterfaceType:
 		// If we export an interface as an "any" type, we want to make sure it's intended.
 		// Require the user to be explicit with an empty interface.
 		if t.Methods != nil && len(t.Methods.List) > 0 {
-			log.Fatalf("unsupported non-empty interface param/return type %T\n", t)
+			logFatalLinef(pp, t.Pos(), "unsupported non-empty interface param/return type %T", t)
 		}
-		return []string{"any"}
+		return append(nullablePrefix, "any")
 	case *ast.StarExpr:
-		return append([]string{"nullable"}, gatherFieldType(typeName, f, t.X, fieldTag, sec, pp)...)
+		tw := gatherFieldType(typeName, f, t.X, fieldTag, sec, pp)
+		if tw[0] != "nullable" {
+			tw = append([]string{"nullable"}, tw...)
+		}
+		return tw
 	case *ast.SelectorExpr:
-		return []string{parseSelector(t, typeName, sec, pp)}
+		return append(nullablePrefix, parseSelector(t, typeName, sec, pp))
 	}
-	log.Fatalf("unimplemented ast.Expr %#v for struct %q field %q in gatherFieldType\n", e, typeName, f.Name)
+	logFatalLinef(pp, e.Pos(), "unimplemented ast.Expr %#v for struct %q field %q in gatherFieldType", e, typeName, f.Name)
 	return nil
 }
 
 func parseArgType(e ast.Expr, sec *section, pp *parsedPackage) typewords {
-	name := checkReplacedType(e, sec, pp)
+	name := checkReplacedType(useSrc{pp, sec.Name}, e)
 	if name != nil {
 		return name
 	}
@@ -349,20 +475,20 @@ func parseArgType(e ast.Expr, sec *section, pp *parsedPackage) typewords {
 	case *ast.Ident:
 		tt := pp.lookupType(t.Name)
 		if tt != nil {
-			ensureNamedType(tt, sec, pp)
-			return []string{t.Name}
+			name := ensureNamedType(tt, sec, pp)
+			return []string{name}
 		}
 		name := t.Name
 		switch name {
 		case "byte":
 			name = "uint8"
-		case "bool", "int8", "uint8", "int16", "uint16", "int32", "uint32", "int64", "uint64", "float32", "float64", "string":
+		case "bool", "int8", "uint8", "int16", "uint16", "int32", "uint32", "int64", "uint64", "float32", "float64", "string", "any":
 		case "int", "uint":
 			name += "32"
 		case "error":
 			// allowed here, checked if in right location by caller
 		default:
-			log.Fatalf("unsupported type %q\n", name)
+			logFatalLinef(pp, t.Pos(), "unsupported arg type %q", name)
 		}
 		return []string{name}
 	case *ast.ArrayType:
@@ -378,7 +504,7 @@ func parseArgType(e ast.Expr, sec *section, pp *parsedPackage) typewords {
 		// If we export an interface as an "any" type, we want to make sure it's intended.
 		// Require the user to be explicit with an empty interface.
 		if t.Methods != nil && len(t.Methods.List) > 0 {
-			log.Fatalf("unsupported non-empty interface param/return type %T\n", t)
+			logFatalLinef(pp, t.Pos(), "unsupported non-empty interface param/return type %T", t)
 		}
 		return []string{"any"}
 	case *ast.StarExpr:
@@ -386,20 +512,44 @@ func parseArgType(e ast.Expr, sec *section, pp *parsedPackage) typewords {
 	case *ast.SelectorExpr:
 		return []string{parseSelector(t, sec.TypeName, sec, pp)}
 	}
-	log.Fatalf("unimplemented ast.Expr %#v in parseArgType\n", e)
+	logFatalLinef(pp, e.Pos(), "unimplemented ast.Expr %#v in parseArgType", e)
 	return nil
 }
 
-func parseSelector(t *ast.SelectorExpr, sourceTypeName string, sec *section, pp *parsedPackage) string {
+// Parse the selector of a field, returning the type and the parsed package it exists in. This cannot be a builtin type.
+func parseFieldSelector(u useSrc, t *ast.SelectorExpr) (*doc.Type, *parsedPackage) {
 	packageIdent, ok := t.X.(*ast.Ident)
 	if !ok {
-		log.Fatalln("unexpected non-ident for SelectorExpr.X")
+		u.Fatalf(t.Pos(), "unexpected non-ident for SelectorExpr.X")
+	}
+	pkgName := packageIdent.Name
+	typeName := t.Sel.Name
+
+	importPath := u.lookupPackageImportPath(pkgName)
+	if importPath == "" {
+		u.Fatalf(t.Pos(), "cannot find source for type %q that references package %q (perhaps try -replace)", u, pkgName)
+	}
+
+	opp := u.Ppkg.ensurePackageParsed(importPath)
+	tt := opp.lookupType(typeName)
+	if tt == nil {
+		u.Fatalf(t.Pos(), "could not find type %q in package %q", typeName, importPath)
+	}
+	return tt, opp
+}
+
+func parseSelector(t *ast.SelectorExpr, srcTypeName string, sec *section, pp *parsedPackage) string {
+	packageIdent, ok := t.X.(*ast.Ident)
+	if !ok {
+		logFatalLinef(pp, t.Pos(), "unexpected non-ident for SelectorExpr.X")
 	}
 	pkgName := packageIdent.Name
 	typeName := t.Sel.Name
 
 	if pkgName == "time" && typeName == "Time" {
 		return "timestamp"
+	} else if pkgName == "time" && typeName == "Duration" {
+		return "int64"
 	}
 	if pkgName == "sherpa" {
 		switch typeName {
@@ -410,18 +560,17 @@ func parseSelector(t *ast.SelectorExpr, sourceTypeName string, sec *section, pp 
 		}
 	}
 
-	importPath := pp.lookupPackageImportPath(sourceTypeName, pkgName)
+	importPath := pp.lookupPackageImportPath(srcTypeName, pkgName)
 	if importPath == "" {
-		log.Fatalf("cannot find source for %q (perhaps try -replace)\n", fmt.Sprintf("%s.%s", pkgName, typeName))
+		logFatalLinef(pp, t.Pos(), "cannot find source for %q (perhaps try -replace)", fmt.Sprintf("%s.%s", pkgName, typeName))
 	}
 
 	opp := pp.ensurePackageParsed(importPath)
 	tt := opp.lookupType(typeName)
 	if tt == nil {
-		log.Fatalf("could not find type %q in package %q\n", typeName, importPath)
+		logFatalLinef(pp, t.Pos(), "could not find type %q in package %q", typeName, importPath)
 	}
-	ensureNamedType(tt, sec, opp)
-	return typeName
+	return ensureNamedType(tt, sec, opp)
 }
 
 type replacement struct {
@@ -443,7 +592,7 @@ func typeReplacements() []replacement {
 		}
 		tokens := strings.Split(repl, " ")
 		if len(tokens) < 2 {
-			log.Fatalf("bad replacement %q, must have at least two tokens, space-separated\n", repl)
+			log.Fatalf("bad replacement %q, must have at least two tokens, space-separated", repl)
 		}
 		r := replacement{tokens[0], tokens[1:]}
 		_replacements = append(_replacements, r)
@@ -451,49 +600,71 @@ func typeReplacements() []replacement {
 	return _replacements
 }
 
+// Use of a type Name from package Ppkg. Used to look up references from that
+// location (the file where the type is defined, with its imports) for a given Go
+// ast.
+type useSrc struct {
+	Ppkg *parsedPackage
+	Name string
+}
+
+func (u useSrc) lookupPackageImportPath(pkgName string) string {
+	return u.Ppkg.lookupPackageImportPath(u.Name, pkgName)
+}
+
+func (u useSrc) String() string {
+	return fmt.Sprintf("%s.%s", u.Ppkg.Path, u.Name)
+}
+
+func (u useSrc) Fatalf(tok token.Pos, format string, args ...interface{}) {
+	logFatalLinef(u.Ppkg, tok, format, args...)
+}
+
 // Return a go type name, eg "*time.Time".
-// This function does not parse the types itself, because it would mean they could be added to the sherpadoc output even if they aren't otherwise used (due to replacement).
-func goTypeName(e ast.Expr, sec *section, pp *parsedPackage) string {
+// This function does not parse the types itself, because it would mean they could
+// be added to the sherpadoc output even if they aren't otherwise used (due to
+// replacement).
+func goTypeName(u useSrc, e ast.Expr) string {
 	switch t := e.(type) {
 	case *ast.Ident:
 		return t.Name
 	case *ast.ArrayType:
-		return "[]" + goTypeName(t.Elt, sec, pp)
+		return "[]" + goTypeName(u, t.Elt)
 	case *ast.Ellipsis:
 		// Ellipsis parameters to a function must be passed as an array, so document it that way.
-		return "[]" + goTypeName(t.Elt, sec, pp)
+		return "[]" + goTypeName(u, t.Elt)
 	case *ast.MapType:
-		return fmt.Sprintf("map[%s]%s", goTypeName(t.Key, sec, pp), goTypeName(t.Value, sec, pp))
+		return fmt.Sprintf("map[%s]%s", goTypeName(u, t.Key), goTypeName(u, t.Value))
 	case *ast.InterfaceType:
 		return "interface{}"
 	case *ast.StarExpr:
-		return "*" + goTypeName(t.X, sec, pp)
+		return "*" + goTypeName(u, t.X)
 	case *ast.SelectorExpr:
 		packageIdent, ok := t.X.(*ast.Ident)
 		if !ok {
-			log.Fatalln("unexpected non-ident for SelectorExpr.X")
+			u.Fatalf(t.Pos(), "unexpected non-ident for SelectorExpr.X")
 		}
 		pkgName := packageIdent.Name
 		typeName := t.Sel.Name
 
-		importPath := pp.lookupPackageImportPath(sec.Name, pkgName)
+		importPath := u.lookupPackageImportPath(pkgName)
 		if importPath != "" {
 			return fmt.Sprintf("%s.%s", importPath, typeName)
 		}
 		return fmt.Sprintf("%s.%s", pkgName, typeName)
 		// todo: give proper error message for *ast.StructType
 	}
-	log.Fatalf("unimplemented ast.Expr %#v in goTypeName\n", e)
+	u.Fatalf(e.Pos(), "unimplemented ast.Expr %#v in goTypeName", e)
 	return ""
 }
 
-func checkReplacedType(e ast.Expr, sec *section, pp *parsedPackage) typewords {
+func checkReplacedType(u useSrc, e ast.Expr) typewords {
 	repls := typeReplacements()
 	if len(repls) == 0 {
 		return nil
 	}
 
-	name := goTypeName(e, sec, pp)
+	name := goTypeName(u, e)
 	return replacementType(repls, name)
 }
 
@@ -513,50 +684,98 @@ func (pp *parsedPackage) ensurePackageParsed(importPath string) *parsedPackage {
 		return r
 	}
 
-	// todo: should also attempt to look at vendor/ directory, and modules
-	localPath := os.Getenv("GOPATH")
-	if localPath == "" {
-		localPath = defaultGOPATH()
-	}
-	localPath += "/src/" + importPath
+	var localPath string
+	var astPkg *ast.Package
+	var fset *token.FileSet
 
-	fset := token.NewFileSet()
-	pkgs, firstErr := parser.ParseDir(fset, localPath, nil, parser.ParseComments)
-	check(firstErr, "parsing code")
-	if len(pkgs) != 1 {
-		log.Fatalf("need exactly one package parsed for import path %q, but saw %d\n", importPath, len(pkgs))
-	}
-	for _, pkg := range pkgs {
-		docpkg := doc.New(pkg, "", doc.AllDecls)
-		npp := &parsedPackage{
-			Path:    localPath,
-			Pkg:     pkg,
-			Docpkg:  docpkg,
-			Imports: make(map[string]*parsedPackage),
+	// If dependencies are vendored, we load packages from vendor/. This is typically
+	// faster than using package.Load (the fallback), which may spawn commands.
+	// For me, while testing, for loading a simple package from the same module goes
+	// from 50-100 ms to 1-5ms. Loading "net" from 200ms to 65ms.
+
+	if gomodFile != nil {
+		if importPath == gomodFile.Module.Mod.Path {
+			localPath = gomodDir
+		} else if strings.HasPrefix(importPath, gomodFile.Module.Mod.Path+"/") {
+			localPath = filepath.Join(gomodDir, strings.TrimPrefix(importPath, gomodFile.Module.Mod.Path+"/"))
+		} else {
+			p := filepath.Join(gomodDir, "vendor", importPath)
+			if _, err := os.Stat(p); err == nil {
+				localPath = p
+			} else {
+				localPath = filepath.Join(runtime.GOROOT(), "src", importPath)
+			}
 		}
-		pp.Imports[importPath] = npp
-		return npp
+
+		fset = token.NewFileSet()
+		astPkgs, err := parser.ParseDir(fset, localPath, nil, parser.ParseComments|parser.DeclarationErrors)
+		check(err, "parsing go files from "+localPath)
+		for name, pkg := range astPkgs {
+			if name == "main" || strings.HasSuffix(name, "_test") {
+				continue
+			}
+			if astPkg != nil {
+				log.Fatalf("loading package %q: multiple packages found", importPath)
+			}
+			astPkg = pkg
+		}
+	} else {
+		config := &packages.Config{
+			Mode: packages.NeedName | packages.NeedFiles,
+		}
+		pkgs, err := packages.Load(config, importPath)
+		check(err, "loading package")
+		if len(pkgs) != 1 {
+			log.Fatalf("loading package %q: got %d packages, expected 1", importPath, len(pkgs))
+		}
+		pkg := pkgs[0]
+		if len(pkg.GoFiles) == 0 {
+			log.Fatalf("loading package %q: no go files found", importPath)
+		}
+
+		fset = token.NewFileSet()
+		localPath = filepath.Dir(pkg.GoFiles[0])
+		astPkgs, err := parser.ParseDir(fset, localPath, nil, parser.ParseComments)
+		check(err, "parsing go files from directory")
+		var ok bool
+		astPkg, ok = astPkgs[pkg.Name]
+		if !ok {
+			log.Fatalf("loading package %q: could not find astPkg for %q", importPath, pkg.Name)
+		}
 	}
-	return nil
+
+	docpkg := doc.New(astPkg, "", doc.AllDecls|doc.PreserveAST)
+
+	npp := &parsedPackage{
+		Fset:    fset,
+		Path:    localPath,
+		Pkg:     astPkg,
+		Docpkg:  docpkg,
+		Imports: make(map[string]*parsedPackage),
+	}
+	pp.Imports[importPath] = npp
+	return npp
 }
 
-// LookupPackageImportPath returns the import/package path for pkgName as used as a selector in this section.
-func (pp *parsedPackage) lookupPackageImportPath(sectionTypeName, pkgName string) string {
-	file := pp.lookupTypeFile(sectionTypeName)
+// LookupPackageImportPath returns the import/package path for pkgName as used
+// in the type named typeName.
+func (pp *parsedPackage) lookupPackageImportPath(typeName, pkgName string) string {
+	file := pp.lookupTypeFile(typeName)
 	for _, imp := range file.Imports {
-		if imp.Name != nil && imp.Name.Name == pkgName || imp.Name == nil && strings.HasSuffix(parseStringLiteral(imp.Path.Value), "/"+pkgName) {
+		if imp.Name != nil && imp.Name.Name == pkgName || imp.Name == nil && (parseStringLiteral(imp.Path.Value) == pkgName || strings.HasSuffix(parseStringLiteral(imp.Path.Value), "/"+pkgName)) {
 			return parseStringLiteral(imp.Path.Value)
 		}
 	}
 	return ""
 }
 
-// LookupTypeFile returns the go source file that containst he definition of the type named typeName.
+// LookupTypeFile returns the go source file that contains the definition of
+// the type named typeName.
 func (pp *parsedPackage) lookupTypeFile(typeName string) *ast.File {
 	for _, file := range pp.Pkg.Files {
 		for _, decl := range file.Decls {
 			switch d := decl.(type) {
-			case (*ast.GenDecl):
+			case *ast.GenDecl:
 				for _, spec := range d.Specs {
 					switch s := spec.(type) {
 					case *ast.TypeSpec:
@@ -568,7 +787,7 @@ func (pp *parsedPackage) lookupTypeFile(typeName string) *ast.File {
 			}
 		}
 	}
-	log.Fatalf("could not find type named %q in package %q\n", typeName, pp.Path)
+	log.Fatalf("could not find type %q", fmt.Sprintf("%s.%s", pp.Path, typeName))
 	return nil
 }
 
@@ -598,21 +817,39 @@ func parseArgs(params *[]sherpadoc.Arg, fields *ast.FieldList, sec *section, pp 
 			continue
 		}
 		if isParams || i != len(*params)-1 {
-			log.Fatalf("can only have error type as last return value\n")
+			logFatalLinef(pp, fields.Pos(), "can only have error type as last return value")
 		}
 		pp := *params
 		*params = pp[:len(pp)-1]
 	}
 }
 
-func lowerFirst(s string) string {
-	return strings.ToLower(s[:1]) + s[1:]
+func adjustFunctionName(s string) string {
+	switch *adjustFunctionNames {
+	case "":
+		return strings.ToLower(s[:1]) + s[1:]
+	case "none":
+		return s
+	case "lowerWord":
+		r := ""
+		for i, c := range s {
+			lc := unicode.ToLower(c)
+			if lc == c {
+				r += s[i:]
+				break
+			}
+			r += string(lc)
+		}
+		return r
+	default:
+		panic(fmt.Sprintf("bad value for flag adjust-function-names: %q", *adjustFunctionNames))
+	}
 }
 
 // ParseMethod ensures the function fn from package pp ends up in section sec, with parameters/return named types filled in.
 func parseMethod(sec *section, fn *doc.Func, pp *parsedPackage) {
 	f := &function{
-		Name:    lowerFirst(fn.Name),
+		Name:    adjustFunctionName(fn.Name),
 		Text:    fn.Doc,
 		Params:  []sherpadoc.Arg{},
 		Returns: []sherpadoc.Arg{},
@@ -621,7 +858,7 @@ func parseMethod(sec *section, fn *doc.Func, pp *parsedPackage) {
 	// If first function parameter is context.Context, we skip it in the documentation.
 	// The sherpa handler automatically fills it with the http request context when called.
 	params := fn.Decl.Type.Params
-	if params != nil && len(params.List) > 0 && len(params.List[0].Names) == 1 && goTypeName(params.List[0].Type, sec, pp) == "context.Context" {
+	if params != nil && len(params.List) > 0 && len(params.List[0].Names) == 1 && goTypeName(useSrc{pp, sec.Name}, params.List[0].Type) == "context.Context" {
 		params.List = params.List[1:]
 	}
 	isParams := true

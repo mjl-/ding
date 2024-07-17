@@ -45,15 +45,31 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/mjl-/sherpadoc"
+
+	"golang.org/x/mod/modfile"
 )
 
 var (
-	packagePath = flag.String("package-path", ".", "of source code to parse")
-	replace     = flag.String("replace", "", "comma-separated list of type replacements, e.g. \"somepkg.SomeType string\"")
-	title       = flag.String("title", "", "title of the API, default is the name of the type of the main API")
+	packagePath         = flag.String("package-path", ".", "of source code to parse")
+	replace             = flag.String("replace", "", "comma-separated list of type replacements, e.g. \"somepkg.SomeType string\"")
+	rename              = flag.String("rename", "", "comma-separated list of type renames as used with a package selector, e.g. \"somepkg SomeName OtherName\"")
+	title               = flag.String("title", "", "title of the API, default is the name of the type of the main API")
+	adjustFunctionNames = flag.String("adjust-function-names", "", `by default, the first character of function names is turned into lower case; with "lowerWord" the first string of upper case characters is lower cased, with "none" the name is left as is`)
+	sortfuncs           = flag.Bool("sort-funcs", false, "sort functions within section by name")
+	sorttypes           = flag.Bool("sort-types", false, "sort types within section by name")
+)
+
+// If there is a "vendor" directory, we'll load packages from there (instead of
+// through (slower) packages.Load), and we need to know the module name to resolve
+// imports to paths in vendor.
+var (
+	gomodFile *modfile.File
+	gomodDir  string
 )
 
 type field struct {
@@ -80,6 +96,7 @@ const (
 	typeStruct typeKind = iota
 	typeInts
 	typeStrings
+	typeBytes
 )
 
 // NamedType represents the type of a parameter or return value.
@@ -91,7 +108,7 @@ type namedType struct {
 	// For kind is typeInts
 	IntValues []struct {
 		Name  string
-		Value int
+		Value int64
 		Docs  string
 	}
 	// For kind is typeStrings
@@ -123,21 +140,78 @@ type section struct {
 
 func check(err error, action string) {
 	if err != nil {
-		log.Fatalf("%s: %s\n", action, err)
+		log.Fatalf("%s: %s", action, err)
 	}
+}
+
+type renameSrc struct {
+	Pkg  string // Package selector, not full path at the moment.
+	Name string
+}
+
+var renames = map[renameSrc]string{}
+
+func usage() {
+	log.Println("usage: sherpadoc [flags] section")
+	flag.PrintDefaults()
+	os.Exit(2)
 }
 
 func main() {
 	log.SetFlags(0)
-	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "usage: %s [flags] section\n", os.Args[0])
-		flag.PrintDefaults()
-	}
+	flag.Usage = usage
 	flag.Parse()
 	args := flag.Args()
 	if len(args) != 1 {
-		flag.Usage()
-		os.Exit(2)
+		usage()
+	}
+
+	if *rename != "" {
+		to := map[string]bool{} // Track target names, for detecting duplicates.
+		for _, elem := range strings.Split(*rename, ",") {
+			l := strings.Split(elem, " ")
+			if len(l) != 3 {
+				log.Printf("invalid rename %q", elem)
+				usage()
+			}
+			src := renameSrc{l[0], l[1]}
+			if _, ok := renames[src]; ok {
+				log.Printf("duplicate rename %q", elem)
+				usage()
+			}
+			if !sherpadoc.IsBasicType(l[2]) {
+				if to[l[2]] {
+					log.Printf("duplicate rename type %q", l[2])
+					usage()
+				}
+				to[l[2]] = true
+			}
+			renames[src] = l[2]
+		}
+	}
+
+	// If vendor exists, we load packages from it.
+	for dir, _ := os.Getwd(); dir != "" && dir != "/"; dir = filepath.Dir(dir) {
+		p := filepath.Join(dir, "go.mod")
+		if _, err := os.Stat(p); err != nil && os.IsNotExist(err) {
+			continue
+		} else if err != nil {
+			log.Printf("searching for go.mod: %v", err)
+			break
+		}
+
+		if _, err := os.Stat(filepath.Join(dir, "vendor")); err != nil {
+			break
+		}
+
+		if gomod, err := os.ReadFile(p); err != nil {
+			log.Fatalf("reading go.mod: %s", err)
+		} else if mf, err := modfile.ParseLax("go.mod", gomod, nil); err != nil {
+			log.Fatalf("parsing go.mod: %s", err)
+		} else {
+			gomodFile = mf
+			gomodDir = dir
+		}
 	}
 
 	section := parseDoc(args[0], *packagePath)
@@ -154,7 +228,31 @@ func main() {
 	err := sherpadoc.Check(doc)
 	check(err, "checking sherpadoc output before writing")
 
+	sortFuncs(doc)
+
 	writeJSON(doc)
+}
+
+func sortFuncs(s *sherpadoc.Section) {
+	if *sortfuncs {
+		sort.Slice(s.Functions, func(i, j int) bool {
+			return s.Functions[i].Name < s.Functions[j].Name
+		})
+	}
+	if *sorttypes {
+		sort.Slice(s.Structs, func(i, j int) bool {
+			return s.Structs[i].Name < s.Structs[j].Name
+		})
+		sort.Slice(s.Ints, func(i, j int) bool {
+			return s.Ints[i].Name < s.Ints[j].Name
+		})
+		sort.Slice(s.Strings, func(i, j int) bool {
+			return s.Strings[i].Name < s.Strings[j].Name
+		})
+	}
+	for _, ss := range s.Sections {
+		sortFuncs(ss)
+	}
 }
 
 func writeJSON(v interface{}) {
