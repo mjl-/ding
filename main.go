@@ -44,6 +44,7 @@ var config struct {
 	} `sconf:"optional"`
 	BaseURL                string   `sconf-doc:"URL to point to from notifications about failed builds."`
 	GithubWebhookSecret    string   `sconf:"optional" sconf-doc:"For github webhook push events, to create a build; configure the same secret in the github repository settings."`
+	GiteaWebhookSecret     string   `sconf:"optional" sconf-doc:"For gitea webhooks for builds (like github). With 'Authorization: Bearer <secret>' header for authorization."`
 	BitbucketWebhookSecret string   `sconf:"optional" sconf-doc:"Will be part of the URL bitbucket sends its webhook request to, e.g. http://.../bitbucket/<reponame>/<bitbucket-webhook-secret>."`
 	Run                    []string `sconf:"optional" sconf-doc:"List of command and arguments to prepend to the command executed, e.g. nice or timeout."`
 	IsolateBuilds          struct {

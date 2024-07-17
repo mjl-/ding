@@ -85,12 +85,19 @@ on your master branch and bake tags into release version numbers.
 
 # Github and bitbucket webhooks for push events
 
-Ding supports starting builds on pushes to github or bitbucket
+Ding supports starting builds on pushes to gitea, github or bitbucket
 repositories.  Start ding with the -listenwebhooks flag and set
-"githubWebhookSecret" and/or "bitbucketWebhookSecret" in the config
-file.
+"GiteaWebhookSecret", "GithubWebhookSecret" and/or "BitbucketWebhookSecret" in
+the config file.
 
 You'll need to configure a "webhook" for your repositories.
+
+For gitea:
+
+- Make a URL that points to your server, with path /gitea/<repoName>.
+- Do a POST with type "application/json", leave "Secret" empty but set
+  "Authorization Header to "Bearer <configured-secret>". Select "push" as only
+  event.
 
 For github:
 

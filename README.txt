@@ -23,7 +23,7 @@ Non-released builds older than 2 weeks or beyond the 10th build are
 automatically cleaned up.
 
 Command "ding kick" can be used in a git hook to signal that a build should
-start. Github and bitbucket webhooks are also supported.
+start. Gitea, github and bitbucket webhooks are also supported.
 
 See INSTALL.txt for installation instructions.
 

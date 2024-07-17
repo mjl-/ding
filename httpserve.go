@@ -272,6 +272,7 @@ func servehttp(args []string) {
 	if *listenWebhookAddress != "" {
 		webhookMux := http.NewServeMux()
 		webhookMux.HandleFunc("/github/", githubHookHandler)
+		webhookMux.HandleFunc("/gitea/", giteaHookHandler)
 		webhookMux.HandleFunc("/bitbucket/", bitbucketHookHandler)
 		go func() {
 			log.Fatal(http.ListenAndServe(*listenWebhookAddress, webhookMux))
