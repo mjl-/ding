@@ -7,7 +7,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 
@@ -90,13 +89,13 @@ func runScripts(tx *sql.Tx, dbVersion int, scripts []script, committing bool) {
 			for _, repoBuild := range repoBuilds {
 				path := fmt.Sprintf("%s/release/%s/%d", config.DataDir, repoBuild.Name, repoBuild.ID)
 
-				files, err := ioutil.ReadDir(path)
+				files, err := os.ReadDir(path)
 				if err != nil {
 					log.Printf("upgrade 9, gzipping released files: listing %s: %s (skipping)", path, err)
 					continue
 				}
 
-				gzipFile := func(file os.FileInfo) {
+				gzipFile := func(file os.DirEntry) {
 					opath := path + "/" + file.Name()
 					npath := opath + ".gz"
 					f, err := os.Open(opath)

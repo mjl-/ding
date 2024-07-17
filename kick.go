@@ -4,7 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"strings"
 
@@ -28,7 +28,7 @@ func kick(args []string) {
 	repoName := args[1]
 	branch := args[2]
 	commit := args[3]
-	buf, err := ioutil.ReadAll(os.Stdin)
+	buf, err := io.ReadAll(os.Stdin)
 	check(err, "reading password from stdin")
 	password := strings.TrimRight(string(buf), "\n")
 

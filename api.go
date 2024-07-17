@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"path"
@@ -629,7 +628,7 @@ func (Ding) ListInstalledGoToolchains(ctx context.Context, password string) (ins
 
 	_checkGoToolchainDir()
 
-	files, err := ioutil.ReadDir(config.GoToolchainDir)
+	files, err := os.ReadDir(config.GoToolchainDir)
 	sherpaCheck(err, "listing files in go toolchain dir")
 
 	active = map[string]string{}
@@ -641,7 +640,7 @@ func (Ding) ListInstalledGoToolchains(ctx context.Context, password string) (ins
 			installed = append(installed, f.Name())
 			continue
 		}
-		if f.Mode()&os.ModeSymlink != 0 {
+		if f.Type()&os.ModeSymlink != 0 {
 			switch f.Name() {
 			case "go", "go-prev":
 			default:

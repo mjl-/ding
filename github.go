@@ -7,7 +7,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"strings"
@@ -57,7 +57,7 @@ func githubHookHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "malformed hex in X-Hub-Signature", 400)
 		return
 	}
-	buf, err := ioutil.ReadAll(r.Body)
+	buf, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "error reading request", 500)
 		return

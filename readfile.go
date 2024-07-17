@@ -1,14 +1,14 @@
 package main
 
 import (
-	"io/ioutil"
+	"io"
 	"os"
 )
 
 func readFile(path string) string {
 	f, err := os.Open(path)
 	sherpaCheck(err, "opening script")
-	buf, err := ioutil.ReadAll(f)
+	buf, err := io.ReadAll(f)
 	err2 := f.Close()
 	if err == nil {
 		err = err2
@@ -22,7 +22,7 @@ func readFileLax(path string) string {
 	if err != nil {
 		return ""
 	}
-	buf, err := ioutil.ReadAll(f)
+	buf, err := io.ReadAll(f)
 	f.Close()
 	if err != nil {
 		return ""

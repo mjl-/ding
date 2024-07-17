@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"strings"
@@ -23,7 +22,7 @@ func installGoToolchain(file goreleases.File, shortname string) error {
 	if err != nil {
 		return err
 	}
-	tmpdir, err := ioutil.TempDir(config.GoToolchainDir, "tmp-"+file.Version)
+	tmpdir, err := os.MkdirTemp(config.GoToolchainDir, "tmp-"+file.Version)
 	if err != nil {
 		return fmt.Errorf("creating temp dir for downloading")
 	}

@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/smtp"
 )
 
@@ -30,7 +29,7 @@ func (*fakeClient) StartTLS(config *tls.Config) error { return nil }
 func (*fakeClient) Auth(a smtp.Auth) error            { return nil }
 func (*fakeClient) Mail(from string) error            { return nil }
 func (*fakeClient) Rcpt(to string) error              { return nil }
-func (*fakeClient) Data() (io.WriteCloser, error)     { return nopCloser{ioutil.Discard}, nil }
+func (*fakeClient) Data() (io.WriteCloser, error)     { return nopCloser{io.Discard}, nil }
 func (*fakeClient) Close() error                      { return nil }
 
 func newSMTPClient() smtpClient {
