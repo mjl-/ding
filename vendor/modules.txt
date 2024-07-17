@@ -9,7 +9,7 @@ github.com/cespare/xxhash/v2
 github.com/lib/pq
 github.com/lib/pq/oid
 github.com/lib/pq/scram
-# github.com/mjl-/goreleases v0.0.1
+# github.com/mjl-/goreleases v0.0.4
 ## explicit; go 1.14
 github.com/mjl-/goreleases
 # github.com/mjl-/httpinfo v0.0.2
@@ -50,6 +50,15 @@ github.com/prometheus/common/model
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
 github.com/prometheus/procfs/internal/util
+# golang.org/x/crypto v0.21.0
+## explicit; go 1.18
+golang.org/x/crypto/cast5
+golang.org/x/crypto/openpgp
+golang.org/x/crypto/openpgp/armor
+golang.org/x/crypto/openpgp/elgamal
+golang.org/x/crypto/openpgp/errors
+golang.org/x/crypto/openpgp/packet
+golang.org/x/crypto/openpgp/s2k
 # golang.org/x/sys v0.22.0
 ## explicit; go 1.18
 golang.org/x/sys/unix

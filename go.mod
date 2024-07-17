@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/lib/pq v1.1.1
-	github.com/mjl-/goreleases v0.0.1
+	github.com/mjl-/goreleases v0.0.4
 	github.com/mjl-/httpinfo v0.0.2
 	github.com/mjl-/sconf v0.0.1
 	github.com/mjl-/sherpa v0.6.0
@@ -21,5 +21,6 @@ require (
 	github.com/prometheus/client_model v0.5.0 // indirect
 	github.com/prometheus/common v0.48.0 // indirect
 	github.com/prometheus/procfs v0.12.0 // indirect
+	golang.org/x/crypto v0.21.0 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
 )
