@@ -16,7 +16,7 @@ import (
 
 func serveDownload(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
-		http.Error(w, "bad method", 405)
+		http.Error(w, "bad method", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -39,7 +39,7 @@ func serveDownload(w http.ResponseWriter, r *http.Request) {
 
 	fail := func(err error) {
 		log.Printf("download: %s", err)
-		http.Error(w, "internal error", 500)
+		http.Error(w, "internal error", http.StatusInternalServerError)
 	}
 
 	// returns nil on error, with http response already sent.

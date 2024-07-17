@@ -15,7 +15,7 @@ func bitbucketHookHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != "POST" {
-		http.Error(w, "method not allowed", 405)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -58,12 +58,12 @@ func bitbucketHookHandler(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&event)
 	if err != nil {
 		log.Printf("bitbucket webhook: parsing JSON body: %s", err)
-		http.Error(w, "bad json", 400)
+		http.Error(w, "bad json", http.StatusBadRequest)
 		return
 	}
 	if event.Repository.Name != repoName {
 		log.Printf("bitbucket webhook: unexpected repoName %s at endpoint for repoName %s", event.Repository.Name, repoName)
-		http.Error(w, "bad request", 400)
+		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
 
@@ -75,22 +75,22 @@ func bitbucketHookHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		log.Printf("bitbucket webhook: reading vcs from database: %s", err)
-		http.Error(w, "error", 500)
+		http.Error(w, "error", http.StatusInternalServerError)
 		return
 	}
 	if event.Repository.SCM == "hg" && !(vcs == "mercurial" || vcs == "command") {
 		log.Printf("bitbucket webhook: misconfigured repository type, bitbucket thinks mercurial, ding thinks %s", vcs)
-		http.Error(w, "misconfigured webhook", 500)
+		http.Error(w, "misconfigured webhook", http.StatusInternalServerError)
 		return
 	}
 	if event.Repository.SCM == "git" && !(vcs == "git" || vcs == "command") {
 		log.Printf("bitbucket webhook: misconfigured repository type, bitbucket thinks git, ding thinks %s", vcs)
-		http.Error(w, "misconfigured webhook", 500)
+		http.Error(w, "misconfigured webhook", http.StatusInternalServerError)
 		return
 	}
 
 	if event.Push == nil {
-		http.Error(w, "missing push event", 400)
+		http.Error(w, "missing push event", http.StatusBadRequest)
 		return
 	}
 	for _, change := range event.Push.Changes {
@@ -118,12 +118,12 @@ func bitbucketHookHandler(w http.ResponseWriter, r *http.Request) {
 				repo, build, buildDir, err := prepareBuild(r.Context(), repoName, branch, commit, false)
 				if err != nil {
 					log.Printf("bitbucket webhook: error starting build for push event for repo %s, branch %s, commit %s", repoName, branch, commit)
-					http.Error(w, "could not create build", 500)
+					http.Error(w, "could not create build", http.StatusInternalServerError)
 					return
 				}
 				go doBuild(context.Background(), repo, build, buildDir)
 			} else {
-				http.Error(w, "New build target is empty", 500)
+				http.Error(w, "New build target is empty", http.StatusInternalServerError)
 			}
 		}
 	}

@@ -16,7 +16,7 @@ func giteaHookHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != "POST" {
-		http.Error(w, "method not allowed", 405)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -34,24 +34,24 @@ func giteaHookHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		log.Printf("gitea webhook: reading vcs from database: %s", err)
-		http.Error(w, "error", 500)
+		http.Error(w, "error", http.StatusInternalServerError)
 		return
 	}
 	if !(vcs == "git" || vcs == "command") {
 		log.Printf("gitea webhook: push event for a non-git repository")
-		http.Error(w, "misconfigured repositories", 500)
+		http.Error(w, "misconfigured repositories", http.StatusInternalServerError)
 		return
 	}
 
 	authHdr := strings.TrimSpace(r.Header.Get("Authorization"))
 	if authHdr != "Bearer "+config.GiteaWebhookSecret {
-		http.Error(w, "invalid/missing authorization header", 400)
+		http.Error(w, "invalid/missing authorization header", http.StatusBadRequest)
 		return
 	}
 
 	buf, err := io.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, "error reading request", 500)
+		http.Error(w, "error reading request", http.StatusInternalServerError)
 		return
 	}
 	var event struct {
@@ -64,12 +64,12 @@ func giteaHookHandler(w http.ResponseWriter, r *http.Request) {
 	err = json.Unmarshal(buf, &event)
 	if err != nil {
 		log.Printf("gitea webhook: bad JSON body: %s", err)
-		http.Error(w, "bad json", 400)
+		http.Error(w, "bad json", http.StatusBadRequest)
 		return
 	}
 	if event.Repository.Name != repoName {
 		log.Printf("gitea webhook: repository does not match, gitea sent %s for URL for %s", event.Repository.Name, repoName)
-		http.Error(w, "repository mismatch", 400)
+		http.Error(w, "repository mismatch", http.StatusBadRequest)
 		return
 	}
 	branch := defaultBranch
@@ -80,7 +80,7 @@ func giteaHookHandler(w http.ResponseWriter, r *http.Request) {
 	repo, build, buildDir, err := prepareBuild(r.Context(), repoName, branch, commit, false)
 	if err != nil {
 		log.Printf("gitea webhook: error starting build for push event for repo %s, branch %s, commit %s", repoName, branch, commit)
-		http.Error(w, "could not create build", 500)
+		http.Error(w, "could not create build", http.StatusInternalServerError)
 		return
 	}
 	go doBuild(context.Background(), repo, build, buildDir)

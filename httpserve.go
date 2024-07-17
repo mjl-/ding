@@ -343,14 +343,14 @@ func serveAsset(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		log.Printf("serving asset %s: %s", r.URL.Path, err)
-		http.Error(w, "500 - Server error", 500)
+		http.Error(w, "500 - Server error", http.StatusInternalServerError)
 		return
 	}
 	defer f.Close()
 	info, err := f.Stat()
 	if err != nil {
 		log.Printf("serving asset %s: %s", r.URL.Path, err)
-		http.Error(w, "500 - Server error", 500)
+		http.Error(w, "500 - Server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -361,7 +361,7 @@ func serveAsset(w http.ResponseWriter, r *http.Request) {
 
 	sf, ok := f.(io.ReadSeeker)
 	if !ok {
-		http.Error(w, "500 - Server error - file not a seeker", 500)
+		http.Error(w, "500 - Server error - file not a seeker", http.StatusInternalServerError)
 		return
 	}
 
@@ -387,7 +387,7 @@ func hasBadElems(elems []string) bool {
 
 func serveRelease(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
-		http.Error(w, "bad method", 405)
+		http.Error(w, "bad method", http.StatusMethodNotAllowed)
 		return
 	}
 	t := strings.Split(r.URL.Path[1:], "/")
@@ -404,7 +404,7 @@ func serveRelease(w http.ResponseWriter, r *http.Request) {
 			http.NotFound(w, r)
 			return
 		}
-		http.Error(w, "server error", 500)
+		http.Error(w, "server error", http.StatusInternalServerError)
 		return
 	}
 	defer f.Close()
@@ -416,7 +416,7 @@ func serveRelease(w http.ResponseWriter, r *http.Request) {
 		gzr, err := gzip.NewReader(f)
 		if err != nil {
 			log.Printf("release: reading gzip file %s: %s", path, err)
-			http.Error(w, "server error", 500)
+			http.Error(w, "server error", http.StatusInternalServerError)
 			return
 		}
 		io.Copy(w, gzr) // nothing to do for errors
@@ -440,7 +440,7 @@ func acceptsGzip(s string) bool {
 
 func serveResult(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
-		http.Error(w, "bad method", 405)
+		http.Error(w, "bad method", http.StatusMethodNotAllowed)
 		return
 	}
 	t := strings.Split(r.URL.Path[1:], "/")

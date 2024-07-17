@@ -34,18 +34,18 @@ func serveEvents(w http.ResponseWriter, r *http.Request) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		log.Println("internal error: ResponseWriter not a http.Flusher")
-		http.Error(w, "internal error", 500)
+		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 
 	if r.Method != "GET" {
-		http.Error(w, "method not allowed", 405)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	password := r.FormValue("password")
 	if password != config.Password {
-		http.Error(w, "bad auth", 401)
+		http.Error(w, "bad auth", http.StatusUnauthorized)
 		return
 	}
 

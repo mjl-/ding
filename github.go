@@ -19,7 +19,7 @@ func githubHookHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != "POST" {
-		http.Error(w, "method not allowed", 405)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -37,29 +37,29 @@ func githubHookHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		log.Printf("github webhook: reading vcs from database: %s", err)
-		http.Error(w, "error", 500)
+		http.Error(w, "error", http.StatusInternalServerError)
 		return
 	}
 	if !(vcs == "git" || vcs == "command") {
 		log.Printf("github webhook: push event for a non-git repository")
-		http.Error(w, "misconfigured repositories", 500)
+		http.Error(w, "misconfigured repositories", http.StatusInternalServerError)
 		return
 	}
 
 	sigstr := strings.TrimSpace(r.Header.Get("X-Hub-Signature"))
 	t := strings.Split(sigstr, "=")
 	if len(t) != 2 || t[0] != "sha1" || len(t[1]) != 2*sha1.Size {
-		http.Error(w, "malformed/missing X-Hub-Signature header", 400)
+		http.Error(w, "malformed/missing X-Hub-Signature header", http.StatusBadRequest)
 		return
 	}
 	sig, err := hex.DecodeString(t[1])
 	if err != nil {
-		http.Error(w, "malformed hex in X-Hub-Signature", 400)
+		http.Error(w, "malformed hex in X-Hub-Signature", http.StatusBadRequest)
 		return
 	}
 	buf, err := io.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, "error reading request", 500)
+		http.Error(w, "error reading request", http.StatusInternalServerError)
 		return
 	}
 	mac := hmac.New(sha1.New, []byte(config.GithubWebhookSecret))
@@ -67,7 +67,7 @@ func githubHookHandler(w http.ResponseWriter, r *http.Request) {
 	exp := mac.Sum(nil)
 	if !hmac.Equal(exp, sig) {
 		log.Printf("github webhook: bad signature, refusing message")
-		http.Error(w, "invalid signature", 400)
+		http.Error(w, "invalid signature", http.StatusBadRequest)
 		return
 	}
 	var event struct {
@@ -80,12 +80,12 @@ func githubHookHandler(w http.ResponseWriter, r *http.Request) {
 	err = json.Unmarshal(buf, &event)
 	if err != nil {
 		log.Printf("github webhook: bad JSON body: %s", err)
-		http.Error(w, "bad json", 400)
+		http.Error(w, "bad json", http.StatusBadRequest)
 		return
 	}
 	if event.Repository.Name != repoName {
 		log.Printf("github webhook: repository does not match, github sent %s for URL for %s", event.Repository.Name, repoName)
-		http.Error(w, "repository mismatch", 400)
+		http.Error(w, "repository mismatch", http.StatusBadRequest)
 		return
 	}
 	branch := defaultBranch
@@ -96,7 +96,7 @@ func githubHookHandler(w http.ResponseWriter, r *http.Request) {
 	repo, build, buildDir, err := prepareBuild(r.Context(), repoName, branch, commit, false)
 	if err != nil {
 		log.Printf("github webhook: error starting build for push event for repo %s, branch %s, commit %s", repoName, branch, commit)
-		http.Error(w, "could not create build", 500)
+		http.Error(w, "could not create build", http.StatusInternalServerError)
 		return
 	}
 	go doBuild(context.Background(), repo, build, buildDir)
