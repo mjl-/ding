@@ -157,11 +157,11 @@ func build(dest string) {
 		{"", []string{"vendor/github.com/mjl-/sherpa/LICENSE"}},
 		{"", []string{"vendor/github.com/mjl-/sconf/LICENSE"}},
 		{"", []string{"vendor/github.com/beorn7/perks/LICENSE"}},
-		{"", []string{"vendor/github.com/golang/protobuf/LICENSE"}},
+		{"", []string{"vendor/google.golang.org/protobuf/LICENSE"}},
 		{"", []string{"vendor/github.com/mjl-/sherpaprom/LICENSE.md"}},
 		{"", []string{"vendor/github.com/lib/pq/LICENSE.md"}},
 		{"", []string{"vendor/golang.org/x/sys/LICENSE"}},
-		{"", []string{"vendor/github.com/matttproud/golang_protobuf_extensions/LICENSE"}},
+		{"", []string{"vendor/github.com/cespare/xxhash/v2/LICENSE.txt"}},
 		{"Prometheus Go client", []string{
 			"vendor/github.com/prometheus/client_golang/LICENSE",
 			"vendor/github.com/prometheus/client_golang/NOTICE",
