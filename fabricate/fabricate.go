@@ -118,7 +118,6 @@ func build(dest string) {
 		target("static/js/app-vendor.js"),
 		target("static/js/app-templates.js"),
 		target("static/js/app.js"),
-		target("static/img/logo.png"),
 	}
 	if dirty(d, s) {
 		write(d, revrepl(read("www-src/index.html"), dest+"/web"))
@@ -130,8 +129,6 @@ func build(dest string) {
 	for _, name := range files {
 		dirtyCopy(target(name), "www-src/"+name)
 	}
-
-	dirtyCopy(internalTarget("INSTALL.txt"), "INSTALL.txt")
 
 	// licenses
 	type license struct {
@@ -158,7 +155,6 @@ func build(dest string) {
 			[]string{"www-src/licenses/ui-bootstrap-1.3.3"}},
 		{"", []string{"vendor/github.com/mjl-/httpinfo/LICENSE"}},
 		{"", []string{"vendor/github.com/mjl-/sherpa/LICENSE"}},
-		{"", []string{"vendor/github.com/mjl-/httpasset/LICENSE"}},
 		{"", []string{"vendor/github.com/mjl-/sconf/LICENSE"}},
 		{"", []string{"vendor/github.com/beorn7/perks/LICENSE"}},
 		{"", []string{"vendor/github.com/golang/protobuf/LICENSE"}},

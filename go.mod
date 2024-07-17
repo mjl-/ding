@@ -5,7 +5,6 @@ go 1.17
 require (
 	github.com/lib/pq v1.1.1
 	github.com/mjl-/goreleases v0.0.1
-	github.com/mjl-/httpasset v0.0.9
 	github.com/mjl-/httpinfo v0.0.2
 	github.com/mjl-/sconf v0.0.1
 	github.com/mjl-/sherpa v0.6.0

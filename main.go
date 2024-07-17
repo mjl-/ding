@@ -5,14 +5,16 @@ package main
 
 import (
 	"database/sql"
+	"embed"
 	"flag"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"os"
 	"path"
+	"runtime/debug"
 
-	"github.com/mjl-/httpasset"
 	"github.com/mjl-/sconf"
 )
 
@@ -20,15 +22,31 @@ const (
 	databaseVersion = 18
 )
 
+//go:embed assets/*
+var embedFS embed.FS
+
+var httpFS fs.FS = localEmbedFS()
+
+func localEmbedFS() fs.FS {
+	if _, err := os.Stat("assets"); err == nil {
+		log.Printf("using local directory for assets")
+		return os.DirFS(".")
+	}
+	return embedFS
+}
+
 var (
-	httpFS   = httpasset.Init("assets")
 	database *sql.DB
 
-	version       = "dev"
-	vcsCommitHash = ""
-	vcsTag        = ""
-	vcsBranch     = ""
+	version = "dev"
 )
+
+func init() {
+	info, ok := debug.ReadBuildInfo()
+	if ok {
+		version = info.Main.Version
+	}
+}
 
 var config struct {
 	ShowSherpaErrors      bool     `sconf-doc:"If set, returns the full error message for sherpa calls failing with a server error. Otherwise, only returns generic error message."`
@@ -124,7 +142,7 @@ func main() {
 		check(err, "parsing file")
 		fmt.Println("config OK")
 	case "help":
-		printFile("/INSTALL.txt")
+		printFile("INSTALL.txt")
 	case "serve":
 		serve(args)
 	case "serve-http":
@@ -137,7 +155,7 @@ func main() {
 	case "version":
 		fmt.Printf("%s\ndatabase schema version %d\n", version, databaseVersion)
 	case "license":
-		printFile("/web/LICENSES")
+		printFile("assets/web/LICENSES")
 	default:
 		flag.Usage()
 		os.Exit(2)

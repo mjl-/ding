@@ -10,7 +10,7 @@ run: build
 run-root: build
 	sudo sh -c 'umask 027; ./ding serve -dbmigrate=false -listen localhost:6186 -listenwebhook localhost:6187 -listenadmin localhost:6188 local/local-root.conf'
 
-build:
+build: frontend
 	go build
 	go vet
 	PATH=$(PATH):$(PWD)/node_modules/.bin go run fabricate/*.go -- install
@@ -18,7 +18,6 @@ build:
 
 frontend:
 	PATH=$(PATH):$(PWD)/node_modules/.bin go run fabricate/*.go -- install
-
 
 postgres-init:
 	$(PG)/bin/initdb -D local/postgres95
@@ -45,7 +44,6 @@ fmt:
 
 clean:
 	go clean
-	-rm -r assets assets.zip 2>/dev/null
 	go run fabricate/*.go -- clean
 
 setup:

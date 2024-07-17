@@ -12,8 +12,9 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/mjl-/sconf"
 	"golang.org/x/sys/unix"
+
+	"github.com/mjl-/sconf"
 )
 
 var (

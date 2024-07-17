@@ -15,9 +15,6 @@ github.com/matttproud/golang_protobuf_extensions/pbutil
 # github.com/mjl-/goreleases v0.0.1
 ## explicit; go 1.14
 github.com/mjl-/goreleases
-# github.com/mjl-/httpasset v0.0.9
-## explicit; go 1.12
-github.com/mjl-/httpasset
 # github.com/mjl-/httpinfo v0.0.2
 ## explicit; go 1.12
 github.com/mjl-/httpinfo

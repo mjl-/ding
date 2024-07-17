@@ -41,7 +41,16 @@ upgrade").
 
 # Download
 
-Get the latest version at https://github.com/mjl-/ding/releases/latest.
+Download a binary at:
+
+	https://beta.gobuilds.org/github.com/mjl-/ding@latest
+
+
+# Compiling
+
+Run:
+
+	CGO_ENABLED=0 go install github.com/mjl-/ding@latest
 
 
 # Features

@@ -17,12 +17,14 @@ import (
 	"strconv"
 	"strings"
 
+	"golang.org/x/sys/unix"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
 	"github.com/mjl-/httpinfo"
 	"github.com/mjl-/sherpa"
 	"github.com/mjl-/sherpadoc"
 	"github.com/mjl-/sherpaprom"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"golang.org/x/sys/unix"
 )
 
 type job struct {
@@ -105,7 +107,7 @@ func servehttp(args []string) {
 	mime.AddExtensionType(".otf", "font/otf")
 
 	var doc sherpadoc.Section
-	ff, err := httpFS.Open("/ding.json")
+	ff, err := httpFS.Open("assets/ding.json")
 	check(err, "opening sherpa docs")
 	err = json.NewDecoder(ff).Decode(&doc)
 	check(err, "parsing sherpa docs")
@@ -121,15 +123,7 @@ func servehttp(args []string) {
 	handler, err := sherpa.NewHandler("/ding/", version, Ding{}, &doc, opts)
 	check(err, "making sherpa handler")
 
-	// Since we set the version variables with ldflags -X, we cannot read them in the vars section.
-	// So we combine them into a CodeVersion during init, and add the handler while we're at it.
-	info := httpinfo.CodeVersion{
-		CommitHash: vcsCommitHash,
-		Tag:        vcsTag,
-		Branch:     vcsBranch,
-		Full:       version,
-	}
-	http.Handle("/info", httpinfo.NewHandler(info, nil))
+	http.Handle("/info", httpinfo.NewHandler(httpinfo.CodeVersion{Full: version}, nil))
 	http.Handle("/metrics", promhttp.Handler())
 
 	mux := http.NewServeMux()
@@ -342,7 +336,7 @@ func serveAsset(w http.ResponseWriter, r *http.Request) {
 	if strings.HasSuffix(r.URL.Path, "/") {
 		r.URL.Path += "index.html"
 	}
-	f, err := httpFS.Open("/web" + r.URL.Path)
+	f, err := httpFS.Open("assets/web" + r.URL.Path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			http.NotFound(w, r)
@@ -365,6 +359,12 @@ func serveAsset(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	sf, ok := f.(io.ReadSeeker)
+	if !ok {
+		http.Error(w, "500 - Server error - file not a seeker", 500)
+		return
+	}
+
 	_, haveCacheBuster := r.URL.Query()["v"]
 	cache := "no-cache, max-age=0"
 	if haveCacheBuster {
@@ -372,7 +372,7 @@ func serveAsset(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Cache-Control", cache)
 
-	http.ServeContent(w, r, r.URL.Path, info.ModTime(), f)
+	http.ServeContent(w, r, r.URL.Path, info.ModTime(), sf)
 }
 
 func hasBadElems(elems []string) bool {

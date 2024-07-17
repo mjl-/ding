@@ -8,6 +8,7 @@ import (
 	"runtime/debug"
 
 	"github.com/lib/pq"
+
 	"github.com/mjl-/sherpa"
 )
 

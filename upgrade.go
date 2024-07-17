@@ -20,7 +20,7 @@ type script struct {
 }
 
 func parseSQLScripts() (scripts []script) {
-	f, err := httpFS.Open("/sql.json")
+	f, err := httpFS.Open("assets/sql.json")
 	check(err, "opening sql scripts")
 	check(json.NewDecoder(f).Decode(&scripts), "parsing sql scripts")
 	check(f.Close(), "closing sql scripts")

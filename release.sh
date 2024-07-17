@@ -14,7 +14,6 @@ echo version: $VERSION
 make clean
 make build
 make frontend
-(cd assets && zip -qr0 ../assets.zip .)
 
 function release() {
 	GOOS=$1
@@ -24,8 +23,7 @@ function release() {
 		SUFFIX=.exe
 	fi
 	DEST=local/$NAME-$VERSION-$GOOS-$GOARCH-$GOVERSION-$BUILDID$SUFFIX
-	GOOS=$GOOS GOARCH=$GOARCH go build -ldflags "-X main.version=$VERSION -X main.vcsCommitHash=$COMMIT -X main.vcsBranch=$BRANCH -X main.vcsTag=$TAG" -o $DEST
-	cat assets.zip >>$DEST
+	GOOS=$GOOS GOARCH=$GOARCH go build -o $DEST
 	echo release: $NAME $GOOS $GOARCH $GOVERSION $DEST
 }
 
