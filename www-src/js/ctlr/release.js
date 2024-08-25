@@ -3,15 +3,12 @@
 /* global app, api */
 'use strict';
 
-app.controller('Release', function($scope, $rootScope, $q, $location, Msg, Util, repo, buildResult) {
+app.controller('Release', function($scope, $rootScope, $q, $location, Msg, Util, repo, build) {
 	$rootScope.breadcrumbs = Util.crumbs([
 		Util.crumb('repo/' + repo.name, 'Repo ' + repo.name),
-		Util.crumb('release/' + buildResult.build.id + '/', 'Release ' + buildResult.build.id)
+		Util.crumb('release/' + build.id + '/', 'Release ' + build.id)
 	]);
 
-
 	$scope.repo = repo;
-	$scope.buildResult = buildResult;
-	$scope.build = buildResult.build;
-	$scope.steps = buildResult.steps;
+	$scope.build = build;
 });

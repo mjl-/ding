@@ -184,8 +184,8 @@ app.config(function($routeProvider, $uibTooltipProvider) {
 			repo: function($rootScope, $route) {
 				return api.repo($rootScope.password(), $route.current.params.repoName);
 			},
-			buildResult: function($rootScope, $route) {
-				return api.buildResult($rootScope.password(), $route.current.params.repoName, parseInt($route.current.params.buildId));
+			build: function($rootScope, $route) {
+				return api.build($rootScope.password(), $route.current.params.repoName, parseInt($route.current.params.buildId));
 			}
 		}
 	})
@@ -196,7 +196,7 @@ app.config(function($routeProvider, $uibTooltipProvider) {
 			repo: function($rootScope, $route) {
 				return api.repo($rootScope.password(), $route.current.params.repoName);
 			},
-			buildResult: function($rootScope, $route) {
+			build: function($rootScope, $route) {
 				return api.release($rootScope.password(), $route.current.params.repoName, parseInt($route.current.params.buildId));
 			}
 		}
@@ -230,16 +230,15 @@ app.config(function($routeProvider, $uibTooltipProvider) {
 /* global app, api, _, console, window, document, $ */
 'use strict';
 
-app.controller('Build', function($scope, $rootScope, $q, $location, $timeout, Msg, Util, repo, buildResult) {
+app.controller('Build', function($scope, $rootScope, $q, $location, $timeout, Msg, Util, repo, build) {
 	$rootScope.breadcrumbs = Util.crumbs([
 		Util.crumb('repo/' + repo.name, 'Repo ' + repo.name),
-		Util.crumb('build/' + buildResult.build.id + '/', 'Build ' + buildResult.build.id)
+		Util.crumb('build/' + build.id + '/', 'Build ' + build.id)
 	]);
 
 	$scope.repo = repo;
-	$scope.buildResult = buildResult;
-	$scope.build = buildResult.build;
-	$scope.steps = buildResult.steps;
+	$scope.build = build;
+	$scope.build.steps = $scope.build.steps || [];
 	$scope.canceled = false;
 
 	$scope.newerBuild = null;
@@ -274,7 +273,7 @@ app.controller('Build', function($scope, $rootScope, $q, $location, $timeout, Ms
 			return;
 		}
 		$timeout(function() {
-			var step = _.find($scope.steps, {name: e.step});
+			var step = _.find($scope.build.steps, {name: e.step});
 			if (!step) {
 				step = {
 					name: e.step,
@@ -282,7 +281,7 @@ app.controller('Build', function($scope, $rootScope, $q, $location, $timeout, Ms
 					// nsec: 0,
 					_start: new Date().getTime()
 				};
-				$scope.steps.push(step);
+				$scope.build.steps.push(step);
 			}
 			var slack = 3;
 			var scroll = $(window).scrollTop() + $(window).height()  >= $(document).height() - slack;
@@ -594,17 +593,14 @@ app.controller('Index', function($scope, $rootScope, $q, $uibModal, $location, $
 /* global app, api */
 'use strict';
 
-app.controller('Release', function($scope, $rootScope, $q, $location, Msg, Util, repo, buildResult) {
+app.controller('Release', function($scope, $rootScope, $q, $location, Msg, Util, repo, build) {
 	$rootScope.breadcrumbs = Util.crumbs([
 		Util.crumb('repo/' + repo.name, 'Repo ' + repo.name),
-		Util.crumb('release/' + buildResult.build.id + '/', 'Release ' + buildResult.build.id)
+		Util.crumb('release/' + build.id + '/', 'Release ' + build.id)
 	]);
 
-
 	$scope.repo = repo;
-	$scope.buildResult = buildResult;
-	$scope.build = buildResult.build;
-	$scope.steps = buildResult.steps;
+	$scope.build = build;
 });
 // don't warn about "use strict"
 /* jshint -W097 */

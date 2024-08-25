@@ -5,8 +5,6 @@ import (
 	"log"
 	"os"
 	"path"
-	"regexp"
-	"strconv"
 	"strings"
 )
 
@@ -38,9 +36,6 @@ func main() {
 func build(dest string) {
 	target := func(s string) string {
 		return dest + "/web/" + s
-	}
-	internalTarget := func(s string) string {
-		return dest + "/" + s
 	}
 
 	var d string
@@ -195,40 +190,5 @@ func build(dest string) {
 			r += "\n\n"
 		}
 		write(d, r)
-	}
-
-	// sql
-	type sql struct {
-		Version  int    `json:"version"`
-		Filename string `json:"filename"`
-		SQL      string `json:"sql"`
-	}
-	var sqls []sql
-	var sqlFilenames []string
-	for i, f := range sorted(readdir("sql")) {
-		if !strings.HasSuffix(f, ".sql") {
-			continue
-		}
-		if len(f) != len("000.sql") {
-			match, err := regexp.MatchString("[0-9]{3}-.*\\.sql", f)
-			check(err, "regexp")
-			if !match {
-				log.Fatalf("parsing version number from file %s: unknown prefix", f)
-			}
-		}
-		version, err := strconv.ParseInt(f[:3], 10, 32)
-		check(err, "parsing version number from file "+f)
-		if int(version) != i {
-			log.Fatalf("reading sql migration files, got version %d, want %d", version, i)
-		}
-		sqls = append(sqls, sql{Version: int(version), Filename: f})
-		sqlFilenames = append(sqlFilenames, "sql/"+f)
-	}
-	d = internalTarget("sql.json")
-	if dirty(d, append(sqlFilenames, "sql")) {
-		for i := range sqls {
-			sqls[i].SQL = read("sql/" + sqls[i].Filename)
-		}
-		write(d, string(toJSON(sqls)))
 	}
 }

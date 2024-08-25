@@ -5,15 +5,15 @@ import (
 	"os"
 )
 
-func readFile(path string) string {
+func _readFile(path string) string {
 	f, err := os.Open(path)
-	sherpaCheck(err, "opening script")
+	_checkf(err, "opening script")
 	buf, err := io.ReadAll(f)
 	err2 := f.Close()
 	if err == nil {
 		err = err2
 	}
-	sherpaCheck(err, "reading script")
+	_checkf(err, "reading script")
 	return string(buf)
 }
 

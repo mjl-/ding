@@ -80,25 +80,23 @@ func serveEvents(w http.ResponseWriter, r *http.Request) {
 }
 
 var (
-	register   chan *eventWorker
-	unregister chan *eventWorker
-	events     chan eventStringer
+	register   = make(chan *eventWorker, 1)
+	unregister = make(chan *eventWorker)
+	events     = make(chan eventStringer, 10)
 )
 
 func init() {
-	register = make(chan *eventWorker, 1)
-	unregister = make(chan *eventWorker)
-	events = make(chan eventStringer, 10)
+	go eventMux()
+}
 
+func eventMux() {
 	go func() {
 		for {
 			time.Sleep(120 * time.Second)
 			events <- nil
 		}
 	}()
-}
 
-func eventMux() {
 	workers := []*eventWorker{}
 	for {
 		select {

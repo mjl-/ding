@@ -5,10 +5,10 @@ export GOPROXY=off
 PG=/usr/lib/postgresql/9.5
 
 run: build
-	./ding serve -dbmigrate=false local/local.conf
+	./ding serve local/local.conf
 
 run-root: build
-	sudo sh -c 'umask 027; ./ding serve -dbmigrate=false -listen localhost:6186 -listenwebhook localhost:6187 -listenadmin localhost:6188 local/local-root.conf'
+	sudo sh -c 'umask 027; ./ding serve -listen localhost:6186 -listenwebhook localhost:6187 -listenadmin localhost:6188 local/local-root.conf'
 
 build: frontend
 	go build
@@ -18,6 +18,12 @@ build: frontend
 
 frontend:
 	PATH=$(PATH):$(PWD)/node_modules/.bin go run fabricate/*.go -- install
+
+check:
+	CGO_ENABLED=0 go vet
+	GOARCH=386 CGO_ENABLED=0 go vet
+	CGO_ENABLED=0 staticcheck
+	golint
 
 postgres-init:
 	$(PG)/bin/initdb -D local/postgres95
@@ -34,9 +40,17 @@ postgres:
 psql:
 	$(PG)/bin/psql -h localhost -p 5437 -d ding
 
+# note: running as root (with umask 0022) tests the privsep paths
 test:
-	golint
-	CGO_ENABLED=1 go test -race -coverprofile cover.out -args local/local-test.conf
+	CGO_ENABLED=0 go test -coverprofile cover.out
+	go tool cover -html=cover.out -o cover.html
+
+test-race:
+	CGO_ENABLED=1 go test -race -coverprofile cover.out
+	go tool cover -html=cover.out -o cover.html
+
+test-gotoolchains:
+	DING_TEST_GOTOOLCHAINS=yes CGO_ENABLED=0 go test -coverprofile cover.out
 	go tool cover -html=cover.out -o cover.html
 
 fmt:

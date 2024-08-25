@@ -4,12 +4,6 @@ Make a new config file. Get an example:
 
 	ding config >ding.conf
 
-Create a postgres user:
-
-	sudo -u postgres createuser --no-createdb --pwprompt ding
-	sudo -u postgres createdb -O ding ding
-	sudo -u postgres psql -d ding -c 'revoke connect on database ding from public; alter user ding with connection limit 40;'
-
 Create a data directory:
 
 	sudo install -d -g ding -m u=rwx,g=srwx,o= data
@@ -23,6 +17,15 @@ Run ding:
 	ding serve ding.conf
 
 Make sure you have git or mercurial (hg) installed.
+
+
+# Backups
+
+All files are written to the data directory. The database is at data/ding.db.
+Retrieve a consistent snapshot of the database through an HTTP request to
+"ding.db" at the admin endpoint, for example:
+
+	curl http://localhost:6086/ding.db >backup/ding.db
 
 
 # Isolate builds

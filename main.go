@@ -4,7 +4,6 @@
 package main
 
 import (
-	"database/sql"
 	"embed"
 	"flag"
 	"fmt"
@@ -15,6 +14,7 @@ import (
 	"path"
 	"runtime/debug"
 
+	"github.com/mjl-/bstore"
 	"github.com/mjl-/sconf"
 )
 
@@ -36,12 +36,13 @@ func localEmbedFS() fs.FS {
 }
 
 var (
-	database *sql.DB
+	database *bstore.DB
 
 	version = "dev"
 )
 
 func init() {
+	log.SetFlags(0)
 	info, ok := debug.ReadBuildInfo()
 	if ok {
 		version = info.Main.Version
@@ -53,7 +54,7 @@ var config struct {
 	PrintSherpaErrorStack bool     `sconf-doc:"If set, prints error stack for sherpa server errors."`
 	Password              string   `sconf-doc:"For login to the web interface. Ding does not have users."`
 	DataDir               string   `sconf-doc:"Directory where all data is stored for builds, releases, home directories. In case of isolate builds, this must have a umask 027 and owned by the ding uid/gid. Can be an absolute path, or a path relative to the ding working directory."`
-	Database              string   `sconf-doc:"For example: dbname=ding host=localhost port=5432 user=ding password=secret sslmode=disable connect_timeout=3 application_name=ding"`
+	Database              string   `sconf:"optional" sconf-doc:"Old PostgreSQL connection string, for migrating to bstore database file. If set, and bstore database does not exist yet, migration is automatic. After migrating, the database connection string can be removed. Example: dbname=ding host=localhost port=5432 user=ding password=secret sslmode=disable connect_timeout=3 application_name=ding"`
 	GoToolchainDir        string   `sconf:"optional" sconf-doc:"Directory containing Go toolchains, for easy installation of new Go versions. Go toolchains are assumed to be in directories named after their version, e.g. go1.13.8. All names starting with 'go' are assumed to be Go toolchains. Active versions are marked by a symlink named go or go-prev to one of the versioned directories. Ding needs write access to this directory to download new toolchains."`
 	Environment           []string `sconf-doc:"List of environment variables in form KEY=VALUE."`
 	Notify                struct {
@@ -101,7 +102,8 @@ func init() {
 	config.Mail.ReplyToEmail = "ding@example.org"
 }
 
-func check(err error, msg string) {
+func xcheckf(err error, format string, args ...any) {
+	msg := fmt.Sprintf(format, args...)
 	if err != nil {
 		log.Fatalf("%s: %s", msg, err)
 	}
@@ -109,7 +111,7 @@ func check(err error, msg string) {
 
 func initDingDataDir() {
 	workdir, err := os.Getwd()
-	check(err, "getting current work dir")
+	xcheckf(err, "getting current work dir")
 	if path.IsAbs(config.DataDir) {
 		dingDataDir = path.Clean(config.DataDir)
 	} else {
@@ -118,9 +120,8 @@ func initDingDataDir() {
 }
 
 func main() {
-	log.SetFlags(0)
 	flag.Usage = func() {
-		log.Fatalf("usage: ding { config | testconfig | help | kick | serve | upgrade | version | license }")
+		log.Fatalf("usage: ding { config | testconfig | help | kick | serve | version | license }")
 	}
 	if len(os.Args) <= 1 {
 		flag.Usage()
@@ -133,13 +134,13 @@ func main() {
 	case "config":
 		fmt.Println("# Example config file")
 		err := sconf.Describe(os.Stdout, &config)
-		check(err, "describe")
+		xcheckf(err, "describe")
 	case "testconfig":
 		if len(args) != 1 {
 			log.Fatalf("usage: ding testconfig config.conf")
 		}
 		err := sconf.ParseFile(args[0], &config)
-		check(err, "parsing file")
+		xcheckf(err, "parsing file")
 		fmt.Println("config OK")
 	case "help":
 		printFile("INSTALL.txt")
@@ -148,8 +149,6 @@ func main() {
 	case "serve-http":
 		// undocumented, for unpriviliged http process
 		servehttp(args)
-	case "upgrade":
-		upgrade(args)
 	case "kick":
 		kick(args)
 	case "version":
@@ -164,8 +163,8 @@ func main() {
 
 func printFile(name string) {
 	f, err := httpFS.Open(name)
-	check(err, "opening file "+name)
+	xcheckf(err, "opening file "+name)
 	_, err = io.Copy(os.Stdout, f)
-	check(err, "copy")
-	check(f.Close(), "close")
+	xcheckf(err, "copy")
+	xcheckf(f.Close(), "close")
 }

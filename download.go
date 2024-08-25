@@ -10,8 +10,11 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/mjl-/bstore"
 )
 
 func serveDownload(w http.ResponseWriter, r *http.Request) {
@@ -32,7 +35,7 @@ func serveDownload(w http.ResponseWriter, r *http.Request) {
 	what := t[1]
 	repoName := t[2]
 	buildID, err := strconv.Atoi(t[3])
-	if err != nil {
+	if err != nil || repoName == "" || buildID == 0 || !(what == "release" || what == "result" || what == "file") {
 		http.NotFound(w, r)
 		return
 	}
@@ -42,87 +45,57 @@ func serveDownload(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 	}
 
-	// returns nil on error, with http response already sent.
-	gatherFiles := func(query string, pathMaker func(repoCheckoutPath, name string) string) []archiveFile {
-		rows, err := database.Query(query, repoName, buildID)
+	var repo Repo
+	var b Build
+	err = database.Read(r.Context(), func(tx *bstore.Tx) error {
+		repo = Repo{Name: repoName}
+		err := tx.Get(&repo)
 		if err != nil {
-			fail(err)
-			return nil
+			return err
 		}
-		defer rows.Close()
-		files := []archiveFile{}
-		for rows.Next() {
-			var repoCheckoutPath, name string
-			var filesize int64
-			err = rows.Scan(&repoCheckoutPath, &name, &filesize)
-			if err != nil {
-				fail(err)
-				return nil
-			}
-			files = append(files, archiveFile{pathMaker(repoCheckoutPath, name), filesize})
-		}
-		if err = rows.Err(); err != nil {
-			fail(err)
-			return nil
-		}
-		if len(files) == 0 {
-			http.NotFound(w, r)
-			return nil
-		}
-		return files
+		b, err = bstore.QueryTx[Build](tx).FilterNonzero(Build{ID: int32(buildID), RepoName: repoName}).Get()
+		return err
+	})
+	if err == bstore.ErrAbsent {
+		http.NotFound(w, r)
+		return
+	} else if err != nil {
+		fail(err)
+		return
 	}
 
-	switch what {
-	case "release":
-		if len(t) != 5 {
-			http.NotFound(w, r)
-			return
-		}
-
-		q := `
-			select repo.checkout_path, result.filename, result.filesize
-			from result
-			join build on result.build_id = build.id
-			join repo on build.repo_id = repo.id
-			join release on build.id = release.build_id
-			where repo.name=$1 and build.id=$2
-		`
-		files := gatherFiles(q, func(repoCheckoutPath, name string) string {
-			return fmt.Sprintf("%s/release/%s/%d/%s", dingDataDir, repoName, buildID, path.Base(name))
-		})
-		name := t[4]
-		isGzip := true
-		_serveDownload(w, r, name, files, isGzip)
-
-	case "result":
-		if len(t) != 5 {
-			http.NotFound(w, r)
-			return
-		}
-
-		q := `
-			select repo.checkout_path, result.filename, result.filesize
-			from result
-			join build on result.build_id = build.id
-			join repo on build.repo_id = repo.id
-			where repo.name=$1 and build.id=$2
-		`
-		files := gatherFiles(q, func(repoCheckoutPath, name string) string {
-			return fmt.Sprintf("%s/build/%s/%d/checkout/%s/%s", dingDataDir, repoName, buildID, repoCheckoutPath, name)
-		})
-		name := t[4]
-		isGzip := false
-		_serveDownload(w, r, name, files, isGzip)
-
-	case "file":
+	if what == "file" {
 		filename := fmt.Sprintf("%s/build/%s/%d/dl/%s", dingDataDir, repoName, buildID, path.Join(t[4:]...))
 		http.ServeFile(w, r, filename)
+		return
+	}
 
-	default:
+	if len(t) != 5 {
 		http.NotFound(w, r)
 		return
 	}
 
+	files := []archiveFile{}
+	if b.Released == nil && what == "release" {
+		http.NotFound(w, r)
+		return
+	}
+	for _, res := range b.Results {
+		var p string
+		if what == "release" {
+			p = fmt.Sprintf("%s/release/%s/%d/%s", dingDataDir, repoName, buildID, filepath.Base(res.Filename))
+		} else {
+			p = fmt.Sprintf("%s/build/%s/%d/checkout/%s/%s", dingDataDir, repoName, buildID, repo.CheckoutPath, res.Filename)
+		}
+		files = append(files, archiveFile{p, res.Filesize})
+	}
+	if len(files) == 0 {
+		http.NotFound(w, r)
+		return
+	}
+	name := t[4]
+	isGzip := what == "release"
+	serveDownload0(w, r, name, files, isGzip)
 }
 
 type archiveFile struct {
@@ -259,7 +232,7 @@ func newGzipStrippingDeflateWriter(w io.Writer) (io.WriteCloser, error) {
 }
 
 // `files` do not have the .gz suffix they have in the file system.
-func _serveDownload(w http.ResponseWriter, r *http.Request, name string, files []archiveFile, isGzip bool) {
+func serveDownload0(w http.ResponseWriter, r *http.Request, name string, files []archiveFile, isGzip bool) {
 	if strings.HasSuffix(name, ".zip") {
 		base := strings.TrimSuffix(name, ".zip")
 		w.Header().Set("Content-Type", "application/zip")

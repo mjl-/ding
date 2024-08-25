@@ -23,9 +23,6 @@ var (
 	listenAddress        = serveFlag.String("listen", "localhost:6084", "address to listen on")
 	listenWebhookAddress = serveFlag.String("listenwebhook", "localhost:6085", "address to listen on for webhooks, like from github; set empty for no listening")
 	listenAdminAddress   = serveFlag.String("listenadmin", "localhost:6086", "address to listen on for monitoring endpoints like prometheus /metrics and /info")
-	dbmigrate            = serveFlag.Bool("dbmigrate", true, "perform database migrations if not yet at latest schema version at startup")
-
-	rootRequests chan request // for http-serve
 )
 
 func serve(args []string) {
@@ -44,7 +41,7 @@ func serve(args []string) {
 	}
 
 	err := sconf.ParseFile(args[0], &config)
-	check(err, "parsing config file")
+	xcheckf(err, "parsing config file")
 
 	initDingDataDir()
 
@@ -56,7 +53,7 @@ func serve(args []string) {
 			log.Fatalln("must run with umask 027 with isolateBuilds enabled")
 		}
 		info, err := os.Stat(dingDataDir)
-		check(err, "stat data dir")
+		xcheckf(err, "stat data dir")
 		sysinfo := info.Sys()
 		if sysinfo == nil {
 			log.Fatalf("cannot determine owner of data dir %q", dingDataDir)
@@ -74,28 +71,9 @@ func serve(args []string) {
 		}
 	}
 
-	proto := 0
-	// we exchange gob messages with unprivileged httpserver over socketsA
-	socketsA, err := unix.Socketpair(unix.AF_UNIX, unix.SOCK_STREAM, proto)
-	check(err, "creating socketpair")
-
-	// and we send file descriptors from to unprivileged httpserver after kicking off a build under a unique uid
-	socketsB, err := unix.Socketpair(unix.AF_UNIX, unix.SOCK_STREAM, proto)
-	check(err, "creating socketpair")
-
-	rootAFD := os.NewFile(uintptr(socketsA[0]), "rootA")
-	httpAFD := os.NewFile(uintptr(socketsA[1]), "httpA")
-	rootBFD := os.NewFile(uintptr(socketsB[0]), "rootB")
-	httpBFD := os.NewFile(uintptr(socketsB[1]), "httpB")
-
-	fileconn, err := net.FileConn(rootBFD)
-	check(err, "fileconn")
-	unixconn, ok := fileconn.(*net.UnixConn)
-	if !ok {
-		log.Fatalln("not unixconn")
-	}
-	check(rootBFD.Close(), "closing root unix fd")
-	rootBFD = nil
+	privMsg, unprivMsg, privFD, unprivFD := xinitSockets()
+	privConn := xunixconn(privFD)
+	privFD = nil
 
 	argv := append([]string{os.Args[0], "serve-http"}, os.Args[2:len(os.Args)-1]...)
 	attr := &os.ProcAttr{
@@ -103,8 +81,8 @@ func serve(args []string) {
 			os.Stdin,
 			os.Stdout,
 			os.Stderr,
-			httpAFD,
-			httpBFD,
+			unprivMsg,
+			unprivFD,
 		},
 	}
 	if config.IsolateBuilds.Enabled {
@@ -117,21 +95,55 @@ func serve(args []string) {
 		}
 	}
 	_, err = os.StartProcess(argv[0], argv, attr)
-	check(err, "starting http process")
+	xcheckf(err, "starting http process")
 
-	check(httpAFD.Close(), "closing http fd a")
-	check(httpBFD.Close(), "closing http fd b")
-	httpAFD = nil
-	httpBFD = nil
+	xcheckf(unprivMsg.Close(), "closing unpriv msg file")
+	xcheckf(unprivFD.Close(), "closing unpriv fd file")
+	unprivMsg = nil
+	unprivFD = nil
 
-	dec := gob.NewDecoder(rootAFD)
-	enc := gob.NewEncoder(rootAFD)
+	dec := gob.NewDecoder(privMsg)
+	enc := gob.NewEncoder(privMsg)
 	err = enc.Encode(&config)
-	check(err, "writing config to httpserver")
+	xcheckf(err, "writing config to httpserver")
+	servePrivileged(dec, enc, privConn)
+}
+
+func xinitSockets() (privMsg, unprivMsg, privFD, unprivFD *os.File) {
+	proto := 0
+	// we exchange gob messages with unprivileged httpserver over socketsA
+	msgpair, err := unix.Socketpair(unix.AF_UNIX, unix.SOCK_STREAM, proto)
+	xcheckf(err, "creating socketpair")
+
+	// and we send file descriptors from to unprivileged httpserver after kicking off a build under a unique uid
+	fdpair, err := unix.Socketpair(unix.AF_UNIX, unix.SOCK_STREAM, proto)
+	xcheckf(err, "creating socketpair")
+
+	privMsg = os.NewFile(uintptr(msgpair[0]), "privmsg")
+	unprivMsg = os.NewFile(uintptr(msgpair[1]), "unprivmsg")
+	privFD = os.NewFile(uintptr(fdpair[0]), "privfd")
+	unprivFD = os.NewFile(uintptr(fdpair[1]), "unprivfd")
+
+	return
+}
+
+func xunixconn(f *os.File) *net.UnixConn {
+	fc, err := net.FileConn(f)
+	xcheckf(err, "fileconn")
+	uc, ok := fc.(*net.UnixConn)
+	if !ok {
+		log.Fatalln("file not a unixconn")
+	}
+	err = f.Close()
+	xcheckf(err, "closing unix file")
+	return uc
+}
+
+func servePrivileged(dec *gob.Decoder, enc *gob.Encoder, unixconn *net.UnixConn) {
 	for {
 		var msg msg
 		err := dec.Decode(&msg)
-		check(err, "decoding msg")
+		xcheckf(err, "decoding msg")
 
 		switch {
 		case msg.Build != nil:
@@ -157,7 +169,7 @@ func serve(args []string) {
 		}
 
 		err = enc.Encode(errstr(err))
-		check(err, "writing response")
+		xcheckf(err, "writing response")
 	}
 }
 
@@ -208,11 +220,34 @@ func doMsgChown(msg *msgChown, enc *gob.Encoder) error {
 	return err
 }
 
+func ensureWritable(dir string) {
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// don't change symlinks, we would be modifying whatever they point to!
+		if (info.Mode() & os.ModeSymlink) != 0 {
+			return nil
+		}
+		if (info.Mode() & 0200) == 0 {
+			if err := os.Chmod(path, info.Mode()|0200); err != nil {
+				log.Printf("making path writable before removing, %q: %v", path, err)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		log.Printf("walking dir %q to ensure files are writable, for removal: %v", dir, err)
+	}
+}
+
 func doMsgRemoveBuilddir(msg *msgRemoveBuilddir, enc *gob.Encoder) error {
 	p := fmt.Sprintf("%s/build/%s/%d", dingDataDir, msg.RepoName, msg.BuildID)
 	if filepath.Clean(p) != p {
 		return errBadParams
 	}
+	ensureWritable(p)
 	return os.RemoveAll(p)
 }
 
@@ -223,10 +258,12 @@ func doMsgRemoveRepo(msg *msgRemoveRepo, enc *gob.Encoder) error {
 		return errBadParams
 	}
 
+	ensureWritable(homeDir)
 	err := os.RemoveAll(homeDir)
 	if err != nil && os.IsNotExist(err) {
 		err = nil
 	}
+	ensureWritable(repoDir)
 	err2 := os.RemoveAll(repoDir)
 	if err == nil {
 		err = err2
@@ -239,6 +276,7 @@ func doMsgRemoveSharedHome(msg *msgRemoveSharedHome, enc *gob.Encoder) error {
 	if filepath.Clean(homeDir) != homeDir {
 		return errBadParams
 	}
+	ensureWritable(homeDir)
 	err := os.RemoveAll(homeDir)
 	if err != nil && os.IsNotExist(err) {
 		err = nil
@@ -261,12 +299,12 @@ func doMsgBuild(msg *msgBuild, enc *gob.Encoder, unixconn *net.UnixConn) error {
 	}()
 
 	outr, outw, err := os.Pipe()
-	check(err, "create stdout pipe")
+	xcheckf(err, "create stdout pipe")
 	defer outr.Close()
 	defer outw.Close()
 
 	errr, errw, err := os.Pipe()
-	check(err, "create stderr pipe")
+	xcheckf(err, "create stderr pipe")
 	defer errr.Close()
 	defer errw.Close()
 
@@ -300,12 +338,12 @@ func doMsgBuild(msg *msgBuild, enc *gob.Encoder, unixconn *net.UnixConn) error {
 	}
 
 	statusr, statusw, err := os.Pipe()
-	check(err, "create status pipe")
+	xcheckf(err, "create status pipe")
 
 	buf := []byte{1}
 	oob := unix.UnixRights(int(outr.Fd()), int(errr.Fd()), int(statusr.Fd()))
 	_, _, err = unixconn.WriteMsgUnix(buf, oob, nil)
-	check(err, "sending fds from root to http")
+	xcheckf(err, "sending fds from root to http")
 	statusr.Close()
 
 	needCancel = false
@@ -316,7 +354,7 @@ func doMsgBuild(msg *msgBuild, enc *gob.Encoder, unixconn *net.UnixConn) error {
 
 		err := cmd.Wait()
 		err = gob.NewEncoder(statusw).Encode(errstr(err))
-		check(err, "writing status to http-serve")
+		xcheckf(err, "writing status to http-serve")
 	}()
 
 	return nil

@@ -30,13 +30,11 @@ See INSTALL.txt for installation instructions.
 
 # Requirements
 
-- PostgreSQL database
 - BSD/Linux machine
 - git/mercurial or any other version control software you want to use
 
 Ding is distributed as a self-contained binary. It includes installation
-instructions (run "ding help") and database setup/upgrade scripts ("ding
-upgrade").
+instructions (run "ding help").
 
 
 # Download
@@ -51,6 +49,16 @@ Download a binary at:
 Run:
 
 	CGO_ENABLED=0 go install github.com/mjl-/ding@latest
+
+
+# Upgrading
+
+If you are upgrading from a version before v0.4.0, you must first upgrade to
+v0.3.5, then v0.4.0, and then upgrade further. Versions before v0.4.0 used
+PostgreSQL as database. Upgrading to v0.3.5 ensures the PostgreSQL schema is at
+its latest. Version v0.4.0 then automatically migrates to the builtin database
+storage. For versions after v0.4.0, the "Database" connection field in the
+config should be removed.
 
 
 # Features
@@ -73,7 +81,7 @@ Run:
 - Use docker images: Ding assumes you create self-contained programs, such as
   statically linked Go binaries or JVM .jar files. If you need other services to
   run tests, say a database server, just configure it when setting up your
-  repository in Ding. If you need certain OS dependencies installed, first try to
+  repository in ding. If you need certain OS dependencies installed, first try to
   get rid of those dependencies, as a last resort install the dependencies on the
   machine running ding.
 
@@ -97,7 +105,7 @@ Several reasons:
 
 ## Q: Does Ding have a website?
 
-No.
+No, this is the website.
 
 ## Q:  Where is the documentation?
 
@@ -129,12 +137,17 @@ Now run: "make build test"
 
 # Todo
 
-- write test code
+- remove temporary code for migrating from postgresql to bstore
+- rewrite ui in typescript
+- when doing a concurrent build, check how much memory is available, and how much the build likely needs (based on previous build, need to start keeping track of rusage), and delay execution if there isn't enough memory.
+- make some config runtime-configurable. like email address to notify. also allow multiple. and allow configuring per repo.
+- allow configuring webhooks per repo.
+- authentication on downloadable files.
+- add a quickstart. make it easier to setup, and easier to get a first successful build.
 - on reconnect after sse failure, make sure our state is up to date again. it isn't now.
 - improve showing the cause of a failed build. 1. show then just last single line of output (make just prints that it failed at the end). 2. create files in output/ earlier? so we don't show errors about missing such files when the vcs clone failes (eg due to no git in path, or no permision to run build.sh (eg because a dir leading to build.sh isn't accessible).
-- rewrite ui in typescript with tuit
 
-- parse & process the output of a build as it comes in, instead of when the build is done. allows making release-files earlier in the process, eg before slow tests are run.
+- parse & process the output of a build as it comes in, instead of when the build is done. allows making result-files earlier in the process, eg before slow tests are run.
 - when cloning, clone from previous checkout, then pull changes from remote as need, should be faster, especially for larger repo's.
 - attempt to detect pushes of commits+tag, don't build for both the commit and the tag if they're about the same thing.
 - allow configuring a cleanup script, that is run when a builddir is removed. eg for dropping a database that was created in build.sh.

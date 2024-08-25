@@ -1,35 +1,32 @@
 package main
 
 import (
-	"database/sql"
-	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"runtime/debug"
 
-	"github.com/lib/pq"
-
+	"github.com/mjl-/bstore"
 	"github.com/mjl-/sherpa"
 )
 
-func sherpaCheck(err error, msg string) {
+func _checkf(err error, format string, args ...any) {
 	if err == nil {
 		return
 	}
 
-	if pqe, ok := err.(*pq.Error); ok && !config.ShowSherpaErrors {
-		more := ""
-		if config.ShowSherpaErrors {
-			more = fmt.Sprintf(": %v", err)
-		}
-		switch pqe.Code {
-		case "23503":
-			userError("references to this object still present in database" + more)
-		case "23505":
-			userError("values are not unique" + more)
-		case "23514":
-			userError("invalid value(s)" + more)
-		}
+	msg := fmt.Sprintf(format, args...)
+
+	if err == bstore.ErrAbsent {
+		panic(&sherpa.Error{Code: "user:notFound", Message: msg + ": Not found"})
+	}
+
+	if errors.Is(err, bstore.ErrUnique) {
+		err = fmt.Errorf("a value is not unique")
+	} else if errors.Is(err, bstore.ErrReference) {
+		err = fmt.Errorf("references to this object are still present in the database")
+	} else if errors.Is(err, bstore.ErrZero) {
+		err = fmt.Errorf("invalid empty value for a field")
 	}
 
 	m := msg
@@ -46,17 +43,19 @@ func sherpaCheck(err error, msg string) {
 	} else {
 		m = "An error occurred. Please try again later or contact us."
 	}
-	serverError(m)
+	_serverError(m)
 }
 
-func serverError(m string) {
+func _serverError(m string) {
 	panic(&sherpa.Error{Code: "serverError", Message: m})
 }
 
-func sherpaUserCheck(err error, msg string) {
+func _checkUserf(err error, format string, args ...any) {
 	if err == nil {
 		return
 	}
+
+	msg := fmt.Sprintf(format, args...)
 
 	m := msg
 	if m != "" {
@@ -72,29 +71,25 @@ func sherpaUserCheck(err error, msg string) {
 	} else {
 		m = "An error occurred. Please try again later or contact us."
 	}
-	userError(m)
+	_userError(m)
 }
 
-func userError(m string) {
+func _userError(m string) {
 	panic(&sherpa.Error{Code: "userError", Message: m})
 }
 
-func sherpaCheckRow(row *sql.Row, r interface{}, msg string) {
-	var buf []byte
-	err := row.Scan(&buf)
-	if err == sql.ErrNoRows {
-		panic(&sherpa.Error{Code: "userNotFound", Message: "Not found"})
-	}
-	sherpaCheck(err, msg+": reading json from database row into buffer")
-	sherpaCheck(json.Unmarshal(buf, r), msg+": parsing json from database")
-}
-
-func checkRow(row *sql.Row, r interface{}, msg string) {
-	var buf []byte
-	err := row.Scan(&buf)
-	if err == sql.ErrNoRows {
-		log.Fatal("no row in result")
-	}
-	check(err, msg+": reading json from database row into buffer")
-	check(json.Unmarshal(buf, r), msg+": parsing json from database")
+func sherpaCatch(fn func()) (rerr error) {
+	defer func() {
+		x := recover()
+		if x == nil {
+			return
+		}
+		err, ok := x.(*sherpa.Error)
+		if !ok {
+			panic(x)
+		}
+		rerr = err
+	}()
+	fn()
+	return nil
 }

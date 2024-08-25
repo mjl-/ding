@@ -39,8 +39,8 @@ app.config(function($routeProvider, $uibTooltipProvider) {
 			repo: function($rootScope, $route) {
 				return api.repo($rootScope.password(), $route.current.params.repoName);
 			},
-			buildResult: function($rootScope, $route) {
-				return api.buildResult($rootScope.password(), $route.current.params.repoName, parseInt($route.current.params.buildId));
+			build: function($rootScope, $route) {
+				return api.build($rootScope.password(), $route.current.params.repoName, parseInt($route.current.params.buildId));
 			}
 		}
 	})
@@ -51,7 +51,7 @@ app.config(function($routeProvider, $uibTooltipProvider) {
 			repo: function($rootScope, $route) {
 				return api.repo($rootScope.password(), $route.current.params.repoName);
 			},
-			buildResult: function($rootScope, $route) {
+			build: function($rootScope, $route) {
 				return api.release($rootScope.password(), $route.current.params.repoName, parseInt($route.current.params.buildId));
 			}
 		}

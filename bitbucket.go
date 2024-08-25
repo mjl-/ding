@@ -2,12 +2,33 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"log"
 	"net/http"
 	"strings"
+
+	"github.com/mjl-/bstore"
 )
+
+// See https://support.atlassian.com/bitbucket-cloud/docs/event-payloads/#Push
+type bitbucketEvent struct {
+	Push *struct {
+		Changes []struct {
+			New *struct {
+				Target *struct {
+					Type string `json:"type"`
+					Hash string `json:"hash"`
+				} `json:"target"`
+				Name string `json:"name"`
+				Type string `json:"type"` // hg: named_branch, tag, bookmark; git: branch, tag
+			} `json:"new"` // null for branch deletes
+		} `json:"changes"`
+	} `json:"push"`
+	Repository struct {
+		Name string `json:"name"`
+		SCM  string `json:"scm"`
+	} `json:"repository"`
+}
 
 func bitbucketHookHandler(w http.ResponseWriter, r *http.Request) {
 	if config.BitbucketWebhookSecret == "" {
@@ -36,25 +57,7 @@ func bitbucketHookHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// See https://support.atlassian.com/bitbucket-cloud/docs/event-payloads/#Push
-	var event struct {
-		Push *struct {
-			Changes []struct {
-				New *struct {
-					Target *struct {
-						Type string `json:"type"`
-						Hash string `json:"hash"`
-					} `json:"target"`
-					Name string `json:"name"`
-					Type string `json:"type"` // hg: named_branch, tag, bookmark; git: branch, tag
-				} `json:"new"` // null for branch deletes
-			} `json:"changes"`
-		} `json:"push"`
-		Repository struct {
-			Name string `json:"name"`
-			SCM  string `json:"scm"`
-		} `json:"repository"`
-	}
+	var event bitbucketEvent
 	err := json.NewDecoder(r.Body).Decode(&event)
 	if err != nil {
 		log.Printf("bitbucket webhook: parsing JSON body: %s", err)
@@ -67,24 +70,22 @@ func bitbucketHookHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var vcs string
-	err = database.QueryRowContext(r.Context(), "select vcs from repo where name=$1", repoName).Scan(&vcs)
-	if err == sql.ErrNoRows {
+	repo := Repo{Name: repoName}
+	if err := database.Get(r.Context(), &repo); err == bstore.ErrAbsent {
 		http.NotFound(w, r)
 		return
-	}
-	if err != nil {
-		log.Printf("bitbucket webhook: reading vcs from database: %s", err)
+	} else if err != nil {
+		log.Printf("bitbucket webhook: reading repo from database: %s", err)
 		http.Error(w, "error", http.StatusInternalServerError)
 		return
 	}
-	if event.Repository.SCM == "hg" && !(vcs == "mercurial" || vcs == "command") {
-		log.Printf("bitbucket webhook: misconfigured repository type, bitbucket thinks mercurial, ding thinks %s", vcs)
+	if event.Repository.SCM == "hg" && !(repo.VCS == VCSMercurial || repo.VCS == VCSCommand) {
+		log.Printf("bitbucket webhook: misconfigured repository type, bitbucket thinks mercurial, ding thinks %s", repo.VCS)
 		http.Error(w, "misconfigured webhook", http.StatusInternalServerError)
 		return
 	}
-	if event.Repository.SCM == "git" && !(vcs == "git" || vcs == "command") {
-		log.Printf("bitbucket webhook: misconfigured repository type, bitbucket thinks git, ding thinks %s", vcs)
+	if event.Repository.SCM == "git" && !(repo.VCS == VCSGit || repo.VCS == VCSCommand) {
+		log.Printf("bitbucket webhook: misconfigured repository type, bitbucket thinks git, ding thinks %s", repo.VCS)
 		http.Error(w, "misconfigured webhook", http.StatusInternalServerError)
 		return
 	}
@@ -104,7 +105,7 @@ func bitbucketHookHandler(w http.ResponseWriter, r *http.Request) {
 		case "tag":
 			// todo: fix for silly assumption that people only tag in master/default branch (eg after merge)
 			branch = "master"
-			if vcs == "hg" {
+			if repo.VCS == "hg" {
 				branch = "default"
 			}
 		default:
@@ -121,11 +122,16 @@ func bitbucketHookHandler(w http.ResponseWriter, r *http.Request) {
 					http.Error(w, "could not create build", http.StatusInternalServerError)
 					return
 				}
-				go doBuild(context.Background(), repo, build, buildDir)
+				go func() {
+					err := doBuild(context.Background(), repo, build, buildDir)
+					if err != nil {
+						log.Printf("build: %s", err)
+					}
+				}()
 			} else {
 				http.Error(w, "New build target is empty", http.StatusInternalServerError)
 			}
 		}
 	}
-	w.WriteHeader(204)
+	w.WriteHeader(http.StatusNoContent)
 }

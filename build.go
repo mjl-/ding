@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"database/sql"
 	"encoding/gob"
 	"fmt"
 	"io"
@@ -17,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/mjl-/bstore"
 	"github.com/mjl-/sherpa"
 )
 
@@ -62,15 +62,23 @@ func buildIDCommandCancel(buildID int32) {
 }
 
 func _prepareBuild(ctx context.Context, repoName, branch, commit string, lowPrio bool) (repo Repo, build Build, buildDir string) {
-	transact(ctx, func(tx *sql.Tx) {
+	_dbwrite(ctx, func(tx *bstore.Tx) {
 		repo = _repo(tx, repoName)
 
-		q := `insert into build (repo_id, branch, commit_hash, status, low_prio) values ($1, $2, $3, $4, $5) returning id`
-		sherpaCheckRow(tx.QueryRow(q, repo.ID, branch, commit, "new", lowPrio), &build.ID, "inserting new build into database")
+		b := Build{
+			RepoName:    repo.Name,
+			Branch:      branch,
+			CommitHash:  commit,
+			Status:      StatusNew,
+			LowPrio:     lowPrio,
+			BuildScript: repo.BuildScript,
+		}
+		err := tx.Insert(&b)
+		_checkf(err, "inserting new build into database")
 
-		buildDir = fmt.Sprintf("%s/build/%s/%d", dingDataDir, repo.Name, build.ID)
-		err := os.MkdirAll(buildDir, 0777)
-		sherpaCheck(err, "creating build dir")
+		buildDir = fmt.Sprintf("%s/build/%s/%d", dingDataDir, repo.Name, b.ID)
+		err = os.MkdirAll(buildDir, 0777)
+		_checkf(err, "creating build dir")
 
 		homeDir := buildDir + "/home"
 		if repo.UID != nil {
@@ -78,38 +86,38 @@ func _prepareBuild(ctx context.Context, repoName, branch, commit string, lowPrio
 		}
 
 		err = os.MkdirAll(buildDir+"/scripts", 0777)
-		sherpaCheck(err, "creating scripts dir")
+		_checkf(err, "creating scripts dir")
 		err = os.MkdirAll(homeDir, 0777)
-		sherpaCheck(err, "creating home dir")
+		_checkf(err, "creating home dir")
 
 		buildSh := buildDir + "/scripts/build.sh"
-		writeFile(buildSh, repo.BuildScript)
+		_writeFile(buildSh, repo.BuildScript)
 		err = os.Chmod(buildSh, os.FileMode(0755))
-		sherpaCheck(err, "chmod")
+		_checkf(err, "chmod")
 
 		outputDir := buildDir + "/output"
 		err = os.MkdirAll(outputDir, 0777)
-		sherpaCheck(err, "creating output dir")
+		_checkf(err, "creating output dir")
 
 		downloadDir := buildDir + "/dl"
 		err = os.MkdirAll(downloadDir, 0777)
-		sherpaCheck(err, "creating download dir")
+		_checkf(err, "creating download dir")
 
-		build = _build(tx, repo.Name, build.ID)
+		build = b
 	})
 	events <- EventBuild{repo.Name, build}
 	return
 }
 
-func writeFile(path, content string) {
+func _writeFile(path, content string) {
 	f, err := os.Create(path)
-	sherpaCheck(err, "creating file")
+	_checkf(err, "creating file")
 	_, err = f.Write([]byte(content))
 	err2 := f.Close()
 	if err == nil {
 		err = err2
 	}
-	sherpaCheck(err, "writing file")
+	_checkf(err, "writing file")
 }
 
 func prepareBuild(ctx context.Context, repoName, branch, commit string, lowPrio bool) (repo Repo, build Build, buildDir string, err error) {
@@ -118,21 +126,35 @@ func prepareBuild(ctx context.Context, repoName, branch, commit string, lowPrio 
 		return
 	}
 	defer func() {
-		xerr := recover()
-		if xerr == nil {
-			return
-		}
-		if serr, ok := xerr.(*sherpa.Error); ok {
-			err = fmt.Errorf("%s", serr.Error())
-		} else {
-			panic(xerr)
+		if x := recover(); x != nil {
+			if xerr, ok := x.(error); ok {
+				err = xerr
+			} else {
+				err = fmt.Errorf("%v", x)
+			}
 		}
 	}()
 	repo, build, buildDir = _prepareBuild(ctx, repoName, branch, commit, lowPrio)
 	return repo, build, buildDir, nil
 }
 
-func doBuild(ctx context.Context, repo Repo, build Build, buildDir string) {
+func doBuild(ctx context.Context, repo Repo, build Build, buildDir string) (rerr error) {
+	defer func() {
+		x := recover()
+		if x == nil {
+			return
+		}
+		if err, ok := x.(*sherpa.Error); ok {
+			rerr = fmt.Errorf("%s (%s)", err.Message, err.Code)
+		} else {
+			rerr = fmt.Errorf("%v", x)
+		}
+	}()
+	_doBuild(ctx, repo, build, buildDir)
+	return nil
+}
+
+func _doBuild(ctx context.Context, repo Repo, build Build, buildDir string) {
 	job := job{
 		repo.Name,
 		build.LowPrio,
@@ -143,20 +165,18 @@ func doBuild(ctx context.Context, repo Repo, build Build, buildDir string) {
 	defer func() {
 		finishedJobs <- job.repoName
 	}()
-	_doBuild(ctx, repo, build, buildDir)
+	_doBuild0(ctx, repo, build, buildDir)
 }
 
-func _doBuild(ctx context.Context, repo Repo, build Build, buildDir string) {
+func _doBuild0(ctx context.Context, repo Repo, build Build, buildDir string) {
 	buildCmd := buildIDCommandRegister(build.ID)
 	defer buildIDCommandCancel(build.ID)
 
 	// We may have been cancelled in the mean time. If so, do not even start working.
-	var abort bool
-	transact(ctx, func(tx *sql.Tx) {
-		q := `select finish is not null from build where id=$1`
-		sherpaCheckRow(tx.QueryRow(q, &build.ID), &abort, "fetching finish status from database")
-	})
-	if abort {
+	b := Build{ID: build.ID}
+	err := database.Get(ctx, &b)
+	_checkf(err, "fetching build from database for finish status")
+	if b.Finish != nil {
 		return
 	}
 
@@ -176,46 +196,68 @@ func _doBuild(ctx context.Context, repo Repo, build Build, buildDir string) {
 			homeDiskUsageDelta = homeDiskUsage - repo.HomeDiskUsage
 		}
 
-		transact(ctx, func(tx *sql.Tx) {
-			var one int
-			qBuild := `update build set finish=NOW(), disk_usage=$1, home_disk_usage_delta=$2 where id=$3 returning 1`
-			err := tx.QueryRow(qBuild, build.DiskUsage, homeDiskUsageDelta, build.ID).Scan(&one)
-			sherpaCheck(err, "marking build as finished in database")
+		var b Build
+		_dbwrite(ctx, func(tx *bstore.Tx) {
+			b = Build{ID: build.ID}
+			err := tx.Get(&b)
+			_checkf(err, "get build after finish")
+			setLastLine(&b)
+			now := time.Now()
+			b.Finish = &now
+			b.DiskUsage = build.DiskUsage
+			b.HomeDiskUsageDelta = homeDiskUsageDelta
+			b.Steps = _buildSteps(b)
+			err = tx.Update(&b)
+			_checkf(err, "marking build as finished in database")
 
 			if repo.UID != nil {
-				qRepo := `update repo set home_disk_usage=$1 where id=$2 returning 1`
-				err := tx.QueryRow(qRepo, homeDiskUsage, repo.ID).Scan(&one)
-				sherpaCheck(err, "storing home directory disk usage in database")
+				r := Repo{Name: repo.Name}
+				err := tx.Get(&r)
+				_checkf(err, "get repo")
+				r.HomeDiskUsage = homeDiskUsage
+				err = tx.Update(&r)
+				_checkf(err, "storing home directory disk usage in database")
 			}
 
-			events <- EventBuild{repo.Name, _build(tx, repo.Name, build.ID)}
 		})
+		events <- EventBuild{repo.Name, b}
 
 		_cleanupBuilds(ctx, repo.Name, build.Branch)
 
 		r := recover()
 		if r != nil {
 			if serr, ok := r.(*sherpa.Error); ok && serr.Code == "userError" {
-				transact(ctx, func(tx *sql.Tx) {
-					err := tx.QueryRow(`update build set error_message=$1 where id=$2 returning id`, serr.Message, build.ID).Scan(&build.ID)
-					sherpaCheck(err, "updating error message in database")
-					events <- EventBuild{repo.Name, _build(tx, repo.Name, build.ID)}
+				_dbwrite(ctx, func(tx *bstore.Tx) {
+					b = Build{ID: build.ID}
+					err := tx.Get(&b)
+					_checkf(err, "get build after error")
+					b.ErrorMessage = serr.Message
+					err = tx.Update(&b)
+					_checkf(err, "update error message for build in database")
 				})
+				events <- EventBuild{repo.Name, b}
 			} else {
 				panic(r)
 			}
 		}
 
-		var prevStatus string
-		err := database.QueryRowContext(ctx, "select status from build join repo on build.repo_id = repo.id and repo.name = $1 and build.branch = $2 order by build.id desc offset 1 limit 1", repo.Name, build.Branch).Scan(&prevStatus)
-		if r != nil && (err != nil || prevStatus == "success") {
-
-			// for build.LastLine
-			transact(ctx, func(tx *sql.Tx) {
-				build = _build(tx, repo.Name, build.ID)
-			})
-			fillBuild(repo.Name, &build)
-
+		// Get previous build status for same repo/branch, and send email when this breaks
+		// or fixes the build for this branch.
+		var prevStatus BuildStatus
+		_dbread(ctx, func(tx *bstore.Tx) {
+			q := bstore.QueryTx[Build](tx).FilterNonzero(Build{Branch: build.Branch, RepoName: repo.Name}).SortDesc("ID")
+			_, err := q.Next()
+			if err == bstore.ErrAbsent {
+				return
+			}
+			_checkf(err, "get build for branch")
+			b, err := q.Next()
+			if err == bstore.ErrAbsent {
+				return
+			}
+			prevStatus = b.Status
+		})
+		if r != nil && (prevStatus == "" || prevStatus == StatusSuccess) {
 			var errmsg string
 			if serr, ok := r.(*sherpa.Error); ok {
 				errmsg = serr.Message
@@ -224,7 +266,7 @@ func _doBuild(ctx context.Context, repo Repo, build Build, buildDir string) {
 			}
 			_sendMailFailing(repo, build, errmsg)
 		}
-		if r == nil && err == nil && prevStatus != "success" {
+		if r == nil && !(prevStatus == "" || prevStatus == StatusSuccess) {
 			_sendMailFixed(repo, build)
 		}
 
@@ -235,18 +277,22 @@ func _doBuild(ctx context.Context, repo Repo, build Build, buildDir string) {
 		}
 	}()
 
-	_updateStatus := func(status string, isStart bool) {
-		transact(ctx, func(tx *sql.Tx) {
-			var one int
-			err := tx.QueryRow("update build set status=$1 where id=$2 returning 1", status, build.ID).Scan(&one)
-			sherpaCheck(err, "updating build status in database")
+	_updateStatus := func(status BuildStatus, isStart bool) {
+		_dbwrite(ctx, func(tx *bstore.Tx) {
+			b := Build{ID: build.ID}
+			err := tx.Get(&b)
+			_checkf(err, "get build for status update")
+			b.Status = status
 
 			if isStart {
-				q := "update build set start=now() where id=$1 returning 1"
-				sherpaCheckRow(tx.QueryRow(q, build.ID), &one, "marking start time for build in database")
+				now := time.Now()
+				b.Start = &now
 			}
 
-			events <- EventBuild{repo.Name, _build(tx, repo.Name, build.ID)}
+			err = tx.Update(&b)
+			_checkf(err, "updating build status in database")
+
+			events <- EventBuild{repo.Name, b}
 		})
 	}
 
@@ -269,90 +315,93 @@ func _doBuild(ctx context.Context, repo Repo, build Build, buildDir string) {
 		return args
 	}
 
-	_updateStatus("clone", true)
-	var err error
+	_updateStatus(StatusClone, true)
 	switch repo.VCS {
-	case "git":
+	case VCSGit:
 		// we clone without hard links because we chown later, don't want to mess up local git source repo's
 		// we have to clone as the user running ding. otherwise, git clone won't work due to ssh refusing to run as a user without a username ("No user exists for uid ...")
 		err = run(buildCmd.ctx, build.ID, env, "clone", buildDir, buildDir, runPrefix("git", "clone", "--recursive", "--no-hardlinks", "--branch", build.Branch, repo.Origin, "checkout/"+repo.CheckoutPath)...)
-		sherpaUserCheck(err, "cloning git repository")
-	case "mercurial":
+		_checkUserf(err, "cloning git repository")
+	case VCSMercurial:
 		cmd := []string{"hg", "clone", "--branch", build.Branch}
 		if build.CommitHash != "" {
 			cmd = append(cmd, "--rev", build.CommitHash, "--updaterev", build.CommitHash)
 		}
 		cmd = append(cmd, repo.Origin, "checkout/"+repo.CheckoutPath)
 		err = run(buildCmd.ctx, build.ID, env, "clone", buildDir, buildDir, runPrefix(cmd...)...)
-		sherpaUserCheck(err, "cloning mercurial repository")
-	case "command":
+		_checkUserf(err, "cloning mercurial repository")
+	case VCSCommand:
 		err = run(buildCmd.ctx, build.ID, env, "clone", buildDir, buildDir, runPrefix("sh", "-c", repo.Origin)...)
-		sherpaUserCheck(err, "cloning repository from command")
+		_checkUserf(err, "cloning repository from command")
 	default:
-		serverError("unexpected VCS " + repo.VCS)
+		_serverError("unexpected VCS " + string(repo.VCS))
 	}
 
 	checkoutDir := fmt.Sprintf("%s/checkout/%s", buildDir, repo.CheckoutPath)
 
 	if build.CommitHash == "" {
-		if repo.VCS == "command" {
-			clone := readFile(buildDir + "/output/clone.stdout")
+		if repo.VCS == VCSCommand {
+			clone := _readFile(buildDir + "/output/clone.stdout")
 			clone = strings.TrimSpace(clone)
 			l := strings.Split(clone, "\n")
 			s := l[len(l)-1]
 			if !strings.HasPrefix(s, "commit:") {
-				userError(`output of clone command should start with "commit:" followed by the commit id/hash`)
+				_userError(`output of clone command should start with "commit:" followed by the commit id/hash`)
 			}
 			build.CommitHash = s[len("commit:"):]
 		} else {
 			var command []string
 			switch repo.VCS {
-			case "git":
+			case VCSGit:
 				command = []string{"git", "rev-parse", "HEAD"}
-			case "mercurial":
+			case VCSMercurial:
 				command = []string{"hg", "id", "--id"}
 			default:
-				serverError("unexpected VCS " + repo.VCS)
+				_serverError("unexpected VCS " + string(repo.VCS))
 			}
 
 			argv := runPrefix(command...)
 			cmd := exec.CommandContext(buildCmd.ctx, argv[0], argv[1:]...)
 			cmd.Dir = checkoutDir
 			buf, err := cmd.Output()
-			sherpaCheck(err, "finding commit hash")
+			_checkf(err, "finding commit hash")
 			build.CommitHash = strings.TrimSpace(string(buf))
 		}
 		if build.CommitHash == "" {
-			sherpaCheck(fmt.Errorf("cannot find commit hash"), "finding commit hash")
+			_checkf(fmt.Errorf("cannot find commit hash"), "finding commit hash")
 		}
-		transact(ctx, func(tx *sql.Tx) {
-			err = tx.QueryRow(`update build set commit_hash=$1 where id=$2 returning id`, build.CommitHash, build.ID).Scan(&build.ID)
-			sherpaCheck(err, "updating commit hash in database")
-			events <- EventBuild{repo.Name, _build(tx, repo.Name, build.ID)}
+		_dbwrite(ctx, func(tx *bstore.Tx) {
+			b := Build{ID: build.ID}
+			err := tx.Get(&b)
+			_checkf(err, "get build to update commithash")
+			b.CommitHash = build.CommitHash
+			err = tx.Update(&b)
+			_checkf(err, "update commit hash for build in database")
+			events <- EventBuild{repo.Name, b}
 		})
 	}
 
-	if repo.VCS == "git" {
+	if repo.VCS == VCSGit {
 		err = run(buildCmd.ctx, build.ID, env, "clone", buildDir, checkoutDir, runPrefix("git", "checkout", build.CommitHash)...)
-		sherpaUserCheck(err, "checkout revision")
+		_checkUserf(err, "checkout revision")
 	}
 
 	var uid uint32
-	SharedHome := false
+	sharedHome := false
 	if config.IsolateBuilds.Enabled {
 		if repo.UID != nil {
 			uid = *repo.UID
-			SharedHome = true
+			sharedHome = true
 		} else {
 			uid = config.IsolateBuilds.UIDStart + uint32(build.ID)%(config.IsolateBuilds.UIDEnd-config.IsolateBuilds.UIDStart)
 		}
 	}
 
-	chownMsg := msg{Chown: &msgChown{repo.Name, build.ID, SharedHome, uid}}
+	chownMsg := msg{Chown: &msgChown{repo.Name, build.ID, sharedHome, uid}}
 	err = requestPrivileged(chownMsg)
-	sherpaCheck(err, "chown")
+	_checkf(err, "chown")
 
-	_updateStatus("build", false)
+	_updateStatus(StatusBuild, false)
 	req := request{
 		msg{Build: &msgBuild{repo.Name, build.ID, uid, repo.CheckoutPath, env}},
 		nil,
@@ -361,7 +410,7 @@ func _doBuild(ctx context.Context, repo Repo, build Build, buildDir string) {
 	rootRequests <- req
 	result := <-req.buildResponse
 	if result.err != nil {
-		sherpaUserCheck(result.err, "building")
+		_checkUserf(result.err, "building")
 	}
 
 	wait := make(chan error, 1)
@@ -370,7 +419,7 @@ func _doBuild(ctx context.Context, repo Repo, build Build, buildDir string) {
 
 		var r string
 		err = gob.NewDecoder(result.status).Decode(&r)
-		check(err, "decoding gob from result.status")
+		xcheckf(err, "decoding gob from result.status")
 		var err error
 		if r != "" {
 			err = fmt.Errorf("%s", r)
@@ -378,57 +427,66 @@ func _doBuild(ctx context.Context, repo Repo, build Build, buildDir string) {
 		wait <- err
 	}()
 	err = track(build.ID, "build", buildDir, result.stdout, result.stderr, wait)
-	sherpaUserCheck(err, "build.sh")
+	_checkUserf(err, "build.sh")
 
-	transact(ctx, func(tx *sql.Tx) {
+	_dbwrite(ctx, func(tx *bstore.Tx) {
 		outputDir := buildDir + "/output"
 		version, results, coverage, coverageReportFile := parseResults(repo, build, checkoutDir, outputDir+"/build.stdout")
 
-		qins := `insert into result (build_id, command, os, arch, toolchain, filename, filesize) values ($1, $2, $3, $4, $5, $6, $7) returning id`
-		for _, result := range results {
-			var id int
-			err = tx.QueryRow(qins, build.ID, result.Command, result.Os, result.Arch, result.Toolchain, result.Filename, result.Filesize).Scan(&id)
-			sherpaCheck(err, "inserting result into database")
-		}
+		b = Build{ID: build.ID}
+		err := tx.Get(&b)
+		_checkf(err, "get build to add results")
+		b.Status = StatusSuccess
+		b.Coverage = coverage
+		b.CoverageReportFile = coverageReportFile
+		b.Version = version
+		b.Results = results
+		err = tx.Update(&b)
+		_checkf(err, "marking build as success in database")
 
-		var one int
-		err = tx.QueryRow("update build set status='success', coverage=$1, coverage_report_file=$2, version=$3 where id=$4 returning 1", coverage, coverageReportFile, version, build.ID).Scan(&one)
-		sherpaCheck(err, "marking build as success in database")
-
-		events <- EventBuild{repo.Name, _build(tx, repo.Name, build.ID)}
 	})
+	events <- EventBuild{repo.Name, b}
 }
 
 func _cleanupBuilds(ctx context.Context, repoName, branch string) {
 	var builds []Build
-	q := `
-		select coalesce(json_agg(x.* order by x.id desc), '[]')
-		from (
-			select build.*
-			from build join repo on build.repo_id = repo.id
-			where repo.name=$1 and build.branch=$2
-		) x
-	`
-	sherpaCheckRow(database.QueryRowContext(ctx, q, repoName, branch), &builds, "fetching builds from database")
+	_dbread(ctx, func(tx *bstore.Tx) {
+		repo := _repo(tx, repoName)
+		var err error
+		builds, err = bstore.QueryTx[Build](tx).FilterNonzero(Build{RepoName: repo.Name, Branch: branch}).SortDesc("ID").List()
+		_checkf(err, "listing builds")
+	})
 	now := time.Now()
 	for index, b := range builds {
-		if index == 0 || b.Released != nil {
+		if index == 0 || b.Finish == nil {
 			continue
 		}
-		if index >= 10 || (b.Finish != nil && now.Sub(*b.Finish) > 14*24*3600*time.Second) {
-			transact(ctx, func(tx *sql.Tx) {
-				_removeBuild(tx, repoName, b.ID)
+		if index >= 10 || now.Sub(*b.Finish) > 14*24*3600*time.Second {
+			var remove bool
+			_dbwrite(ctx, func(tx *bstore.Tx) {
+				if b.Released == nil {
+					_removeBuild(tx, repoName, b.ID)
+					remove = true
+				} else if !b.BuilddirRemoved {
+					_removeBuildDir(b)
+					_, bb := _build(tx, b.RepoName, b.ID)
+					bb.BuilddirRemoved = true
+					err := tx.Update(&bb)
+					_checkf(err, "marking build directory as removed")
+				}
 			})
-			events <- EventRemoveBuild{repoName, b.ID}
+			if remove {
+				events <- EventRemoveBuild{repoName, b.ID}
+			}
 		}
 	}
 }
 
 func parseResults(repo Repo, build Build, checkoutDir, path string) (version string, results []Result, coverage *float32, coverageReportFile string) {
 	f, err := os.Open(path)
-	sherpaUserCheck(err, "opening build output")
+	_checkUserf(err, "opening build output")
 	defer func() {
-		sherpaUserCheck(f.Close(), "closing build output")
+		_checkUserf(f.Close(), "closing build output")
 	}()
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
@@ -438,49 +496,49 @@ func parseResults(repo Repo, build Build, checkoutDir, path string) (version str
 		case "release:":
 			//  "release:" command version os arch toolchain path
 			if len(t) != 6 {
-				userError("invalid \"release:\"-line, should have 6 words: " + line)
+				_userError("invalid \"release:\"-line, should have 6 words: " + line)
 			}
 			result := Result{t[1], t[2], t[3], t[4], t[5], 0}
 			if !strings.HasPrefix(result.Filename, "/") {
 				result.Filename = checkoutDir + "/" + result.Filename
 			}
 			info, err := os.Stat(result.Filename)
-			sherpaUserCheck(err, "testing whether released file exists")
+			_checkUserf(err, "testing whether released file exists")
 			result.Filename = result.Filename[len(checkoutDir+"/"):]
 			result.Filesize = info.Size()
 			results = append(results, result)
 		case "version:":
 			if len(t) != 2 {
-				userError("invalid \"version:\"-line, should have 1 parameter: " + line)
+				_userError("invalid \"version:\"-line, should have 1 parameter: " + line)
 			}
 			version = t[1]
 		case "coverage:":
 			// "coverage:" 75.0
 			if len(t) != 2 {
-				userError("invalid \"coverage:\"-line, should have 1 parameter: " + line)
+				_userError("invalid \"coverage:\"-line, should have 1 parameter: " + line)
 			}
 			var fl float64
 			fl, err = strconv.ParseFloat(t[1], 32)
 			if err != nil {
-				userError(fmt.Sprintf("invalid \"coverage:\"-line (%q), parsing float: %s", line, err))
+				_userError(fmt.Sprintf("invalid \"coverage:\"-line (%q), parsing float: %s", line, err))
 			}
 			coverage = new(float32)
 			*coverage = float32(fl)
 		case "coverage-report:":
 			// "coverage-report:" coverage.html
 			if len(t) != 2 {
-				userError("invalid \"coverage-report:\"-line, should have 1 parameter: " + line)
+				_userError("invalid \"coverage-report:\"-line, should have 1 parameter: " + line)
 			}
 			coverageReportFile = t[1]
 			p := fmt.Sprintf("%s/build/%s/%d/dl/%s", dingDataDir, repo.Name, build.ID, coverageReportFile)
 			_, err := os.Stat(p)
 			if err != nil {
-				userError(fmt.Sprintf("bad file in \"coverage-report:\"-line (%q): %s", line, err))
+				_userError(fmt.Sprintf("bad file in \"coverage-report:\"-line (%q): %s", line, err))
 			}
 		}
 	}
 	err = scanner.Err()
-	sherpaUserCheck(err, "reading build output")
+	_checkUserf(err, "reading build output")
 	return
 }
 
@@ -518,7 +576,7 @@ func setupCmd(cmdCtx context.Context, buildID int32, env []string, step, buildDi
 		panic(e)
 	}()
 
-	xcheck := func(err error, msg string) {
+	lcheck := func(err error, msg string) {
 		if err != nil {
 			panic(Error{fmt.Errorf("%s: %s", msg, err)})
 		}
@@ -526,19 +584,19 @@ func setupCmd(cmdCtx context.Context, buildID int32, env []string, step, buildDi
 
 	var err error
 	stdoutr, stdoutw, err = os.Pipe()
-	xcheck(err, "pipe for stdout")
+	lcheck(err, "pipe for stdout")
 
 	stderrr, stderrw, err = os.Pipe()
-	xcheck(err, "pipe for stderr")
+	lcheck(err, "pipe for stderr")
 
-	cmd := exec.CommandContext(cmdCtx, args[0], args...)
+	cmd := exec.CommandContext(cmdCtx, args[0], args[1:]...)
 	cmd.Dir = workDir
 	cmd.Env = env
 	cmd.Stdout = stdoutw
 	cmd.Stderr = stderrw
 
 	err = cmd.Start()
-	xcheck(err, "starting command")
+	lcheck(err, "starting command")
 
 	c := make(chan error, 1)
 	go func() {
@@ -572,7 +630,7 @@ func track(buildID int32, step, buildDir string, cmdstdout, cmdstderr io.ReadClo
 		panic(e)
 	}()
 
-	xcheck := func(err error, msg string) {
+	lcheck := func(err error, msg string) {
 		if err != nil {
 			panic(Error{fmt.Errorf("%s: %s", msg, err)})
 		}
@@ -588,21 +646,21 @@ func track(buildID int32, step, buildDir string, cmdstdout, cmdstderr io.ReadClo
 	defer func() {
 		time.Since(t0)
 		nsec, err := os.Create(buildDir + "/output/" + step + ".nsec")
-		xcheck(err, "creating nsec file")
+		lcheck(err, "creating nsec file")
 		defer nsec.Close()
 		_, err = fmt.Fprintf(nsec, "%d", time.Since(t0))
-		xcheck(err, "writing nsec file")
+		lcheck(err, "writing nsec file")
 	}()
 
 	appendFlags := os.O_APPEND | os.O_CREATE | os.O_WRONLY
 	output, err := os.OpenFile(buildDir+"/output/"+step+".output", appendFlags, 0644)
-	xcheck(err, "creating output file")
+	lcheck(err, "creating output file")
 	defer output.Close()
 	stdout, err := os.OpenFile(buildDir+"/output/"+step+".stdout", appendFlags, 0644)
-	xcheck(err, "creating stdout file")
+	lcheck(err, "creating stdout file")
 	defer stdout.Close()
 	stderr, err := os.OpenFile(buildDir+"/output/"+step+".stderr", appendFlags, 0644)
-	xcheck(err, "creating stderr file")
+	lcheck(err, "creating stderr file")
 	defer stderr.Close()
 
 	// let it be known that we started this phase
@@ -667,16 +725,16 @@ func track(buildID int32, step, buildDir string, cmdstdout, cmdstderr io.ReadClo
 			continue
 		}
 		_, err = output.Write([]byte(l.text))
-		xcheck(err, "writing to output")
+		lcheck(err, "writing to output")
 		var where string
 		if l.stdout {
 			where = "stdout"
 			_, err = stdout.Write([]byte(l.text))
-			xcheck(err, "writing to stdout")
+			lcheck(err, "writing to stdout")
 		} else {
 			where = "stderr"
 			_, err = stderr.Write([]byte(l.text))
-			xcheck(err, "writing to stderr")
+			lcheck(err, "writing to stderr")
 		}
 		events <- EventOutput{buildID, step, where, l.text}
 	}

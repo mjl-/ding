@@ -29,17 +29,17 @@ func kick(args []string) {
 	branch := args[2]
 	commit := args[3]
 	buf, err := io.ReadAll(os.Stdin)
-	check(err, "reading password from stdin")
+	xcheckf(err, "reading password from stdin")
 	password := strings.TrimRight(string(buf), "\n")
 
 	client, err := client.New(baseURL, []string{"build"})
-	check(err, "initializing sherpa client")
+	xcheckf(err, "initializing sherpa client")
 
 	var build struct {
 		ID int64
 	}
 	err = client.Call(context.Background(), &build, "createBuild", password, repoName, branch, commit)
-	check(err, "building")
+	xcheckf(err, "building")
 	_, err = fmt.Println("buildId", build.ID)
-	check(err, "write")
+	xcheckf(err, "write")
 }

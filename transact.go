@@ -2,24 +2,22 @@ package main
 
 import (
 	"context"
-	"database/sql"
-	"log"
+
+	"github.com/mjl-/bstore"
 )
 
-func transact(ctx context.Context, fn func(tx *sql.Tx)) {
-	tx, err := database.BeginTx(ctx, nil)
-	sherpaCheck(err, "starting database transaction")
+func _dbread(ctx context.Context, fn func(tx *bstore.Tx)) {
+	err := database.Read(ctx, func(tx *bstore.Tx) error {
+		fn(tx)
+		return nil
+	})
+	_checkf(err, "transaction")
+}
 
-	defer func() {
-		if tx != nil {
-			ee := tx.Rollback()
-			if ee != nil {
-				log.Println("rolling back:", ee)
-			}
-		}
-	}()
-	fn(tx)
-	err = tx.Commit()
-	tx = nil
-	sherpaCheck(err, "committing database transaction")
+func _dbwrite(ctx context.Context, fn func(tx *bstore.Tx)) {
+	err := database.Write(ctx, func(tx *bstore.Tx) error {
+		fn(tx)
+		return nil
+	})
+	_checkf(err, "transaction")
 }

@@ -147,7 +147,7 @@
 			],
 			"Returns": [
 				{
-					"Name": "build",
+					"Name": "release",
 					"Typewords": [
 						"Build"
 					]
@@ -156,7 +156,7 @@
 		},
 		{
 			"Name": "repoBuilds",
-			"Docs": "RepoBuilds returns all repositories and recent build info for \"active\" branches.\nA branch is active if its name is \"master\" or \"main\" (for git), \"default\" (for hg), or\n\"develop\", or if the last build was less than 4 weeks ago. The most recent\ncompleted build is returned, and optionally the first build in progress.",
+			"Docs": "RepoBuilds returns all repositories and recent build info for \"active\" branches.\nA branch is active if its name is \"master\" or \"main\" (for git), \"default\" (for hg), or\n\"develop\", or if the last build was less than 4 weeks ago. The most recent\nbuild is returned.",
 			"Params": [
 				{
 					"Name": "password",
@@ -332,8 +332,8 @@
 			"Returns": []
 		},
 		{
-			"Name": "buildResult",
-			"Docs": "BuildResult returns the results of the requested build.",
+			"Name": "build",
+			"Docs": "Build returns the build and steps of the requested build.",
 			"Params": [
 				{
 					"Name": "password",
@@ -356,9 +356,9 @@
 			],
 			"Returns": [
 				{
-					"Name": "br",
+					"Name": "b",
 					"Typewords": [
-						"BuildResult"
+						"Build"
 					]
 				}
 			]
@@ -388,9 +388,9 @@
 			],
 			"Returns": [
 				{
-					"Name": "br",
+					"Name": "release",
 					"Typewords": [
-						"BuildResult"
+						"Build"
 					]
 				}
 			]
@@ -729,10 +729,10 @@
 					]
 				},
 				{
-					"Name": "repo_id",
+					"Name": "repo_name",
 					"Docs": "",
 					"Typewords": [
-						"int32"
+						"string"
 					]
 				},
 				{
@@ -751,9 +751,9 @@
 				},
 				{
 					"Name": "status",
-					"Docs": "`new`, `clone`, `checkout`, `build`, `success`",
+					"Docs": "",
 					"Typewords": [
-						"string"
+						"BuildStatus"
 					]
 				},
 				{
@@ -788,7 +788,7 @@
 				},
 				{
 					"Name": "released",
-					"Docs": "",
+					"Docs": "Once set, this build itself won't be removed from the database, but its build directory may be removed.",
 					"Typewords": [
 						"nullable",
 						"timestamp"
@@ -824,6 +824,13 @@
 					]
 				},
 				{
+					"Name": "build_script",
+					"Docs": "",
+					"Typewords": [
+						"string"
+					]
+				},
+				{
 					"Name": "low_prio",
 					"Docs": "Low-prio builds run after regular builds for a repo have finished. And we only run one low-prio build in ding at a time. Useful after a toolchain update.",
 					"Typewords": [
@@ -832,7 +839,7 @@
 				},
 				{
 					"Name": "last_line",
-					"Docs": "Last line from last steps output.",
+					"Docs": "Last line of output, when build has completed.",
 					"Typewords": [
 						"string"
 					]
@@ -853,17 +860,25 @@
 				},
 				{
 					"Name": "results",
-					"Docs": "",
+					"Docs": "Only set for success builds.",
 					"Typewords": [
 						"[]",
 						"Result"
+					]
+				},
+				{
+					"Name": "steps",
+					"Docs": "Only set for finished builds.",
+					"Typewords": [
+						"[]",
+						"Step"
 					]
 				}
 			]
 		},
 		{
 			"Name": "Result",
-			"Docs": "Result is a file created during a build, as the result of a build. Files like this can be released.",
+			"Docs": "Result is a file created during a build, as the result of a build.",
 			"Fields": [
 				{
 					"Name": "command",
@@ -895,7 +910,7 @@
 				},
 				{
 					"Name": "filename",
-					"Docs": "path relative to the checkout directory where build.sh is run",
+					"Docs": "Path relative to the checkout directory where build.sh is run. For builds, the file is started at \u003cdataDir\u003e/build/\u003crepoName\u003e/\u003cbuildID\u003e/checkout/\u003ccheckoutPath\u003e/\u003cfilename\u003e. For releases, the file is stored gzipped at \u003cdataDir\u003e/release/\u003crepoName\u003e/\u003cbuildID\u003e/\u003cbasename of filename\u003e.gz.",
 					"Typewords": [
 						"string"
 					]
@@ -903,6 +918,33 @@
 				{
 					"Name": "filesize",
 					"Docs": "size of filename",
+					"Typewords": [
+						"int64"
+					]
+				}
+			]
+		},
+		{
+			"Name": "Step",
+			"Docs": "Step is one phase of a build and stores the output generated in that step.",
+			"Fields": [
+				{
+					"Name": "name",
+					"Docs": "same values as build.status",
+					"Typewords": [
+						"BuildStatus"
+					]
+				},
+				{
+					"Name": "output",
+					"Docs": "combined output of stdout and stderr",
+					"Typewords": [
+						"string"
+					]
+				},
+				{
+					"Name": "nsec",
+					"Docs": "time it took this step to finish, initially 0",
 					"Typewords": [
 						"int64"
 					]
@@ -935,13 +977,6 @@
 			"Docs": "Repo is a repository as stored in the database.",
 			"Fields": [
 				{
-					"Name": "id",
-					"Docs": "",
-					"Typewords": [
-						"int32"
-					]
-				},
-				{
 					"Name": "name",
 					"Docs": "short name for repo, typically last element of repo URL/path",
 					"Typewords": [
@@ -950,9 +985,9 @@
 				},
 				{
 					"Name": "vcs",
-					"Docs": "`git`, `mercurial` or `command`",
+					"Docs": "",
 					"Typewords": [
-						"string"
+						"VCS"
 					]
 				},
 				{
@@ -999,79 +1034,63 @@
 					]
 				}
 			]
-		},
+		}
+	],
+	"Ints": [],
+	"Strings": [
 		{
-			"Name": "BuildResult",
-			"Docs": "BuildResult is the stored result of a build, including the build script and step outputs.",
-			"Fields": [
+			"Name": "BuildStatus",
+			"Docs": "BuildStatus indicates the progress of a build.",
+			"Values": [
 				{
-					"Name": "build",
-					"Docs": "",
-					"Typewords": [
-						"Build"
-					]
+					"Name": "StatusNew",
+					"Value": "new",
+					"Docs": "Build queued but not yet started."
 				},
 				{
-					"Name": "build_script",
-					"Docs": "",
-					"Typewords": [
-						"string"
-					]
+					"Name": "StatusClone",
+					"Value": "clone",
+					"Docs": "Cloning source code, e.g. from git."
 				},
 				{
-					"Name": "steps",
-					"Docs": "",
-					"Typewords": [
-						"[]",
-						"Step"
-					]
+					"Name": "StatusBuild",
+					"Value": "build",
+					"Docs": "Building application."
+				},
+				{
+					"Name": "StatusSuccess",
+					"Value": "success",
+					"Docs": "Build was successful."
+				},
+				{
+					"Name": "StatusCancelled",
+					"Value": "cancelled",
+					"Docs": "Build was cancelled before finishing."
 				}
 			]
 		},
 		{
-			"Name": "Step",
-			"Docs": "Step is one phase of a build and stores the output generated in that step.",
-			"Fields": [
+			"Name": "VCS",
+			"Docs": "VCS indicates the mechanism to fetch the source code.",
+			"Values": [
 				{
-					"Name": "name",
-					"Docs": "same values as build.status",
-					"Typewords": [
-						"string"
-					]
+					"Name": "VCSGit",
+					"Value": "git",
+					"Docs": ""
 				},
 				{
-					"Name": "stdout",
-					"Docs": "",
-					"Typewords": [
-						"string"
-					]
+					"Name": "VCSMercurial",
+					"Value": "mercurial",
+					"Docs": ""
 				},
 				{
-					"Name": "stderr",
-					"Docs": "",
-					"Typewords": [
-						"string"
-					]
-				},
-				{
-					"Name": "output",
-					"Docs": "combined output of stdout and stderr",
-					"Typewords": [
-						"string"
-					]
-				},
-				{
-					"Name": "nsec",
-					"Docs": "time it took this step to finish, initially 0",
-					"Typewords": [
-						"int64"
-					]
+					"Name": "VCSCommand",
+					"Value": "command",
+					"Docs": "Custom shell script that will do the cloning. Escape hatch mechanism to support\npast/future systems."
 				}
 			]
 		}
 	],
-	"Ints": [],
-	"Strings": [],
 	"SherpaVersion": 0,
 	"SherpadocVersion": 1
 }

@@ -2,13 +2,22 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"io"
 	"log"
 	"net/http"
 	"strings"
+
+	"github.com/mjl-/bstore"
 )
+
+type giteaEvent struct {
+	Repository struct {
+		Name string `json:"name"`
+	} `json:"repository"`
+	Ref   string `json:"ref"`
+	After string `json:"after"`
+}
 
 func giteaHookHandler(w http.ResponseWriter, r *http.Request) {
 	if config.GiteaWebhookSecret == "" {
@@ -26,18 +35,16 @@ func giteaHookHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	repoName := r.URL.Path[len("/gitea/"):]
 
-	var vcs, defaultBranch string
-	err := database.QueryRowContext(r.Context(), "select vcs, default_branch from repo where name=$1", repoName).Scan(&vcs, &defaultBranch)
-	if err == sql.ErrNoRows {
+	repo := Repo{Name: repoName}
+	if err := database.Get(r.Context(), &repo); err == bstore.ErrAbsent {
 		http.NotFound(w, r)
 		return
-	}
-	if err != nil {
-		log.Printf("gitea webhook: reading vcs from database: %s", err)
+	} else if err != nil {
+		log.Printf("gitea webhook: reading repo from database: %s", err)
 		http.Error(w, "error", http.StatusInternalServerError)
 		return
 	}
-	if !(vcs == "git" || vcs == "command") {
+	if !(repo.VCS == VCSGit || repo.VCS == VCSCommand) {
 		log.Printf("gitea webhook: push event for a non-git repository")
 		http.Error(w, "misconfigured repositories", http.StatusInternalServerError)
 		return
@@ -54,13 +61,7 @@ func giteaHookHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error reading request", http.StatusInternalServerError)
 		return
 	}
-	var event struct {
-		Repository struct {
-			Name string `json:"name"`
-		} `json:"repository"`
-		Ref   string `json:"ref"`
-		After string `json:"after"`
-	}
+	var event giteaEvent
 	err = json.Unmarshal(buf, &event)
 	if err != nil {
 		log.Printf("gitea webhook: bad JSON body: %s", err)
@@ -72,7 +73,7 @@ func giteaHookHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "repository mismatch", http.StatusBadRequest)
 		return
 	}
-	branch := defaultBranch
+	branch := repo.DefaultBranch
 	if strings.HasPrefix(event.Ref, "refs/heads/") {
 		branch = event.Ref[len("refs/heads/"):]
 	}
@@ -83,6 +84,11 @@ func giteaHookHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "could not create build", http.StatusInternalServerError)
 		return
 	}
-	go doBuild(context.Background(), repo, build, buildDir)
-	w.WriteHeader(204)
+	go func() {
+		err := doBuild(context.Background(), repo, build, buildDir)
+		if err != nil {
+			log.Printf("build: %s", err)
+		}
+	}()
+	w.WriteHeader(http.StatusNoContent)
 }

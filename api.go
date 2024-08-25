@@ -3,28 +3,23 @@ package main
 import (
 	"compress/gzip"
 	"context"
-	"database/sql"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
+	"maps"
 	"os"
 	"path"
 	"runtime"
+	"slices"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/mjl-/bstore"
 	"github.com/mjl-/goreleases"
 	"github.com/mjl-/sherpa"
-)
-
-var (
-	stepNames = []string{
-		"clone",
-		"build",
-	}
 )
 
 // The Ding API lets you compile git branches, build binaries, run tests, and publish binaries.
@@ -38,7 +33,6 @@ func (Ding) Status(ctx context.Context) {
 	type what int
 	const (
 		filesystem what = iota
-		xdatabase
 		timer
 	)
 
@@ -47,7 +41,7 @@ func (Ding) Status(ctx context.Context) {
 		error bool
 	}
 
-	errors := make(chan done, 3)
+	errors := make(chan done, 2)
 
 	go func() {
 		defer os.Remove(dingDataDir + "/test")
@@ -63,19 +57,8 @@ func (Ding) Status(ctx context.Context) {
 		errors <- done{filesystem, false}
 	}()
 
-	go func() {
-		var one int
-		err := database.QueryRow("select 1").Scan(&one)
-		if err != nil {
-			log.Printf("status: database unavailable: %s", err)
-			errors <- done{xdatabase, true}
-			return
-		}
-		errors <- done{xdatabase, false}
-	}()
-
 	timeout := time.AfterFunc(time.Second*5, func() {
-		log.Println("status: timeout for db or fs checks")
+		log.Println("status: timeout for fs checks")
 		errors <- done{timer, true}
 	})
 
@@ -84,18 +67,15 @@ func (Ding) Status(ctx context.Context) {
 		panic(&sherpa.InternalServerError{Code: "serverError", Message: msg})
 	}
 
-	db := false
 	fs := false
-	for !db || !fs {
+	for !fs {
 		done := <-errors
 		if !done.error {
 			switch done.what {
 			case filesystem:
 				fs = true
-			case xdatabase:
-				db = true
 			default:
-				serverError("status: internal error")
+				_serverError("status: internal error")
 			}
 			continue
 		}
@@ -104,36 +84,31 @@ func (Ding) Status(ctx context.Context) {
 		switch done.what {
 		case filesystem:
 			statusError("filesystem unavailable")
-		case xdatabase:
-			statusError("database unavailable")
 		case timer:
-			if !db && !fs {
-				statusError("timeout for both filesystem and database")
-			}
-			if !db {
-				statusError("timeout for database")
-			}
 			if !fs {
 				statusError("timeout for filesystem")
 			}
 		default:
-			serverError("status: missing case")
+			_serverError("status: missing case")
 		}
 	}
 	timeout.Stop()
 }
 
-func _repo(tx *sql.Tx, repoName string) (r Repo) {
-	q := `select row_to_json(repo.*) from repo where name=$1`
-	sherpaCheckRow(tx.QueryRow(q, repoName), &r, "fetching repo")
-	return
+func _repo(tx *bstore.Tx, repoName string) Repo {
+	r := Repo{Name: repoName}
+	err := tx.Get(&r)
+	_checkf(err, "get repo")
+	return r
 }
 
-func _build(tx *sql.Tx, repoName string, id int32) (b Build) {
-	q := `select row_to_json(bwr.*) from build_with_result bwr where id = $1`
-	sherpaCheckRow(tx.QueryRow(q, id), &b, "fetching build")
-	fillBuild(repoName, &b)
-	return
+func _build(tx *bstore.Tx, repoName string, id int32) (Repo, Build) {
+	r := Repo{Name: repoName}
+	err := tx.Get(&r)
+	_checkf(err, "get repo")
+	b, err := bstore.QueryTx[Build](tx).FilterNonzero(Build{ID: id, RepoName: repoName}).Get()
+	_checkf(err, "get build by id")
+	return r, b
 }
 
 func _checkPassword(password string) {
@@ -146,35 +121,29 @@ func _checkPassword(password string) {
 // `Commit` can be empty, in which case the origin is cloned and the checked out commit is looked up.
 func (Ding) CreateBuild(ctx context.Context, password, repoName, branch, commit string) Build {
 	_checkPassword(password)
-	return createBuildPrio(ctx, repoName, branch, commit, false)
+	return _createBuildPrio(ctx, repoName, branch, commit, false)
 }
 
 // CreateBuildLowPrio creates a build, but with low priority.
 // Low priority builds are executed after regular builds. And only one low priority build is running over all repo's.
 func (Ding) CreateBuildLowPrio(ctx context.Context, password, repoName, branch, commit string) Build {
 	_checkPassword(password)
-	return createBuildPrio(ctx, repoName, branch, commit, true)
+	return _createBuildPrio(ctx, repoName, branch, commit, true)
 }
 
-func createBuildPrio(ctx context.Context, repoName, branch, commit string, lowPrio bool) Build {
+func _createBuildPrio(ctx context.Context, repoName, branch, commit string, lowPrio bool) Build {
 	if branch == "" {
-		userError("Branch cannot be empty.")
+		_userError("Branch cannot be empty")
 	}
 
 	repo, build, buildDir := _prepareBuild(ctx, repoName, branch, commit, lowPrio)
 	go func() {
 		defer func() {
-			if err := recover(); err != nil {
-				if serr, ok := err.(*sherpa.Error); ok {
-					if serr.Code != "userError" {
-						log.Println("background build failed:", serr.Message)
-					}
-				} else {
-					panic(err)
-				}
+			if x := recover(); x != nil {
+				log.Println("build:", x)
 			}
 		}()
-		doBuild(context.Background(), repo, build, buildDir)
+		_doBuild(context.Background(), repo, build, buildDir)
 	}()
 	return build
 }
@@ -183,30 +152,30 @@ func createBuildPrio(ctx context.Context, repoName, branch, commit string, lowPr
 func (Ding) CreateLowPrioBuilds(ctx context.Context, password string) {
 	_checkPassword(password)
 
-	var repos []Repo
-	transact(ctx, func(tx *sql.Tx) {
-		q := `select coalesce(json_agg(repo.* order by id desc), '[]') from repo where uid is not null`
-		sherpaCheckRow(tx.QueryRow(q), &repos, "fetching repo names to clear from database")
-	})
+	repos, err := bstore.QueryDB[Repo](ctx, database).List()
+	_checkf(err, "fetching repo names from database")
 
 	lowPrio := true
 	commit := ""
 
-	for _, repo := range repos {
-		repo, build, buildDir := _prepareBuild(ctx, repo.Name, repo.DefaultBranch, commit, lowPrio)
+	builds := make([]Build, len(repos))
+	buildDirs := make([]string, len(repos))
+	for i, repo := range repos {
+		_, build, buildDir := _prepareBuild(ctx, repo.Name, repo.DefaultBranch, commit, lowPrio)
+		builds[i] = build
+		buildDirs[i] = buildDir
+	}
+
+	for i, repo := range repos {
+		build := builds[i]
+		buildDir := buildDirs[i]
 		go func() {
 			defer func() {
-				if err := recover(); err != nil {
-					if serr, ok := err.(*sherpa.Error); ok {
-						if serr.Code != "userError" {
-							log.Println("background build failed:", serr.Message)
-						}
-					} else {
-						panic(err)
-					}
+				if x := recover(); x != nil {
+					log.Println("lowprio build:", x)
 				}
 			}()
-			doBuild(context.Background(), repo, build, buildDir)
+			_doBuild(context.Background(), repo, build, buildDir)
 		}()
 	}
 }
@@ -215,17 +184,18 @@ func (Ding) CreateLowPrioBuilds(ctx context.Context, password string) {
 func (Ding) CancelBuild(ctx context.Context, password, repoName string, buildID int32) {
 	_checkPassword(password)
 
-	transact(ctx, func(tx *sql.Tx) {
-		repo := _repo(tx, repoName)
-
-		build := _build(tx, repo.Name, buildID)
-		if build.Finish != nil {
-			userError("Build has already finished")
+	_dbwrite(ctx, func(tx *bstore.Tx) {
+		_, b := _build(tx, repoName, buildID)
+		if b.Finish != nil {
+			_userError("Build has already finished")
 		}
 
-		q := `update build set finish=now(), status='cancelled' where id=$1 and finish is null`
-		_, err := tx.Exec(q, buildID)
-		sherpaCheck(err, "marking build as cancelled in database")
+		now := time.Now()
+		b.Finish = &now
+		b.Status = StatusCancelled
+		b.Steps = _buildSteps(b)
+		err := tx.Update(&b)
+		_checkf(err, "marking build as cancelled in database")
 	})
 
 	// Cancel any commands in the http-serve process, like cloning.
@@ -236,59 +206,46 @@ func (Ding) CancelBuild(ctx context.Context, password, repoName string, buildID 
 	go requestPrivileged(cancelMsg)
 }
 
-func toJSON(v interface{}) string {
-	buf, err := json.Marshal(v)
-	sherpaCheck(err, "encoding to json")
-	return string(buf)
-}
-
 // CreateRelease release a build.
-func (Ding) CreateRelease(ctx context.Context, password, repoName string, buildID int32) (build Build) {
+func (Ding) CreateRelease(ctx context.Context, password, repoName string, buildID int32) (release Build) {
 	_checkPassword(password)
 
-	transact(ctx, func(tx *sql.Tx) {
-		repo := _repo(tx, repoName)
-
-		build = _build(tx, repo.Name, buildID)
-		if build.Finish == nil {
-			userError("Build has not finished yet")
+	_dbwrite(ctx, func(tx *bstore.Tx) {
+		r, b := _build(tx, repoName, buildID)
+		if b.Finish == nil {
+			_userError("Build has not finished yet")
 		}
-		if build.Status != "success" {
-			userError("Build was not successful")
+		if b.Status != StatusSuccess {
+			_userError("Build was not successful")
 		}
-
-		br := _buildResult(repo.Name, build)
-		steps := toJSON(br.Steps)
-
-		qrel := `insert into release (build_id, time, build_script, steps) values ($1, now(), $2, $3::json) returning build_id`
-		err := tx.QueryRow(qrel, build.ID, br.BuildScript, steps).Scan(&build.ID)
-		sherpaCheck(err, "inserting release into database")
-
-		qup := `update build set released=now() where id=$1 returning id`
-		err = tx.QueryRow(qup, build.ID).Scan(&build.ID)
-		sherpaCheck(err, "marking build as released in database")
-
-		var filenames []string
-		q := `select coalesce(json_agg(result.filename), '[]') from result where build_id=$1`
-		sherpaCheckRow(tx.QueryRow(q, build.ID), &filenames, "fetching build results from database")
-		checkoutDir := fmt.Sprintf("%s/build/%s/%d/checkout/%s", dingDataDir, repo.Name, build.ID, repo.CheckoutPath)
-		for _, filename := range filenames {
-			fileCopy(checkoutDir+"/"+filename, fmt.Sprintf("%s/release/%s/%d/%s.gz", dingDataDir, repo.Name, build.ID, path.Base(filename)))
+		if b.Released != nil {
+			_userError("Build already released")
 		}
 
-		events <- EventBuild{repo.Name, _build(tx, repo.Name, buildID)}
+		now := time.Now()
+		b.Released = &now
+		err := tx.Update(&b)
+		_checkf(err, "marking build as released")
+
+		checkoutDir := fmt.Sprintf("%s/build/%s/%d/checkout/%s", dingDataDir, r.Name, b.ID, r.CheckoutPath)
+		for _, res := range b.Results {
+			_fileCopy(checkoutDir+"/"+res.Filename, fmt.Sprintf("%s/release/%s/%d/%s.gz", dingDataDir, r.Name, b.ID, path.Base(res.Filename)))
+		}
+
+		release = b
 	})
+	events <- EventBuild{release.RepoName, release}
 	return
 }
 
-func fileCopy(src, dst string) {
+func _fileCopy(src, dst string) {
 	err := os.MkdirAll(path.Dir(dst), 0777)
-	sherpaCheck(err, "making directory for copying result file")
+	_checkf(err, "making directory for copying result file")
 	sf, err := os.Open(src)
-	sherpaCheck(err, "open result file")
+	_checkf(err, "open result file")
 	defer sf.Close()
 	df, err := os.Create(dst)
-	sherpaCheck(err, "creating destination result file")
+	_checkf(err, "creating destination result file")
 	gzw := gzip.NewWriter(df)
 	defer func() {
 		xerr := func(err1, err2 error) error {
@@ -301,59 +258,71 @@ func fileCopy(src, dst string) {
 		err = xerr(err, df.Close())
 		if err != nil {
 			os.Remove(dst)
-			sherpaCheck(err, "installing result file")
+			_checkf(err, "installing result file")
 		}
 	}()
 	_, err = io.Copy(gzw, sf)
-	sherpaCheck(err, "copying result file to destination")
+	_checkf(err, "copying result file to destination")
+}
+
+// RepoBuilds is a repository and its recent builds, per branch.
+type RepoBuilds struct {
+	Repo   Repo    `json:"repo"`
+	Builds []Build `json:"builds"`
 }
 
 // RepoBuilds returns all repositories and recent build info for "active" branches.
 // A branch is active if its name is "master" or "main" (for git), "default" (for hg), or
 // "develop", or if the last build was less than 4 weeks ago. The most recent
-// completed build is returned, and optionally the first build in progress.
+// build is returned.
 func (Ding) RepoBuilds(ctx context.Context, password string) (rb []RepoBuilds) {
 	_checkPassword(password)
 
-	q := `
-		with repo_branch_builds as (
-				select *
-				from build_with_result
-				where id in (
-					select max(id) as id
-					from build
-					where true
-						and (branch in ('main', 'master', 'default', 'develop') or start > now() - interval '4 weeks')
-						and build.finish is not null
-					group by repo_id, branch
-				)
-			union all
-				select *
-				from build_with_result
-				where id in (
-					select min(id) as id
-					from build
-					where true
-						and (branch in ('main', 'master', 'default', 'develop') or start > now() - interval '4 weeks')
-						and build.finish is null
-					group by repo_id, branch
-				)
-		)
-		select coalesce(json_agg(repobuilds.*), '[]')
-		from (
-			select row_to_json(repo.*) as repo, array_remove(array_agg(rbb.*), null) as builds
-			from repo
-			left join repo_branch_builds rbb on repo.id = rbb.repo_id
-			group by repo.id
-		) repobuilds
-	`
-	sherpaCheckRow(database.QueryRowContext(ctx, q), &rb, "fetching repobuilds")
-	for _, e := range rb {
-		for i, b := range e.Builds {
-			fillBuild(e.Repo.Name, &b)
-			e.Builds[i] = b
+	_dbread(ctx, func(tx *bstore.Tx) {
+		repos, err := bstore.QueryTx[Repo](tx).List()
+		_checkf(err, "list repositories")
+
+		// repo name -> branch name -> build
+		repoBuilds := map[string]map[string]Build{}
+		start := time.Now().Add(-4 * 7 * 24 * time.Hour)
+		err = bstore.QueryTx[Build](tx).SortDesc("ID").ForEach(func(b Build) error {
+			if _, ok := repoBuilds[b.RepoName][b.Branch]; ok {
+				return nil
+			}
+			if b.Start != nil && b.Start.Before(start) && !slices.Contains([]string{"main", "master", "default", "develop"}, b.Branch) {
+				return nil
+			}
+			if _, ok := repoBuilds[b.RepoName]; !ok {
+				repoBuilds[b.RepoName] = map[string]Build{}
+			}
+			repoBuilds[b.RepoName][b.Branch] = b
+			return nil
+		})
+		_checkf(err, "gathering repository builds")
+
+		rb = make([]RepoBuilds, len(repos))
+		for i, r := range repos {
+			rb[i].Repo = r
+			rb[i].Builds = slices.Collect(maps.Values(repoBuilds[r.Name]))
+			builds := rb[i].Builds
+			sort.Slice(builds, func(i, j int) bool {
+				a, b := builds[i], builds[j]
+				return a.Created.After(b.Created)
+			})
 		}
-	}
+		sort.Slice(rb, func(i, j int) bool {
+			a, b := rb[i], rb[j]
+			ba, bb := a.Builds, b.Builds
+			if len(ba) == 0 && len(bb) == 0 {
+				return a.Repo.Name < b.Repo.Name
+			} else if len(ba) == 0 {
+				return false
+			} else if len(bb) == 0 {
+				return true
+			}
+			return ba[0].Created.After(bb[0].Created)
+		})
+	})
 	return
 }
 
@@ -361,7 +330,7 @@ func (Ding) RepoBuilds(ctx context.Context, password string) (rb []RepoBuilds) {
 func (Ding) Repo(ctx context.Context, password, repoName string) (repo Repo) {
 	_checkPassword(password)
 
-	transact(ctx, func(tx *sql.Tx) {
+	_dbread(ctx, func(tx *bstore.Tx) {
 		repo = _repo(tx, repoName)
 	})
 	return
@@ -371,31 +340,37 @@ func (Ding) Repo(ctx context.Context, password, repoName string) (repo Repo) {
 func (Ding) Builds(ctx context.Context, password, repoName string) (builds []Build) {
 	_checkPassword(password)
 
-	q := `select coalesce(json_agg(bwr.* order by start desc), '[]') from build_with_result bwr join repo on bwr.repo_id = repo.id where repo.name=$1`
-	sherpaCheckRow(database.QueryRowContext(ctx, q, repoName), &builds, "fetching builds")
-	for i, b := range builds {
-		fillBuild(repoName, &b)
-		builds[i] = b
-	}
+	_dbread(ctx, func(tx *bstore.Tx) {
+		repo := _repo(tx, repoName)
+		var err error
+		builds, err = bstore.QueryTx[Build](tx).FilterNonzero(Build{RepoName: repo.Name}).SortDesc("Created").List()
+		_checkf(err, "fetching builds")
+	})
 	return
 }
 
 func _checkRepo(repo Repo) {
 	if repo.DefaultBranch == "" {
-		userError("DefaultBranch path cannot be empty.")
+		_userError("DefaultBranch path cannot be empty")
 	}
 	if repo.CheckoutPath == "" {
-		userError("Checkout path cannot be empty.")
+		_userError("Checkout path cannot be empty")
 	}
 	if strings.HasPrefix(repo.CheckoutPath, "/") || strings.HasSuffix(repo.CheckoutPath, "/") {
-		userError("Checkout path cannot start or end with a slash.")
+		_userError("Checkout path cannot start or end with a slash")
 	}
 }
 
-func _assignRepoUID(tx *sql.Tx) (uid uint32) {
-	q := `select coalesce(min(uid), $1) - 1 as uid from repo`
-	err := tx.QueryRow(q, config.IsolateBuilds.UIDEnd-1).Scan(&uid)
-	sherpaCheck(err, "fetching last assigned repo uid from database")
+func _assignRepoUID(tx *bstore.Tx) (uid uint32) {
+	uid = config.IsolateBuilds.UIDEnd - 1
+	err := bstore.QueryTx[Repo](tx).ForEach(func(r Repo) error {
+		if r.UID != nil && *r.UID < uid {
+			uid = *r.UID
+		}
+		return nil
+	})
+	_checkf(err, "fetching last assigned repo uid from database")
+	uid--
 	return
 }
 
@@ -405,16 +380,18 @@ func (Ding) CreateRepo(ctx context.Context, password string, repo Repo) (r Repo)
 	_checkPassword(password)
 	_checkRepo(repo)
 
-	transact(ctx, func(tx *sql.Tx) {
-		var uid interface{}
+	_dbwrite(ctx, func(tx *bstore.Tx) {
+		var uid *uint32
 		if repo.UID != nil {
-			uid = _assignRepoUID(tx)
+			v := _assignRepoUID(tx)
+			uid = &v
 		}
 
-		q := `insert into repo (name, vcs, origin, default_branch, checkout_path, uid, build_script) values ($1, $2, $3, $4, $5, $6, '') returning id`
-		var id int64
-		sherpaCheckRow(tx.QueryRow(q, repo.Name, repo.VCS, repo.Origin, repo.DefaultBranch, repo.CheckoutPath, uid), &id, "inserting repository in database")
-		r = _repo(tx, repo.Name)
+		repo.UID = uid
+		repo.HomeDiskUsage = 0
+		err := tx.Insert(&repo)
+		_checkf(err, "inserting repository in database")
+		r = repo
 
 		events <- EventRepo{r}
 	})
@@ -426,17 +403,26 @@ func (Ding) SaveRepo(ctx context.Context, password string, repo Repo) (r Repo) {
 	_checkPassword(password)
 	_checkRepo(repo)
 
-	transact(ctx, func(tx *sql.Tx) {
+	_dbwrite(ctx, func(tx *bstore.Tx) {
 		r = _repo(tx, repo.Name)
-		var uid interface{}
+
+		var uid *uint32
 		if r.UID == nil && repo.UID != nil {
-			uid = _assignRepoUID(tx)
+			v := _assignRepoUID(tx)
+			uid = &v
 		} else if repo.UID != nil {
-			uid = *r.UID
+			uid = r.UID
 		}
 
-		q := `update repo set name=$1, vcs=$2, origin=$3, default_branch=$4, checkout_path=$5, uid=$6, build_script=$7 where id=$8 returning row_to_json(repo.*)`
-		sherpaCheckRow(tx.QueryRow(q, repo.Name, repo.VCS, repo.Origin, repo.DefaultBranch, repo.CheckoutPath, uid, repo.BuildScript, repo.ID), &r, "updating repo in database")
+		r.Name = repo.Name
+		r.VCS = repo.VCS
+		r.Origin = repo.Origin
+		r.DefaultBranch = repo.DefaultBranch
+		r.CheckoutPath = repo.CheckoutPath
+		r.UID = uid
+		r.BuildScript = repo.BuildScript
+		err := tx.Update(&r)
+		_checkf(err, "updating repo in database")
 		r = _repo(tx, repo.Name)
 
 		events <- EventRepo{r}
@@ -449,21 +435,22 @@ func (Ding) ClearRepoHomedir(ctx context.Context, password, repoName string) {
 	_checkPassword(password)
 
 	var r Repo
-	transact(ctx, func(tx *sql.Tx) {
+	_dbread(ctx, func(tx *bstore.Tx) {
 		r = _repo(tx, repoName)
 		if r.UID == nil {
-			userError("repo does not share home directory across builds")
+			_userError("repo does not share home directory across builds")
 		}
 	})
 
 	msg := msg{RemoveSharedHome: &msgRemoveSharedHome{repoName}}
 	err := requestPrivileged(msg)
-	sherpaCheck(err, "privileged RemoveSharedHome")
+	_checkf(err, "privileged RemoveSharedHome")
 
-	transact(context.Background(), func(tx *sql.Tx) {
-		q := `update repo set home_disk_usage=0 where id=$1 returning 1`
-		var one int
-		sherpaCheckRow(tx.QueryRow(q, r.ID), &one, "updating repo home disk usage in database")
+	_dbwrite(context.Background(), func(tx *bstore.Tx) {
+		r = _repo(tx, repoName)
+		r.HomeDiskUsage = 0
+		err := tx.Update(&r)
+		_checkf(err, "updating repo home disk usage in database")
 	})
 }
 
@@ -471,21 +458,19 @@ func (Ding) ClearRepoHomedir(ctx context.Context, password, repoName string) {
 func (Ding) ClearRepoHomedirs(ctx context.Context, password string) {
 	_checkPassword(password)
 
-	var repos []Repo
-	transact(ctx, func(tx *sql.Tx) {
-		q := `select coalesce(json_agg(repo.*), '[]') from repo where uid is not null`
-		sherpaCheckRow(tx.QueryRow(q), &repos, "fetching repo names to clear from database")
-	})
+	repos, err := bstore.QueryDB[Repo](ctx, database).FilterFn(func(r Repo) bool { return r.UID != nil }).List()
+	_checkf(err, "fetching repo names to clear from database")
 
 	for _, repo := range repos {
 		msg := msg{RemoveSharedHome: &msgRemoveSharedHome{repo.Name}}
 		err := requestPrivileged(msg)
-		sherpaCheck(err, "privileged RemoveSharedHome")
+		_checkf(err, "privileged RemoveSharedHome")
 
-		transact(context.Background(), func(tx *sql.Tx) {
-			q := `update repo set home_disk_usage=0 where id=$1 returning 1`
-			var one int
-			sherpaCheckRow(tx.QueryRow(q, repo.ID), &one, "updating repo home disk usage in database")
+		_dbwrite(context.Background(), func(tx *bstore.Tx) {
+			r := _repo(tx, repo.Name)
+			r.HomeDiskUsage = 0
+			err = tx.Update(&r)
+			_checkf(err, "update repo home disk usage")
 		})
 	}
 }
@@ -494,25 +479,22 @@ func (Ding) ClearRepoHomedirs(ctx context.Context, password string) {
 func (Ding) RemoveRepo(ctx context.Context, password, repoName string) {
 	_checkPassword(password)
 
-	transact(ctx, func(tx *sql.Tx) {
-		_repo(tx, repoName)
+	_dbwrite(ctx, func(tx *bstore.Tx) {
+		repo := _repo(tx, repoName)
 
-		_, err := tx.Exec(`delete from result where build_id in (select id from build where repo_id in (select id from repo where name=$1))`, repoName)
-		sherpaCheck(err, "removing results from database")
+		_, err := bstore.QueryTx[Build](tx).FilterNonzero(Build{RepoName: repo.Name}).Delete()
+		_checkf(err, "deleting builds from database")
 
-		_, err = tx.Exec(`delete from build where repo_id in (select id from repo where name=$1)`, repoName)
-		sherpaCheck(err, "removing builds from database")
-
-		var id int
-		sherpaCheckRow(tx.QueryRow(`delete from repo where name=$1 returning id`, repoName), &id, "removing repo from database")
+		err = tx.Delete(repo)
+		_checkf(err, "removing repo from database")
 	})
 	events <- EventRemoveRepo{repoName}
 
 	err := requestPrivileged(msg{RemoveRepo: &msgRemoveRepo{repoName}})
-	sherpaCheck(err, "removing repo files")
+	_checkf(err, "removing repo files")
 
 	err = os.RemoveAll(fmt.Sprintf("%s/release/%s", dingDataDir, repoName))
-	sherpaCheck(err, "removing release directory")
+	_checkf(err, "removing release directory")
 }
 
 func parseInt(s string) int64 {
@@ -520,58 +502,51 @@ func parseInt(s string) int64 {
 		return 0
 	}
 	v, err := strconv.ParseInt(s, 10, 64)
-	sherpaCheck(err, "parsing integer")
+	_checkf(err, "parsing integer")
 	return v
 }
 
-func _buildResult(repoName string, build Build) (br BuildResult) {
-	buildDir := fmt.Sprintf("%s/build/%s/%d/", dingDataDir, repoName, build.ID)
-	br.BuildScript = readFile(buildDir + "scripts/build.sh")
-	br.Steps = []Step{}
+// _buildSteps reads steps from disk, for storing in build after finish.
+func _buildSteps(b Build) (steps []Step) {
+	steps = []Step{}
 
-	if build.Status == "new" {
-		return
-	}
-
+	buildDir := fmt.Sprintf("%s/build/%s/%d/", dingDataDir, b.RepoName, b.ID)
 	outputDir := buildDir + "output/"
-	for _, stepName := range stepNames {
-		br.Steps = append(br.Steps, Step{
+	diskSteps := []BuildStatus{StatusClone, StatusBuild}
+	for _, stepName := range diskSteps {
+		base := outputDir + string(stepName)
+		steps = append(steps, Step{
 			Name:   stepName,
-			Stdout: readFileLax(outputDir + stepName + ".stdout"),
-			Stderr: readFileLax(outputDir + stepName + ".stderr"),
-			Output: readFileLax(outputDir + stepName + ".output"),
-			Nsec:   parseInt(readFileLax(outputDir + stepName + ".nsec")),
+			Output: readFileLax(base + ".output"),
+			Nsec:   parseInt(readFileLax(base + ".nsec")),
 		})
-		if stepName == build.Status {
+		if stepName == b.Status {
 			break
 		}
 	}
 	return
 }
 
-// BuildResult returns the results of the requested build.
-func (Ding) BuildResult(ctx context.Context, password, repoName string, buildID int32) (br BuildResult) {
+// Build returns the build and steps of the requested build.
+func (Ding) Build(ctx context.Context, password, repoName string, buildID int32) (b Build) {
 	_checkPassword(password)
 
-	var build Build
-	transact(ctx, func(tx *sql.Tx) {
-		build = _build(tx, repoName, buildID)
+	_dbread(ctx, func(tx *bstore.Tx) {
+		_, b = _build(tx, repoName, buildID)
 	})
-	br = _buildResult(repoName, build)
-	br.Build = build
 	return
 }
 
 // Release fetches the build config and results for a release.
-func (Ding) Release(ctx context.Context, password, repoName string, buildID int32) (br BuildResult) {
+func (Ding) Release(ctx context.Context, password, repoName string, buildID int32) (release Build) {
 	_checkPassword(password)
 
-	transact(ctx, func(tx *sql.Tx) {
-		build := _build(tx, repoName, buildID)
-
-		q := `select row_to_json(release.*) from release where build_id=$1`
-		sherpaCheckRow(tx.QueryRow(q, buildID), &br, "fetching release from database")
-		br.Build = build
+	_dbread(ctx, func(tx *bstore.Tx) {
+		_, b := _build(tx, repoName, buildID)
+		if b.Released == nil {
+			_userError("Build not released")
+		}
+		release = b
 	})
 	return
 }
@@ -581,16 +556,21 @@ func (Ding) RemoveBuild(ctx context.Context, password string, buildID int32) {
 	_checkPassword(password)
 
 	var repoName string
-	transact(ctx, func(tx *sql.Tx) {
-		qrepo := `select to_json(repo.name) from build join repo on build.repo_id = repo.id where build.id = $1`
-		sherpaCheckRow(tx.QueryRow(qrepo, buildID), &repoName, "fetching repo name from database")
+	_dbwrite(ctx, func(tx *bstore.Tx) {
+		b := Build{ID: buildID}
+		err := tx.Get(&b)
+		_checkf(err, "fetching repo name from database")
 
-		build := _build(tx, repoName, buildID)
-		if build.Released != nil {
-			userError("Build has been released, cannot be removed")
+		if b.Released != nil {
+			_userError("Build has been released, cannot be removed")
 		}
 
-		_removeBuild(tx, repoName, buildID)
+		r := Repo{Name: b.RepoName}
+		err = tx.Get(&r)
+		_checkf(err, "get repo")
+		repoName = r.Name
+
+		_removeBuild(tx, r.Name, b.ID)
 	})
 	events <- EventRemoveBuild{repoName, buildID}
 }
@@ -600,21 +580,19 @@ func (Ding) RemoveBuild(ctx context.Context, password string, buildID int32) {
 func (Ding) CleanupBuilddir(ctx context.Context, password, repoName string, buildID int32) (build Build) {
 	_checkPassword(password)
 
-	transact(ctx, func(tx *sql.Tx) {
-		build = _build(tx, repoName, buildID)
-		if build.BuilddirRemoved {
-			userError("Builddir already removed")
+	_dbwrite(ctx, func(tx *bstore.Tx) {
+		_, b := _build(tx, repoName, buildID)
+		if b.BuilddirRemoved {
+			_userError("Builddir already removed")
 		}
 
-		err := tx.QueryRow("update build set builddir_removed=true where id=$1 returning id", buildID).Scan(&buildID)
-		sherpaCheck(err, "marking builddir as removed in database")
+		_removeBuildDir(b)
 
-		msg := msg{RemoveBuilddir: &msgRemoveBuilddir{repoName, buildID}}
-		err = requestPrivileged(msg)
-		sherpaCheck(err, "removing files")
+		b.BuilddirRemoved = true
+		err := tx.Update(&b)
+		_checkf(err, "marking builddir as removed")
 
-		build = _build(tx, repoName, buildID)
-		fillBuild(repoName, &build)
+		build = b
 	})
 	events <- EventBuild{repoName, build}
 	return
@@ -629,7 +607,7 @@ func (Ding) ListInstalledGoToolchains(ctx context.Context, password string) (ins
 	_checkGoToolchainDir()
 
 	files, err := os.ReadDir(config.GoToolchainDir)
-	sherpaCheck(err, "listing files in go toolchain dir")
+	_checkf(err, "listing files in go toolchain dir")
 
 	active = map[string]string{}
 	for _, f := range files {
@@ -647,7 +625,7 @@ func (Ding) ListInstalledGoToolchains(ctx context.Context, password string) (ins
 				continue
 			}
 			goversion, err := os.Readlink(path.Join(config.GoToolchainDir, f.Name()))
-			sherpaCheck(err, "reading go symlink for active go toolchain")
+			_checkf(err, "reading go symlink for active go toolchain")
 			active[f.Name()] = goversion
 		}
 	}
@@ -670,7 +648,7 @@ func (Ding) ListReleasedGoToolchains(ctx context.Context, password string) (rele
 
 	if time.Now().After(releasedCache.expires) {
 		releases, err := goreleases.ListAll()
-		sherpaCheck(err, "fetching list of all released go toolchains")
+		_checkf(err, "fetching list of all released go toolchains")
 		releasedCache.released = []string{}
 		for _, rel := range releases {
 			releasedCache.released = append(releasedCache.released, rel.Version)
@@ -690,32 +668,32 @@ func (Ding) InstallGoToolchain(ctx context.Context, password, goversion, shortna
 
 	_checkGoToolchainDir()
 	if !validGoversion(goversion) {
-		userError("bad goversion")
+		_userError("bad goversion")
 	}
 
 	switch shortname {
 	case "go", "go-prev", "":
 	default:
-		userError("invalid shortname")
+		_userError("invalid shortname")
 	}
 
 	// Check goversion isn't already installed.
 	versionDst := path.Join(config.GoToolchainDir, goversion)
 	_, err := os.Stat(versionDst)
 	if err == nil {
-		userError("already installed")
+		_userError("already installed")
 	}
 
 	releases, err := goreleases.ListAll()
-	sherpaCheck(err, "fetching list of all released go toolchains")
+	_checkf(err, "fetching list of all released go toolchains")
 
 	rel := _findRelease(releases, goversion)
 	file, err := goreleases.FindFile(rel, runtime.GOOS, runtime.GOARCH, "archive")
-	sherpaCheck(err, "finding file for running os and arch")
+	_checkf(err, "finding file for running os and arch")
 
 	msg := msg{InstallGoToolchain: &msgInstallGoToolchain{file, shortname}}
 	err = requestPrivileged(msg)
-	sherpaCheck(err, "install go toolchain")
+	_checkf(err, "install go toolchain")
 }
 
 // RemoveGoToolchain removes a toolchain from go toolchain dir.
@@ -725,12 +703,12 @@ func (Ding) RemoveGoToolchain(ctx context.Context, password, goversion string) {
 
 	_checkGoToolchainDir()
 	if !validGoversion(goversion) {
-		userError("bad goversion")
+		_userError("bad goversion")
 	}
 
 	msg := msg{RemoveGoToolchain: &msgRemoveGoToolchain{goversion}}
 	err := requestPrivileged(msg)
-	sherpaCheck(err, "removing go toolchain")
+	_checkf(err, "removing go toolchain")
 }
 
 // ActivateGoToolchain activates goversion (eg "go1.13.8", "go1.14") under the name
@@ -740,22 +718,22 @@ func (Ding) ActivateGoToolchain(ctx context.Context, password, goversion, shortn
 
 	_checkGoToolchainDir()
 	if !validGoversion(goversion) {
-		userError("bad goversion")
+		_userError("bad goversion")
 	}
 
 	switch shortname {
 	case "go", "go-prev":
 		msg := msg{ActivateGoToolchain: &msgActivateGoToolchain{goversion, shortname}}
 		err := requestPrivileged(msg)
-		sherpaCheck(err, "removing go toolchain")
+		_checkf(err, "removing go toolchain")
 	default:
-		userError("invalid shortname")
+		_userError("invalid shortname")
 	}
 }
 
 func _checkGoToolchainDir() {
 	if config.GoToolchainDir == "" {
-		userError("GoToolchainDir not configured")
+		_userError("GoToolchainDir not configured")
 	}
 }
 
@@ -765,6 +743,6 @@ func _findRelease(releases []goreleases.Release, goversion string) goreleases.Re
 			return rel
 		}
 	}
-	userError("version not found")
+	_userError("version not found")
 	return goreleases.Release{}
 }

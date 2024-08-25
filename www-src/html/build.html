@@ -93,7 +93,7 @@
 					</tr>
 				</thead>
 				<tbody>
-					<tr ng-if="build.results.length === 0">
+					<tr ng-if="!build.results || build.results.length === 0">
 						<td colspan="6">No results</td>
 					</tr>
 					<tr ng-repeat="result in build.results | orderBy:'id'">
@@ -109,12 +109,12 @@
 		</div>
 
 		<h3>Build.sh</h3>
-		<pre style="white-space: pre-wrap">{{ buildResult.build_script }}</pre>
+		<pre style="white-space: pre-wrap">{{ build.build_script }}</pre>
 	</div>
 
 	<div class="col-xs-12 col-lg-6">
 		<h3 style="margin-top: 0">Steps</h3>
-		<div ng-repeat="step in steps">
+		<div ng-repeat="step in build.steps">
 			<h4>{{ step.name }}<span ng-if="step.name !== 'success' && step.nsec > 0"> (<timespent nsec="step.nsec"></timespent>)</span></h4>
 			<div class="build-output bs-callout" ng-class="{'bs-callout-default': !$last && !build.finish, 'bs-callout-info': $last && !build.finish, 'bs-callout-danger': $last && build.finish && build.status !== 'success', 'bs-callout-success': $last && build.finish && build.status === 'success'}">{{ step.output }}</div>
 		</div>
