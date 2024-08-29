@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/smtp"
+	"strings"
 )
 
 type smtpClient interface {
@@ -72,18 +73,20 @@ func _sendmail(toName, toEmail, subject, textMsg string) {
 
 	data, err := c.Data()
 	_checkf(err, "preparing to write mail")
+
+	var msg string
 	if config.Mail.ReplyToEmail != "" {
-		_, err = fmt.Fprintf(data, "Reply-To: %s <%s>\n", config.Mail.ReplyToName, config.Mail.ReplyToEmail)
-		_checkf(err, "writing reply-to header")
+		msg = fmt.Sprintf("Reply-To: %s <%s>\n", config.Mail.ReplyToName, config.Mail.ReplyToEmail)
 	}
-	_, err = fmt.Fprintf(data, `From: %s <%s>
+	msg += fmt.Sprintf(`From: %s <%s>
 To: %s <%s>
 Subject: %s
 
-`, config.Mail.FromName, config.Mail.FromEmail, toName, toEmail, subject)
-	_checkf(err, "writing mail headers")
+%s
+`, config.Mail.FromName, config.Mail.FromEmail, toName, toEmail, subject, textMsg)
+	msg = strings.ReplaceAll(msg, "\n", "\r\n")
 
-	_, err = fmt.Fprint(data, textMsg)
+	_, err = fmt.Fprint(data, msg)
 	_checkf(err, "writing message")
 
 	_checkf(data.Close(), "closing mail body")
