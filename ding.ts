@@ -1313,8 +1313,13 @@ const pageBuild = async (repoName: string, buildID: number): Promise<Page> => {
 			stepViews.push(sv)
 			stepsBox.append(sv.root)
 		}
+		// Scroll new text into view if bottom is already visible.
+		const scroll = Math.abs(document.body.getBoundingClientRect().bottom  - window.innerHeight) < 50
 		st.Output += e.Text
 		stepViews[stepViews.length-1].output.innerText += e.Text
+		if (scroll) {
+			window.scroll({top: document.body.scrollHeight})
+		}
 	})
 
 	return page
