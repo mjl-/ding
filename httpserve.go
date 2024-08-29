@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"mime"
 	"net"
@@ -79,20 +80,6 @@ func servehttp(args []string) {
 	unprivConn := xunixconn(fdpass)
 
 	dbpath := filepath.Join(config.DataDir, "ding.db")
-
-	// Temporary code for this release only.
-	if config.Database != "" {
-		if _, err := os.Stat(dbpath); err != nil && os.IsNotExist(err) {
-			log.Printf("migrating from postgresql to bstore")
-			migratePostgresToBstore(dbpath)
-			log.Printf("data migrated to bstore database at %s", dbpath)
-		} else if err != nil {
-			log.Fatalf("stat bstore database: %v", err)
-		} else {
-			log.Printf("bstore database already exists, not migrating again")
-		}
-	}
-
 	dbopts := bstore.Options{Timeout: 5 * time.Second}
 	database, err = bstore.Open(context.Background(), dbpath, &dbopts, Repo{}, Build{})
 	xcheckf(err, "open database")
@@ -103,7 +90,7 @@ func servehttp(args []string) {
 	mime.AddExtensionType(".otf", "font/otf")
 
 	var doc sherpadoc.Section
-	ff, err := httpFS.Open("assets/ding.json")
+	ff, err := openEmbed("ding.json")
 	xcheckf(err, "opening sherpa docs")
 	err = json.NewDecoder(ff).Decode(&doc)
 	xcheckf(err, "parsing sherpa docs")
@@ -114,7 +101,8 @@ func servehttp(args []string) {
 	xcheckf(err, "creating sherpa prometheus collector")
 
 	opts := &sherpa.HandlerOpts{
-		Collector: collector,
+		Collector:           collector,
+		AdjustFunctionNames: "none",
 	}
 	handler, err := sherpa.NewHandler("/ding/", version, Ding{}, &doc, opts)
 	xcheckf(err, "making sherpa handler")
@@ -331,36 +319,50 @@ func startJobManager() {
 	}()
 }
 
-func serveAsset(w http.ResponseWriter, r *http.Request) {
-	if strings.HasSuffix(r.URL.Path, "/") {
-		r.URL.Path += "index.html"
+type readSeekStatCloser interface {
+	Stat() (fs.FileInfo, error)
+	io.ReadSeekCloser
+}
+
+func openEmbed(path string) (readSeekStatCloser, error) {
+	f, err := os.Open(path)
+	if err == nil {
+		return f, nil
 	}
-	f, err := httpFS.Open("assets/web" + r.URL.Path)
+	ef, err := embedFS.Open(path)
 	if err != nil {
-		if os.IsNotExist(err) {
-			http.NotFound(w, r)
-			return
-		}
-		log.Printf("serving asset %s: %s", r.URL.Path, err)
-		http.Error(w, "500 - Server error", http.StatusInternalServerError)
+		return nil, err
+	}
+	r, ok := ef.(readSeekStatCloser)
+	if !ok {
+		r.Close()
+		return nil, fmt.Errorf("embedded file not a readseekcloser")
+	}
+	return r, nil
+}
+
+func serveAsset(w http.ResponseWriter, r *http.Request) {
+	var path string
+	switch r.URL.Path {
+	case "/":
+		path = "ding.html"
+	case "/ding.js", "/favicon.ico":
+		path = r.URL.Path[1:]
+	default:
+		http.NotFound(w, r)
+		return
+	}
+
+	f, err := openEmbed(path)
+	if err != nil {
+		http.Error(w, "500 - internal server error - "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 	defer f.Close()
 	info, err := f.Stat()
 	if err != nil {
 		log.Printf("serving asset %s: %s", r.URL.Path, err)
-		http.Error(w, "500 - Server error", http.StatusInternalServerError)
-		return
-	}
-
-	if info.IsDir() {
-		http.NotFound(w, r)
-		return
-	}
-
-	sf, ok := f.(io.ReadSeeker)
-	if !ok {
-		http.Error(w, "500 - Server error - file not a seeker", http.StatusInternalServerError)
+		http.Error(w, "500 - internal server error - "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -371,7 +373,7 @@ func serveAsset(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Cache-Control", cache)
 
-	http.ServeContent(w, r, r.URL.Path, info.ModTime(), sf)
+	http.ServeContent(w, r, r.URL.Path, info.ModTime(), f)
 }
 
 func hasBadElems(elems []string) bool {

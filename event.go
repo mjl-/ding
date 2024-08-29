@@ -10,7 +10,7 @@ type eventStringer interface {
 
 // EventRepo represents an update of a repository or creation of a repository.
 type EventRepo struct {
-	Repo Repo `json:"repo"`
+	Repo Repo
 }
 
 func (e EventRepo) eventString() (string, []byte, error) {
@@ -20,7 +20,7 @@ func (e EventRepo) eventString() (string, []byte, error) {
 
 // EventRemoveRepo represents the removal of a repository.
 type EventRemoveRepo struct {
-	RepoName string `json:"repo_name"`
+	RepoName string
 }
 
 func (e EventRemoveRepo) eventString() (string, []byte, error) {
@@ -31,8 +31,8 @@ func (e EventRemoveRepo) eventString() (string, []byte, error) {
 // EventBuild represents an update to a build, or the start of a new build.
 // Output is not part of the build, see EventOutput below.
 type EventBuild struct {
-	RepoName string `json:"repo_name"`
-	Build    Build  `json:"build"`
+	RepoName string
+	Build    Build
 }
 
 func (e EventBuild) eventString() (string, []byte, error) {
@@ -42,8 +42,8 @@ func (e EventBuild) eventString() (string, []byte, error) {
 
 // EventRemoveBuild represents the removal of a build from the database.
 type EventRemoveBuild struct {
-	RepoName string `json:"repo_name"`
-	BuildID  int32  `json:"build_id"`
+	RepoName string
+	BuildID  int32
 }
 
 func (e EventRemoveBuild) eventString() (string, []byte, error) {
@@ -54,10 +54,10 @@ func (e EventRemoveBuild) eventString() (string, []byte, error) {
 // EventOutput represents new output from a build.
 // Text only contains the newly added output, not the full output so far.
 type EventOutput struct {
-	BuildID int32  `json:"build_id"`
-	Step    string `json:"step"`  // during which the output was generated, eg `clone`, `checkout`, `build`
-	Where   string `json:"where"` // `stdout` or `stderr`
-	Text    string `json:"text"`  // lines of text written
+	BuildID int32
+	Step    string // during which the output was generated, eg `clone`, `build`
+	Where   string // `stdout` or `stderr`
+	Text    string // lines of text written
 }
 
 func (e EventOutput) eventString() (string, []byte, error) {

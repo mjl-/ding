@@ -10,20 +10,34 @@ run: build
 run-root: build
 	sudo sh -c 'umask 027; ./ding serve -listen localhost:6186 -listenwebhook localhost:6187 -listenadmin localhost:6188 local/local-root.conf'
 
-build: frontend
+build: node_modules/.bin/tsc
 	go build
 	go vet
-	PATH=$(PATH):$(PWD)/node_modules/.bin go run fabricate/*.go -- install
-	go run vendor/github.com/mjl-/sherpadoc/cmd/sherpadoc/*.go Ding >assets/ding.json
-
-frontend:
-	PATH=$(PATH):$(PWD)/node_modules/.bin go run fabricate/*.go -- install
+	go run vendor/github.com/mjl-/sherpadoc/cmd/sherpadoc/*.go -adjust-function-names none Ding >ding.json
+	./gents.sh ding.json api.ts
+	./genlicense.sh
+	./tsc.sh ding.js dom.ts api.ts ding.ts
+	go build # build with generated files
 
 check:
 	CGO_ENABLED=0 go vet
 	GOARCH=386 CGO_ENABLED=0 go vet
 	CGO_ENABLED=0 staticcheck
 	golint
+
+tswatch:
+	bash -c 'while true; do inotifywait -q -e close_write *.ts; make ding.js; done'
+
+ding.js: node_modules/.bin/tsc dom.ts api.ts ding.ts
+	./tsc.sh ding.js dom.ts api.ts ding.ts
+
+node_modules/.bin/tsc:
+	-mkdir -p node_modules/.bin
+	npm ci
+
+install-js:
+	-mkdir -p node_modules/.bin
+	npm install --save-dev --save-exact typescript@5.1.6
 
 postgres-init:
 	$(PG)/bin/initdb -D local/postgres95
@@ -58,7 +72,6 @@ fmt:
 
 clean:
 	go clean
-	go run fabricate/*.go -- clean
 
 setup:
 	npm ci

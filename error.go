@@ -75,7 +75,7 @@ func _checkUserf(err error, format string, args ...any) {
 }
 
 func _userError(m string) {
-	panic(&sherpa.Error{Code: "userError", Message: m})
+	panic(&sherpa.Error{Code: "user:error", Message: m})
 }
 
 func sherpaCatch(fn func()) (rerr error) {

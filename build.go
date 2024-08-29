@@ -226,7 +226,7 @@ func _doBuild0(ctx context.Context, repo Repo, build Build, buildDir string) {
 
 		r := recover()
 		if r != nil {
-			if serr, ok := r.(*sherpa.Error); ok && serr.Code == "userError" {
+			if serr, ok := r.(*sherpa.Error); ok && serr.Code == "user:error" {
 				_dbwrite(ctx, func(tx *bstore.Tx) {
 					b = Build{ID: build.ID}
 					err := tx.Get(&b)
@@ -271,7 +271,7 @@ func _doBuild0(ctx context.Context, repo Repo, build Build, buildDir string) {
 		}
 
 		if r != nil {
-			if serr, ok := r.(*sherpa.Error); !ok || serr.Code != "userError" {
+			if serr, ok := r.(*sherpa.Error); !ok || serr.Code != "user:error" {
 				panic(r)
 			}
 		}
@@ -753,4 +753,34 @@ func buildDiskUsage(buildDir string) (diskUsage int64) {
 		return nil
 	})
 	return
+}
+
+// _buildSteps reads steps from disk, for storing in build after finish.
+func _buildSteps(b Build) (steps []Step) {
+	steps = []Step{}
+
+	buildDir := fmt.Sprintf("%s/build/%s/%d/", dingDataDir, b.RepoName, b.ID)
+	outputDir := buildDir + "output/"
+	diskSteps := []BuildStatus{StatusClone, StatusBuild}
+	for _, stepName := range diskSteps {
+		base := outputDir + string(stepName)
+		steps = append(steps, Step{
+			Name:   string(stepName),
+			Output: readFileLax(base + ".output"),
+			Nsec:   parseInt(readFileLax(base + ".nsec")),
+		})
+		if stepName == b.Status {
+			break
+		}
+	}
+	return
+}
+
+func parseInt(s string) int64 {
+	if s == "" {
+		return 0
+	}
+	v, err := strconv.ParseInt(s, 10, 64)
+	_checkf(err, "parsing integer")
+	return v
 }

@@ -14,28 +14,26 @@ func TestAPI(t *testing.T) {
 	api := Ding{}
 
 	// Check auth for all methods.
-	tneederr(t, "user:badAuth", func() { api.ActivateGoToolchain(ctxbg, "badpass", "go1.23.0", "go") })
+	tneederr(t, "user:badAuth", func() { api.BuildCancel(ctxbg, "badpass", "repoName", 123) })
+	tneederr(t, "user:badAuth", func() { api.BuildCleanupBuilddir(ctxbg, "badpass", "repoName", 123) })
+	tneederr(t, "user:badAuth", func() { api.BuildCreate(ctxbg, "badpass", "repoName", "main", "", false) })
 	tneederr(t, "user:badAuth", func() { api.Build(ctxbg, "badpass", "repoName", 123) })
+	tneederr(t, "user:badAuth", func() { api.BuildRemove(ctxbg, "badpass", 123) })
+	tneederr(t, "user:badAuth", func() { api.BuildsCreateLowPrio(ctxbg, "badpass") })
 	tneederr(t, "user:badAuth", func() { api.Builds(ctxbg, "badpass", "repoName") })
-	tneederr(t, "user:badAuth", func() { api.CancelBuild(ctxbg, "badpass", "repoName", 123) })
-	tneederr(t, "user:badAuth", func() { api.CleanupBuilddir(ctxbg, "badpass", "repoName", 123) })
-	tneederr(t, "user:badAuth", func() { api.ClearRepoHomedir(ctxbg, "badpass", "repoName") })
 	tneederr(t, "user:badAuth", func() { api.ClearRepoHomedirs(ctxbg, "badpass") })
-	tneederr(t, "user:badAuth", func() { api.CreateBuild(ctxbg, "badpass", "repoName", "main", "") })
-	tneederr(t, "user:badAuth", func() { api.CreateBuildLowPrio(ctxbg, "badpass", "repoName", "main", "") })
-	tneederr(t, "user:badAuth", func() { api.CreateLowPrioBuilds(ctxbg, "badpass") })
-	tneederr(t, "user:badAuth", func() { api.CreateRelease(ctxbg, "badpass", "repoName", 123) })
-	tneederr(t, "user:badAuth", func() { api.CreateRepo(ctxbg, "badpass", Repo{}) })
-	tneederr(t, "user:badAuth", func() { api.InstallGoToolchain(ctxbg, "badpass", "go1.23.0", "go") })
-	tneederr(t, "user:badAuth", func() { api.ListInstalledGoToolchains(ctxbg, "badpass") })
-	tneederr(t, "user:badAuth", func() { api.ListReleasedGoToolchains(ctxbg, "badpass") })
-	tneederr(t, "user:badAuth", func() { api.Release(ctxbg, "badpass", "repoName", 123) })
-	tneederr(t, "user:badAuth", func() { api.RemoveBuild(ctxbg, "badpass", 123) })
-	tneederr(t, "user:badAuth", func() { api.RemoveGoToolchain(ctxbg, "badpass", "go1.23.0") })
-	tneederr(t, "user:badAuth", func() { api.RemoveRepo(ctxbg, "badpass", "repoName") })
-	tneederr(t, "user:badAuth", func() { api.Repo(ctxbg, "badpass", "repoName") })
+	tneederr(t, "user:badAuth", func() { api.GoToolchainActivate(ctxbg, "badpass", "go1.23.0", "go") })
+	tneederr(t, "user:badAuth", func() { api.GoToolchainInstall(ctxbg, "badpass", "go1.23.0", "go") })
+	tneederr(t, "user:badAuth", func() { api.GoToolchainRemove(ctxbg, "badpass", "go1.23.0") })
+	tneederr(t, "user:badAuth", func() { api.GoToolchainsListInstalled(ctxbg, "badpass") })
+	tneederr(t, "user:badAuth", func() { api.GoToolchainsListReleased(ctxbg, "badpass") })
+	tneederr(t, "user:badAuth", func() { api.ReleaseCreate(ctxbg, "badpass", "repoName", 123) })
 	tneederr(t, "user:badAuth", func() { api.RepoBuilds(ctxbg, "badpass") })
-	tneederr(t, "user:badAuth", func() { api.SaveRepo(ctxbg, "badpass", Repo{}) })
+	tneederr(t, "user:badAuth", func() { api.RepoClearHomedir(ctxbg, "badpass", "repoName") })
+	tneederr(t, "user:badAuth", func() { api.RepoCreate(ctxbg, "badpass", Repo{}) })
+	tneederr(t, "user:badAuth", func() { api.Repo(ctxbg, "badpass", "repoName") })
+	tneederr(t, "user:badAuth", func() { api.RepoRemove(ctxbg, "badpass", "repoName") })
+	tneederr(t, "user:badAuth", func() { api.RepoSave(ctxbg, "badpass", Repo{}) })
 
 	// todo: test more api failures (bad parameters).
 
@@ -54,14 +52,14 @@ echo coverage-report: coverage.txt
 
 	// CreateRepo
 	r := Repo{Name: "t0", VCS: VCSGit, Origin: "http://localhost", DefaultBranch: "main", CheckoutPath: "t0", BuildScript: buildScript}
-	nr := api.CreateRepo(ctxbg, config.Password, r)
+	nr := api.RepoCreate(ctxbg, config.Password, r)
 	tcompare(t, nr, r)
 	r = nr
 
 	// SaveRepo
 	r.VCS = VCSCommand
 	r.Origin = "sh -c 'echo clone..; mkdir -p checkout/$DING_CHECKOUTPATH; echo commit: ...'"
-	nr = api.SaveRepo(ctxbg, config.Password, r)
+	nr = api.RepoSave(ctxbg, config.Password, r)
 
 	// Repo
 	nr = api.Repo(ctxbg, config.Password, nr.Name)
@@ -73,14 +71,14 @@ echo coverage-report: coverage.txt
 	tcompare(t, len(rb), 1)
 	tcompare(t, rb[0].Repo, nr)
 
-	// ClearRepoHomedir
-	tneederr(t, "userError", func() { api.ClearRepoHomedir(ctxbg, config.Password, nr.Name) }) // No homedir reuse.
+	// RepoClearHomedir
+	tneederr(t, "user:error", func() { api.RepoClearHomedir(ctxbg, config.Password, nr.Name) }) // No homedir reuse.
 
 	// ClearRepoHomedirs
 	api.ClearRepoHomedirs(ctxbg, config.Password)
 
-	// CreateBuild
-	b := api.CreateBuild(ctxbg, config.Password, r.Name, "unused", "")
+	// BuildCreate
+	b := api.BuildCreate(ctxbg, config.Password, r.Name, "unused", "", false)
 
 	// Build
 	api.Build(ctxbg, config.Password, r.Name, b.ID)
@@ -98,31 +96,28 @@ echo coverage-report: coverage.txt
 	// Wait for build to complete.
 	twaitBuild(t, b, StatusSuccess)
 
-	// CreateRelease
-	rel := api.CreateRelease(ctxbg, config.Password, r.Name, b.ID)
+	// ReleaseCreate
+	rel := api.ReleaseCreate(ctxbg, config.Password, r.Name, b.ID)
 	tcompare(t, rel.ID, b.ID)
 
-	// Release
-	rel = api.Release(ctxbg, config.Password, r.Name, rel.ID)
-
-	// CleanupBuilddir
-	api.CleanupBuilddir(ctxbg, config.Password, r.Name, b.ID)
+	// BuildCleanupBuilddir
+	api.BuildCleanupBuilddir(ctxbg, config.Password, r.Name, b.ID)
 
 	// Create a build that we will cancel.
 	nr = api.Repo(ctxbg, config.Password, nr.Name)
 	nr.BuildScript = "#!/bin/bash\nsleep 3\n"
-	nr = api.SaveRepo(ctxbg, config.Password, nr)
-	cb := api.CreateBuildLowPrio(ctxbg, config.Password, r.Name, "unused", "")
-	api.CancelBuild(ctxbg, config.Password, r.Name, cb.ID)
-	api.CleanupBuilddir(ctxbg, config.Password, r.Name, cb.ID)
-	api.RemoveBuild(ctxbg, config.Password, cb.ID)
+	nr = api.RepoSave(ctxbg, config.Password, nr)
+	cb := api.BuildCreate(ctxbg, config.Password, r.Name, "unused", "", true)
+	api.BuildCancel(ctxbg, config.Password, r.Name, cb.ID)
+	api.BuildCleanupBuilddir(ctxbg, config.Password, r.Name, cb.ID)
+	api.BuildRemove(ctxbg, config.Password, cb.ID)
 
-	api.CreateLowPrioBuilds(ctxbg, config.Password)
+	api.BuildsCreateLowPrio(ctxbg, config.Password)
 	bl = api.Builds(ctxbg, config.Password, r.Name)
 	ncancel := 0
 	for _, xb := range bl {
 		if xb.Finish == nil {
-			api.CancelBuild(ctxbg, config.Password, r.Name, xb.ID)
+			api.BuildCancel(ctxbg, config.Password, r.Name, xb.ID)
 			ncancel++
 		}
 	}
@@ -130,8 +125,8 @@ echo coverage-report: coverage.txt
 	time.Sleep(100 * time.Millisecond) // todo: get rid of this, waiting for goroutine in CreateLowPrioBuilds to finish before closing the db at end of test.
 
 	// RepoRemove
-	api.RemoveRepo(ctxbg, config.Password, nr.Name)
-	tneederr(t, "user:notFound", func() { api.RemoveRepo(ctxbg, config.Password, nr.Name) })
+	api.RepoRemove(ctxbg, config.Password, nr.Name)
+	tneederr(t, "user:notFound", func() { api.RepoRemove(ctxbg, config.Password, nr.Name) })
 
 	// Test a build with a git repo. We assume the git binary is present, it is how this repo was cloned.
 	workDir, err := os.Getwd()
@@ -152,8 +147,8 @@ echo coverage-report: coverage.txt
 	run(gitRepoDir, "git", "commit", "-m", "test", "file.txt")
 
 	r = Repo{Name: "g0", VCS: VCSGit, Origin: gitRepoDir, DefaultBranch: "main", CheckoutPath: "g0", BuildScript: buildScript}
-	r = api.CreateRepo(ctxbg, config.Password, r)
-	b = api.CreateBuild(ctxbg, config.Password, r.Name, r.DefaultBranch, "")
+	r = api.RepoCreate(ctxbg, config.Password, r)
+	b = api.BuildCreate(ctxbg, config.Password, r.Name, r.DefaultBranch, "", false)
 	twaitBuild(t, b, StatusSuccess)
 
 	// Test a build with a mercurial repo, if we can run it.
@@ -166,8 +161,8 @@ echo coverage-report: coverage.txt
 		run(hgRepoDir, "hg", "commit", "-m", "test", "file.txt")
 
 		r = Repo{Name: "hg", VCS: VCSMercurial, Origin: hgRepoDir, DefaultBranch: "default", CheckoutPath: "hgrepo", BuildScript: "#!/bin/bash\nset -e\necho building...\necho hi>myfile\necho version: 1.2.3\necho release: mycmd linux amd64 toolchain1.2.3 myfile\n"}
-		r = api.CreateRepo(ctxbg, config.Password, r)
-		b = api.CreateBuild(ctxbg, config.Password, r.Name, r.DefaultBranch, "")
+		r = api.RepoCreate(ctxbg, config.Password, r)
+		b = api.BuildCreate(ctxbg, config.Password, r.Name, r.DefaultBranch, "", false)
 		twaitBuild(t, b, StatusSuccess)
 	} else {
 		log.Printf("not testing build with mercurial repository")
@@ -183,9 +178,9 @@ echo coverage-report: coverage.txt
 	// Enable using the same homedir for builds.
 	var one uint32 = 1
 	r.UID = &one
-	api.SaveRepo(ctxbg, config.Password, r)
+	api.RepoSave(ctxbg, config.Password, r)
 
-	api.ClearRepoHomedir(ctxbg, config.Password, r.Name)
+	api.RepoClearHomedir(ctxbg, config.Password, r.Name)
 	api.ClearRepoHomedirs(ctxbg, config.Password)
 }
 
@@ -198,22 +193,22 @@ func TestToolchains(t *testing.T) {
 	testEnv(t)
 	api := Ding{}
 
-	installed, active := api.ListInstalledGoToolchains(ctxbg, config.Password)
+	installed, active := api.GoToolchainsListInstalled(ctxbg, config.Password)
 	tcompare(t, len(installed), 0)
 	tcompare(t, len(active), 0)
 
-	released := api.ListReleasedGoToolchains(ctxbg, config.Password) // todo: set a timeout
+	released := api.GoToolchainsListReleased(ctxbg, config.Password) // todo: set a timeout
 	tcompare(t, len(released) > 0, true)
 
-	api.InstallGoToolchain(ctxbg, config.Password, released[0], "go") // todo: set a timeout
+	api.GoToolchainInstall(ctxbg, config.Password, released[0], "go") // todo: set a timeout
 
-	installed, active = api.ListInstalledGoToolchains(ctxbg, config.Password)
+	installed, active = api.GoToolchainsListInstalled(ctxbg, config.Password)
 	tcompare(t, installed, released[:1])
 	tcompare(t, active, map[string]string{"go": installed[0]})
 
-	api.ActivateGoToolchain(ctxbg, config.Password, installed[0], "go-prev")
-	_, active = api.ListInstalledGoToolchains(ctxbg, config.Password)
+	api.GoToolchainActivate(ctxbg, config.Password, installed[0], "go-prev")
+	_, active = api.GoToolchainsListInstalled(ctxbg, config.Password)
 	tcompare(t, active, map[string]string{"go": installed[0], "go-prev": installed[0]})
 
-	api.RemoveGoToolchain(ctxbg, config.Password, installed[0])
+	api.GoToolchainRemove(ctxbg, config.Password, installed[0])
 }

@@ -151,8 +151,7 @@ Ding exposes Prometheus metrics at HTTP endpoint /metrics on the address
 specified with -listenadmin. This includes statistics on usage for the API.
 
 You can also set up simple HTTP monitoring on /ding/status. It's the "status"
-API call and it will raise a 5xx status when one of its underlying services
-(file system, database) is not available.
+API call and it will raise a 5xx status on error.
 
 
 # Service file

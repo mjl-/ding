@@ -38,7 +38,7 @@ func kick(args []string) {
 	var build struct {
 		ID int64
 	}
-	err = client.Call(context.Background(), &build, "createBuild", password, repoName, branch, commit)
+	err = client.Call(context.Background(), &build, "CreateBuild", password, repoName, branch, commit, false)
 	xcheckf(err, "building")
 	_, err = fmt.Println("buildId", build.ID)
 	xcheckf(err, "write")

@@ -11,6 +11,7 @@ require (
 	github.com/mjl-/sherpa v0.6.7
 	github.com/mjl-/sherpadoc v0.0.17
 	github.com/mjl-/sherpaprom v0.0.2
+	github.com/mjl-/sherpats v0.0.6
 	github.com/prometheus/client_golang v1.19.1
 	golang.org/x/sys v0.22.0
 )

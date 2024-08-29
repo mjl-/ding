@@ -53,7 +53,7 @@ func TestWebhook(t *testing.T) {
 		CheckoutPath:  "hooktest",
 		BuildScript:   "#!/bin/bash\necho build...\n",
 	}
-	api.CreateRepo(ctxbg, config.Password, repo)
+	api.RepoCreate(ctxbg, config.Password, repo)
 
 	ghevent := githubEvent{Ref: "refs/heads/main", After: "e8dab6168e75a88346bc0d2b95ea8227552debf2"}
 	ghevent.Repository.Name = "hooktest"

@@ -43,7 +43,7 @@ func githubHookHandler(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	} else if err != nil {
-		log.Printf("gitea webhook: reading repo from database: %s", err)
+		log.Printf("github webhook: reading repo from database: %s", err)
 		http.Error(w, "error", http.StatusInternalServerError)
 		return
 	}

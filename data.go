@@ -31,67 +31,67 @@ const (
 
 // Repo is a repository as stored in the database.
 type Repo struct {
-	Name          string  `json:"name"` // short name for repo, typically last element of repo URL/path
-	VCS           VCS     `bstore:"nonzero" json:"vcs"`
-	Origin        string  `bstore:"nonzero" json:"origin"`        // git/mercurial "URL" (as understood by the respective commands), often SSH or HTTPS. if `vcs` is `command`, this is executed using sh.
-	DefaultBranch string  `json:"default_branch"`                 // Name of default branch, e.g. "main" or "master" for git, or "default" for mercurial.
-	CheckoutPath  string  `bstore:"nonzero" json:"checkout_path"` // path to place the checkout in.
-	BuildScript   string  `json:"build_script"`                   // shell scripts that compiles the software, runs tests, and creates releasable files.
-	UID           *uint32 `json:"uid"`                            // If set, fixed uid to use for builds, sharing a home directory where files can be cached, to speed up builds.
-	HomeDiskUsage int64   `json:"home_disk_usage"`                // Disk usage of shared home directory after last finished build. Only if UID is set.
+	Name          string  // short name for repo, typically last element of repo URL/path
+	VCS           VCS     `bstore:"nonzero"`
+	Origin        string  `bstore:"nonzero"` // git/mercurial "URL" (as understood by the respective commands), often SSH or HTTPS. if `vcs` is `command`, this is executed using sh.
+	DefaultBranch string  // Name of default branch, e.g. "main" or "master" for git, or "default" for mercurial, empty for command.
+	CheckoutPath  string  `bstore:"nonzero"` // path to place the checkout in.
+	BuildScript   string  // shell scripts that compiles the software, runs tests, and creates releasable files.
+	UID           *uint32 // If set, fixed uid to use for builds, sharing a home directory where files can be cached, to speed up builds.
+	HomeDiskUsage int64   // Disk usage of shared home directory after last finished build. Only if UID is set.
 }
 
 // Build is an attempt at building a repository.
 type Build struct {
-	ID                 int32       `json:"id"`
-	RepoName           string      `bstore:"nonzero,ref Repo" json:"repo_name"`
-	Branch             string      `bstore:"nonzero,index" json:"branch"`
-	CommitHash         string      `json:"commit_hash"` // can be empty until `checkout` step, when building latest version of a branch
-	Status             BuildStatus `bstore:"nonzero" json:"status"`
-	Created            time.Time   `bstore:"default now" json:"created"` // Time of creation of this build. Ding only has one concurrent build per repo, so the start time may be later.
-	Start              *time.Time  `json:"start"`                        // Time the build was started. Of a build is finish - start.
-	Finish             *time.Time  `json:"finish"`
-	ErrorMessage       string      `json:"error_message"`
-	Released           *time.Time  `json:"released"` // Once set, this build itself won't be removed from the database, but its build directory may be removed.
-	BuilddirRemoved    bool        `json:"builddir_removed"`
-	Coverage           *float32    `json:"coverage"`             // Test coverage in percentage, from 0 to 100.
-	CoverageReportFile string      `json:"coverage_report_file"` // Relative to URL /dl/<reponame>/<buildid>.
-	Version            string      `json:"version"`              // Version if this build, typically contains a semver version, with optional commit count/hash, perhaps a branch.
-	BuildScript        string      `json:"build_script"`
+	ID                 int32
+	RepoName           string      `bstore:"nonzero,ref Repo"`
+	Branch             string      `bstore:"nonzero,index"`
+	CommitHash         string      // can be empty until `checkout` step, when building latest version of a branch
+	Status             BuildStatus `bstore:"nonzero"`
+	Created            time.Time   `bstore:"default now"` // Time of creation of this build. Ding only has one concurrent build per repo, so the start time may be later.
+	Start              *time.Time  // Time the build was started. Of a build is finish - start.
+	Finish             *time.Time
+	ErrorMessage       string
+	Released           *time.Time // Once set, this build itself won't be removed from the database, but its build directory may be removed.
+	BuilddirRemoved    bool
+	Coverage           *float32 // Test coverage in percentage, from 0 to 100.
+	CoverageReportFile string   // Relative to URL /dl/<reponame>/<buildid>.
+	Version            string   // Version if this build, typically contains a semver version, with optional commit count/hash, perhaps a branch.
+	BuildScript        string
 
 	// Low-prio builds run after regular builds for a repo have finished. And we only
 	// run one low-prio build in ding at a time. Useful after a toolchain update.
-	LowPrio bool `json:"low_prio"`
+	LowPrio bool
 
-	LastLine  string `json:"last_line"`  // Last line of output, when build has completed.
-	DiskUsage int64  `json:"disk_usage"` // Disk usage for build.
+	LastLine  string // Last line of output, when build has completed.
+	DiskUsage int64  // Disk usage for build.
 
 	// Change in disk usage of shared home directory, if enabled for this repository.
 	// Disk usage can shrink, e.g. after a cleanup.
-	HomeDiskUsageDelta int64 `json:"home_disk_usage_delta"`
+	HomeDiskUsageDelta int64
 
-	Results []Result `json:"results"` // Only set for success builds.
+	Results []Result // Only set for success builds.
 
-	Steps []Step `json:"steps"` // Only set for finished builds.
+	Steps []Step // Only set for finished builds.
 }
 
 // Result is a file created during a build, as the result of a build.
 type Result struct {
-	Command   string `json:"command"`   // short name of command, without version, as you would want to run it from a command-line
-	Os        string `json:"os"`        // eg `any`, `linux`, `darwin, `openbsd`, `windows`
-	Arch      string `json:"arch"`      // eg `any`, `amd64`, `arm64`
-	Toolchain string `json:"toolchain"` // string describing the tools used during build, eg SDK version
+	Command   string // short name of command, without version, as you would want to run it from a command-line
+	Os        string // eg `any`, `linux`, `darwin, `openbsd`, `windows`
+	Arch      string // eg `any`, `amd64`, `arm64`
+	Toolchain string // string describing the tools used during build, eg SDK version
 
 	// Path relative to the checkout directory where build.sh is run.
 	// For builds, the file is started at <dataDir>/build/<repoName>/<buildID>/checkout/<checkoutPath>/<filename>.
 	// For releases, the file is stored gzipped at <dataDir>/release/<repoName>/<buildID>/<basename of filename>.gz.
-	Filename string `json:"filename"`
-	Filesize int64  `json:"filesize"` // size of filename
+	Filename string
+	Filesize int64 // size of filename
 }
 
 // Step is one phase of a build and stores the output generated in that step.
 type Step struct {
-	Name   BuildStatus `json:"name"`   // same values as build.status
-	Output string      `json:"output"` // combined output of stdout and stderr
-	Nsec   int64       `json:"nsec"`   // time it took this step to finish, initially 0
+	Name   string // mostly same values as build.status
+	Output string // combined output of stdout and stderr
+	Nsec   int64  // time it took this step to finish, initially 0
 }

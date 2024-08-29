@@ -30,9 +30,9 @@ echo coverage-report: coverage.txt
 		CheckoutPath:  "dltest",
 		BuildScript:   buildScript,
 	}
-	api.CreateRepo(ctxbg, config.Password, r)
+	api.RepoCreate(ctxbg, config.Password, r)
 
-	b := api.CreateBuild(ctxbg, config.Password, r.Name, "unused", "")
+	b := api.BuildCreate(ctxbg, config.Password, r.Name, "unused", "", false)
 	twaitBuild(t, b, StatusSuccess)
 
 	testGet := func(h http.HandlerFunc, path string, expCode int) {
@@ -59,7 +59,7 @@ echo coverage-report: coverage.txt
 	testGet(serveResult, fmt.Sprintf("/result/dltest/%d/bogusfile", b.ID), http.StatusNotFound)
 	testGet(serveRelease, fmt.Sprintf("/release/dltest/%d/myfile", b.ID), http.StatusNotFound)
 
-	api.CreateRelease(ctxbg, config.Password, r.Name, b.ID)
+	api.ReleaseCreate(ctxbg, config.Password, r.Name, b.ID)
 	testGet(serveDownload, fmt.Sprintf("/dl/release/dltest/%d/any.zip", b.ID), http.StatusOK)
 	testGet(serveDownload, fmt.Sprintf("/dl/release/dltest/%d/any.tgz", b.ID), http.StatusOK)
 	testGet(serveDownload, fmt.Sprintf("/dl/result/dltest/%d/any.zip", b.ID), http.StatusOK)

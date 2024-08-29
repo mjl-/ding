@@ -13,6 +13,7 @@ import (
 	"os"
 	"path"
 	"runtime/debug"
+	"strings"
 
 	"github.com/mjl-/bstore"
 	"github.com/mjl-/sconf"
@@ -22,18 +23,8 @@ const (
 	databaseVersion = 18
 )
 
-//go:embed assets/*
+//go:embed ding.html ding.js ding.json INSTALL.txt favicon.ico LICENSE licenses/*
 var embedFS embed.FS
-
-var httpFS fs.FS = localEmbedFS()
-
-func localEmbedFS() fs.FS {
-	if _, err := os.Stat("assets"); err == nil {
-		log.Printf("using local directory for assets")
-		return os.DirFS(".")
-	}
-	return embedFS
-}
 
 var (
 	database *bstore.DB
@@ -54,7 +45,6 @@ var config struct {
 	PrintSherpaErrorStack bool     `sconf-doc:"If set, prints error stack for sherpa server errors."`
 	Password              string   `sconf-doc:"For login to the web interface. Ding does not have users."`
 	DataDir               string   `sconf-doc:"Directory where all data is stored for builds, releases, home directories. In case of isolate builds, this must have a umask 027 and owned by the ding uid/gid. Can be an absolute path, or a path relative to the ding working directory."`
-	Database              string   `sconf:"optional" sconf-doc:"Old PostgreSQL connection string, for migrating to bstore database file. If set, and bstore database does not exist yet, migration is automatic. After migrating, the database connection string can be removed. Example: dbname=ding host=localhost port=5432 user=ding password=secret sslmode=disable connect_timeout=3 application_name=ding"`
 	GoToolchainDir        string   `sconf:"optional" sconf-doc:"Directory containing Go toolchains, for easy installation of new Go versions. Go toolchains are assumed to be in directories named after their version, e.g. go1.13.8. All names starting with 'go' are assumed to be Go toolchains. Active versions are marked by a symlink named go or go-prev to one of the versioned directories. Ding needs write access to this directory to download new toolchains."`
 	Environment           []string `sconf-doc:"List of environment variables in form KEY=VALUE."`
 	Notify                struct {
@@ -154,7 +144,7 @@ func main() {
 	case "version":
 		fmt.Printf("%s\ndatabase schema version %d\n", version, databaseVersion)
 	case "license":
-		printFile("assets/web/LICENSES")
+		printLicenses()
 	default:
 		flag.Usage()
 		os.Exit(2)
@@ -162,9 +152,33 @@ func main() {
 }
 
 func printFile(name string) {
-	f, err := httpFS.Open(name)
+	f, err := openEmbed(name)
 	xcheckf(err, "opening file "+name)
 	_, err = io.Copy(os.Stdout, f)
 	xcheckf(err, "copy")
 	xcheckf(f.Close(), "close")
+}
+
+func printLicenses() {
+	copyFile := func(p string) {
+		f, err := embedFS.Open(p)
+		xcheckf(err, "open license file")
+		_, err = io.Copy(os.Stdout, f)
+		xcheckf(err, "copy license file")
+		err = f.Close()
+		xcheckf(err, "close license file")
+	}
+
+	fmt.Printf("# github.com/mjl-/ding/LICENSE\n\n")
+	copyFile("LICENSE")
+
+	err := fs.WalkDir(embedFS, "licenses", func(path string, d fs.DirEntry, err error) error {
+		if !d.Type().IsRegular() {
+			return nil
+		}
+		fmt.Printf("\n\n# %s\n\n", strings.TrimPrefix(path, "licenses/"))
+		copyFile(path)
+		return nil
+	})
+	xcheckf(err, "walk licenses")
 }

@@ -1,10 +1,8 @@
 /testdata/tmp/
 /testdata/tmp-root/
-/.sass-cache/
 /local/
 /ding
 /node_modules/
-/fabricate/fabricate
 /cover.*
 
 /data/
