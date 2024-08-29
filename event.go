@@ -55,9 +55,9 @@ func (e EventRemoveBuild) eventString() (string, []byte, error) {
 // Text only contains the newly added output, not the full output so far.
 type EventOutput struct {
 	BuildID int32
-	Step    string // during which the output was generated, eg `clone`, `build`
-	Where   string // `stdout` or `stderr`
-	Text    string // lines of text written
+	Step    string // During which the output was generated, eg `clone`, `build`.
+	Where   string // `stdout` or `stderr`.
+	Text    string // Lines of text written.
 }
 
 func (e EventOutput) eventString() (string, []byte, error) {

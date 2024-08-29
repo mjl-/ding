@@ -111,11 +111,12 @@ func serve(args []string) {
 
 func xinitSockets() (privMsg, unprivMsg, privFD, unprivFD *os.File) {
 	proto := 0
-	// we exchange gob messages with unprivileged httpserver over socketsA
+	// We exchange gob messages with unprivileged httpserver over msgpair.
 	msgpair, err := unix.Socketpair(unix.AF_UNIX, unix.SOCK_STREAM, proto)
 	xcheckf(err, "creating socketpair")
 
-	// and we send file descriptors from to unprivileged httpserver after kicking off a build under a unique uid
+	// And we send file descriptors over fdpair to unprivileged httpserver after
+	// kicking off a build under a unique uid.
 	fdpair, err := unix.Socketpair(unix.AF_UNIX, unix.SOCK_STREAM, proto)
 	xcheckf(err, "creating socketpair")
 
@@ -202,7 +203,7 @@ func doMsgChown(msg *msgChown, enc *gob.Encoder) error {
 				return err
 			}
 
-			// don't change symlinks, we would be modifying whatever they point to!
+			// Don't change symlinks, we would be modifying whatever they point to!
 			if (info.Mode() & os.ModeSymlink) != 0 {
 				return nil
 			}
@@ -226,7 +227,7 @@ func ensureWritable(dir string) {
 			return err
 		}
 
-		// don't change symlinks, we would be modifying whatever they point to!
+		// Don't change symlinks, we would be modifying whatever they point to!
 		if (info.Mode() & os.ModeSymlink) != 0 {
 			return nil
 		}

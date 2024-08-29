@@ -21,7 +21,8 @@ import (
 	"github.com/mjl-/sherpa"
 )
 
-// The Ding API lets you compile git branches, build binaries, run tests, and publish binaries.
+// The Ding API lets you compile git branches, build binaries, run tests, and
+// publish binaries.
 type Ding struct {
 	SSE SSE `sherpa:"Server-Sent Events"`
 }
@@ -379,7 +380,8 @@ func (Ding) RepoSave(ctx context.Context, password string, repo Repo) (r Repo) {
 	return
 }
 
-// RepoClearHomedir removes the home directory this repository shares across builds.
+// RepoClearHomedir removes the home directory this repository shares across
+// builds.
 func (Ding) RepoClearHomedir(ctx context.Context, password, repoName string) {
 	_checkPassword(password)
 

@@ -98,15 +98,15 @@ type archiveFile struct {
 	Size int64
 }
 
-// we have .gz on disk.  gzip is a deflate stream with a header and a footer.
-// a zip file consists of headers/footer and deflate streams.
-// so we can serve zip files quickly based on the .gz's on disk.
-// we just have to strip the gzip header & footer and pass the raw deflate stream through.
+// We have .gz on disk.  gzip is a deflate stream with a header and a footer.
+// A zip file consists of headers/footer and deflate streams.
+// So we can serve zip files quickly based on the .gz's on disk.
+// We just have to strip the gzip header & footer and pass the raw deflate stream through.
 type gzipStrippingDeflateWriter struct {
 	w        io.Writer
-	header   []byte // we need the 10 byte header before we can do anything.
-	flag     byte   // from header, indicates optional fields we must skip. we clear the flags one we skipped parts.
-	leftover []byte // we always hold the last 8 bytes back, it could be the gzip footer that we must skip.
+	header   []byte // We need the 10 byte header before we can do anything.
+	flag     byte   // From header, indicates optional fields we must skip. We clear the flags one we skipped parts.
+	leftover []byte // We always hold the last 8 bytes back, it could be the gzip footer that we must skip.
 }
 
 func (x *gzipStrippingDeflateWriter) Write(buf []byte) (int, error) {
@@ -133,7 +133,7 @@ func (x *gzipStrippingDeflateWriter) Write(buf []byte) (int, error) {
 		FlagFCOMMENT
 	)
 
-	// null-terminated string
+	// Null-terminated string.
 	skipString := func(l []byte) ([]byte, bool) {
 		for i := range l {
 			if l[i] == 0 {
@@ -196,7 +196,7 @@ func (x *gzipStrippingDeflateWriter) Write(buf []byte) (int, error) {
 		x.leftover = append(x.leftover, buf...)
 		return n, nil
 	}
-	// below here, we have at least 8 bytes in buf
+	// Below here, we have at least 8 bytes in buf.
 
 	if len(x.leftover) > 0 {
 		_, err := x.w.Write(x.leftover)
@@ -256,7 +256,7 @@ func serveDownload0(w http.ResponseWriter, r *http.Request, name string, files [
 			}
 			_, err = io.Copy(fw, f)
 			if err != nil {
-				// probably just a closed connection
+				// Probably just a closed connection.
 				log.Printf("download: copying data: %s", err)
 				return false
 			}
@@ -267,7 +267,7 @@ func serveDownload0(w http.ResponseWriter, r *http.Request, name string, files [
 				break
 			}
 		}
-		// errors would probably be closed connections
+		// Errors would probably be closed connections.
 		err := zw.Close()
 		if err != nil {
 			log.Printf("download: finishing write: %s", err)
@@ -322,7 +322,7 @@ func serveDownload0(w http.ResponseWriter, r *http.Request, name string, files [
 				break
 			}
 		}
-		// errors would probably be closed connections
+		// Errors would probably be closed connections.
 		tw.Close()
 		gzw.Close()
 	} else {

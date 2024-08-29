@@ -21,7 +21,7 @@ type bitbucketEvent struct {
 				} `json:"target"`
 				Name string `json:"name"`
 				Type string `json:"type"` // hg: named_branch, tag, bookmark; git: branch, tag
-			} `json:"new"` // null for branch deletes
+			} `json:"new"` // Null for branch deletes.
 		} `json:"changes"`
 	} `json:"push"`
 	Repository struct {
@@ -105,7 +105,7 @@ func bitbucketHookHandler(w http.ResponseWriter, r *http.Request) {
 				branch = "default"
 			}
 		default:
-			// we ignore bookmarks
+			// We ignore bookmarks.
 			continue
 		}
 

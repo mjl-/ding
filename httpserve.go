@@ -39,7 +39,7 @@ var (
 	newJobs      chan job
 	finishedJobs chan string // repoName
 
-	rootRequests = make(chan request) // for http-serve, managing comms to privileged process
+	rootRequests = make(chan request) // For http-serve, managing comms to privileged process.
 )
 
 func servehttp(args []string) {
@@ -70,7 +70,7 @@ func servehttp(args []string) {
 		newSMTPClient = func() smtpClient { return &fakeClient{} }
 	}
 
-	// be cautious
+	// Be cautious.
 	if config.IsolateBuilds.Enabled && (uint32(os.Getuid()) != config.IsolateBuilds.DingUID || uint32(os.Getgid()) != config.IsolateBuilds.DingGID) {
 		log.Fatalln("not running under expected uid/gid")
 	}
@@ -111,8 +111,7 @@ func servehttp(args []string) {
 	mux.Handle("OPTIONS /ding/", handler)
 	mux.HandleFunc("GET /release/", serveRelease)
 	mux.HandleFunc("GET /result/", serveResult)
-	mux.HandleFunc("GET /download/", serveDownload) // Old
-	mux.HandleFunc("GET /dl/", serveDownload)       // New
+	mux.HandleFunc("GET /dl/", serveDownload)
 	mux.HandleFunc("GET /events", serveEvents)
 
 	// Admin is serving the default mux.
@@ -219,8 +218,8 @@ func serveUnprivileged(dec *gob.Decoder, enc *gob.Encoder, unixconn *net.UnixCon
 				continue
 			}
 
-			buf := make([]byte, 1)   // nothing in there
-			oob := make([]byte, 128) // expect 3*24 bytes
+			buf := make([]byte, 1)   // Nothing in there.
+			oob := make([]byte, 128) // Expect 3*24 bytes.
 			_, oobn, _, _, err := unixconn.ReadMsgUnix(buf, oob)
 			xcheckf(err, "receiving fd")
 			scms, err := unix.ParseSocketControlMessage(oob[:oobn])
@@ -256,7 +255,7 @@ func startJobManager() {
 	finishedJobs = make(chan string, 1)
 
 	go func() {
-		active := map[string]bool{} // Repo name -> is low prio
+		active := map[string]bool{} // Repo name -> is low prio.
 		pending := map[string][]job{}
 		pendingLowPrio := []job{}
 		lowPrioBusy := false
@@ -404,7 +403,7 @@ func serveRelease(w http.ResponseWriter, r *http.Request) {
 
 	if acceptsGzip(r.Header.Get("Accept-Encoding")) {
 		w.Header().Set("Content-Encoding", "gzip")
-		io.Copy(w, f) // nothing to do for errors
+		io.Copy(w, f) // Nothing to do for errors.
 	} else {
 		gzr, err := gzip.NewReader(f)
 		if err != nil {
@@ -412,7 +411,7 @@ func serveRelease(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "server error", http.StatusInternalServerError)
 			return
 		}
-		io.Copy(w, gzr) // nothing to do for errors
+		io.Copy(w, gzr) // Nothing to do for errors.
 	}
 }
 

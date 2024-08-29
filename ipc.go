@@ -85,10 +85,10 @@ type request struct {
 
 // result of starting a build
 type buildResult struct {
-	err    error // if non-nil, quick failure.  otherwise, the files below will send updates
+	err    error // If non-nil, quick failure. Otherwise, the files below will send updates.
 	stdout *os.File
 	stderr *os.File
-	status *os.File // we read a gob-encoded string from status as the exit string
+	status *os.File // We read a gob-encoded string from status as the exit string.
 }
 
 func requestPrivileged(msg msg) error {

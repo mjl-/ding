@@ -137,7 +137,7 @@ func main() {
 	case "serve":
 		serve(args)
 	case "serve-http":
-		// undocumented, for unpriviliged http process
+		// Undocumented, for unpriviliged http process.
 		servehttp(args)
 	case "kick":
 		kick(args)

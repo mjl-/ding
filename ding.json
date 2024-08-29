@@ -1,6 +1,6 @@
 {
 	"Name": "Ding",
-	"Docs": "The Ding API lets you compile git branches, build binaries, run tests, and publish binaries.",
+	"Docs": "The Ding API lets you compile git branches, build binaries, run tests, and\npublish binaries.",
 	"Functions": [
 		{
 			"Name": "Status",
@@ -288,7 +288,7 @@
 		},
 		{
 			"Name": "RepoClearHomedir",
-			"Docs": "RepoClearHomedir removes the home directory this repository shares across builds.",
+			"Docs": "RepoClearHomedir removes the home directory this repository shares across\nbuilds.",
 			"Params": [
 				{
 					"Name": "password",
@@ -663,21 +663,21 @@
 						},
 						{
 							"Name": "Step",
-							"Docs": "during which the output was generated, eg `clone`, `build`",
+							"Docs": "During which the output was generated, eg `clone`, `build`.",
 							"Typewords": [
 								"string"
 							]
 						},
 						{
 							"Name": "Where",
-							"Docs": "`stdout` or `stderr`",
+							"Docs": "`stdout` or `stderr`.",
 							"Typewords": [
 								"string"
 							]
 						},
 						{
 							"Name": "Text",
-							"Docs": "lines of text written",
+							"Docs": "Lines of text written.",
 							"Typewords": [
 								"string"
 							]
@@ -718,7 +718,7 @@
 				},
 				{
 					"Name": "CommitHash",
-					"Docs": "can be empty until `checkout` step, when building latest version of a branch",
+					"Docs": "Can be empty until `checkout` step, when building latest version of a branch.",
 					"Typewords": [
 						"string"
 					]
@@ -856,28 +856,28 @@
 			"Fields": [
 				{
 					"Name": "Command",
-					"Docs": "short name of command, without version, as you would want to run it from a command-line",
+					"Docs": "Short name of command, without version, as you would want to run it from a command-line.",
 					"Typewords": [
 						"string"
 					]
 				},
 				{
 					"Name": "Os",
-					"Docs": "eg `any`, `linux`, `darwin, `openbsd`, `windows`",
+					"Docs": "eg `any`, `linux`, `darwin, `openbsd`, `windows`.",
 					"Typewords": [
 						"string"
 					]
 				},
 				{
 					"Name": "Arch",
-					"Docs": "eg `any`, `amd64`, `arm64`",
+					"Docs": "eg `any`, `amd64`, `arm64`.",
 					"Typewords": [
 						"string"
 					]
 				},
 				{
 					"Name": "Toolchain",
-					"Docs": "string describing the tools used during build, eg SDK version",
+					"Docs": "String describing the tools used during build, eg SDK version.",
 					"Typewords": [
 						"string"
 					]
@@ -891,7 +891,7 @@
 				},
 				{
 					"Name": "Filesize",
-					"Docs": "size of filename",
+					"Docs": "Size of filename.",
 					"Typewords": [
 						"int64"
 					]
@@ -904,21 +904,21 @@
 			"Fields": [
 				{
 					"Name": "Name",
-					"Docs": "mostly same values as build.status",
+					"Docs": "Mostly same values as build.status.",
 					"Typewords": [
 						"string"
 					]
 				},
 				{
 					"Name": "Output",
-					"Docs": "combined output of stdout and stderr",
+					"Docs": "Combined output of stdout and stderr.",
 					"Typewords": [
 						"string"
 					]
 				},
 				{
 					"Name": "Nsec",
-					"Docs": "time it took this step to finish, initially 0",
+					"Docs": "Time it took this step to finish, initially 0.",
 					"Typewords": [
 						"int64"
 					]
@@ -952,7 +952,7 @@
 			"Fields": [
 				{
 					"Name": "Name",
-					"Docs": "short name for repo, typically last element of repo URL/path",
+					"Docs": "Short name for repo, typically last element of repo URL/path.",
 					"Typewords": [
 						"string"
 					]
@@ -980,14 +980,14 @@
 				},
 				{
 					"Name": "CheckoutPath",
-					"Docs": "path to place the checkout in.",
+					"Docs": "Path to place the checkout in.",
 					"Typewords": [
 						"string"
 					]
 				},
 				{
 					"Name": "BuildScript",
-					"Docs": "shell scripts that compiles the software, runs tests, and creates releasable files.",
+					"Docs": "Shell scripts that compiles the software, runs tests, and creates releasable files.",
 					"Typewords": [
 						"string"
 					]

@@ -264,7 +264,7 @@ var api;
 		"EventRemoveRepo": { "Name": "EventRemoveRepo", "Docs": "EventRemoveRepo represents the removal of a repository.", "Fields": [{ "Name": "RepoName", "Docs": "", "Typewords": ["string"] }] },
 		"EventBuild": { "Name": "EventBuild", "Docs": "EventBuild represents an update to a build, or the start of a new build.\nOutput is not part of the build, see EventOutput below.", "Fields": [{ "Name": "RepoName", "Docs": "", "Typewords": ["string"] }, { "Name": "Build", "Docs": "", "Typewords": ["Build"] }] },
 		"EventRemoveBuild": { "Name": "EventRemoveBuild", "Docs": "EventRemoveBuild represents the removal of a build from the database.", "Fields": [{ "Name": "RepoName", "Docs": "", "Typewords": ["string"] }, { "Name": "BuildID", "Docs": "", "Typewords": ["int32"] }] },
-		"EventOutput": { "Name": "EventOutput", "Docs": "EventOutput represents new output from a build.\nText only contains the newly added output, not the full output so far.", "Fields": [{ "Name": "BuildID", "Docs": "", "Typewords": ["int32"] }, { "Name": "Step", "Docs": "during which the output was generated, eg `clone`, `build`", "Typewords": ["string"] }, { "Name": "Where", "Docs": "`stdout` or `stderr`", "Typewords": ["string"] }, { "Name": "Text", "Docs": "lines of text written", "Typewords": ["string"] }] },
+		"EventOutput": { "Name": "EventOutput", "Docs": "EventOutput represents new output from a build.\nText only contains the newly added output, not the full output so far.", "Fields": [{ "Name": "BuildID", "Docs": "", "Typewords": ["int32"] }, { "Name": "Step", "Docs": "During which the output was generated, eg `clone`, `build`.", "Typewords": ["string"] }, { "Name": "Where", "Docs": "`stdout` or `stderr`.", "Typewords": ["string"] }, { "Name": "Text", "Docs": "Lines of text written.", "Typewords": ["string"] }] },
 	};
 	api.parser = {
 		Build: (v) => api.parse("Build", v),
@@ -280,7 +280,8 @@ var api;
 		EventRemoveBuild: (v) => api.parse("EventRemoveBuild", v),
 		EventOutput: (v) => api.parse("EventOutput", v),
 	};
-	// The Ding API lets you compile git branches, build binaries, run tests, and publish binaries.
+	// The Ding API lets you compile git branches, build binaries, run tests, and
+	// publish binaries.
 	//
 	// # Server-Sent Events
 	// SSE is a real-time streaming updates API using server-sent event, available at /events.
@@ -415,7 +416,8 @@ var api;
 			const params = [password, repo];
 			return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params);
 		}
-		// RepoClearHomedir removes the home directory this repository shares across builds.
+		// RepoClearHomedir removes the home directory this repository shares across
+		// builds.
 		async RepoClearHomedir(password, repoName) {
 			const fn = "RepoClearHomedir";
 			const paramTypes = [["string"], ["string"]];

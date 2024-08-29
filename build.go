@@ -318,8 +318,10 @@ func _doBuild0(ctx context.Context, repo Repo, build Build, buildDir string) {
 	_updateStatus(StatusClone, true)
 	switch repo.VCS {
 	case VCSGit:
-		// we clone without hard links because we chown later, don't want to mess up local git source repo's
-		// we have to clone as the user running ding. otherwise, git clone won't work due to ssh refusing to run as a user without a username ("No user exists for uid ...")
+		// We clone without hard links because we chown later, don't want to mess up local
+		// git source repo's. We have to clone as the user running ding. Otherwise, git
+		// clone won't work due to ssh refusing to run as a user without a username ("No
+		// user exists for uid ...")
 		err = run(buildCmd.ctx, build.ID, env, "clone", buildDir, buildDir, runPrefix("git", "clone", "--recursive", "--no-hardlinks", "--branch", build.Branch, repo.Origin, "checkout/"+repo.CheckoutPath)...)
 		_checkUserf(err, "cloning git repository")
 	case VCSMercurial:
@@ -542,8 +544,8 @@ func parseResults(repo Repo, build Build, checkoutDir, path string) (version str
 	return
 }
 
-// start a command and return readers for its output and the final result of the command.
-// it mimics a command started through the root process under a unique uid.
+// Start a command and return readers for its output and the final result of the command.
+// It mimics a command started through the root process under a unique uid.
 func setupCmd(cmdCtx context.Context, buildID int32, env []string, step, buildDir, workDir string, args ...string) (stdout, stderr io.ReadCloser, wait <-chan error, rerr error) {
 	type Error struct {
 		err error
@@ -556,7 +558,7 @@ func setupCmd(cmdCtx context.Context, buildID int32, env []string, step, buildDi
 				f.Close()
 			}
 		}
-		// always close subprocess-part of the fd's
+		// Always close subprocess-part of the fd's.
 		close(stdoutw)
 		close(stderrw)
 
@@ -566,7 +568,7 @@ func setupCmd(cmdCtx context.Context, buildID int32, env []string, step, buildDi
 		}
 
 		if ee, ok := e.(Error); ok {
-			// only close returning fd's on error
+			// Only close returning fd's on error.
 			close(stdoutr)
 			close(stderrr)
 
@@ -641,7 +643,7 @@ func track(buildID int32, step, buildDir string, cmdstdout, cmdstderr io.ReadClo
 		cmdstderr.Close()
 	}()
 
-	// write .nsec file when we're done here
+	// Write .nsec file when we're done here.
 	t0 := time.Now()
 	defer func() {
 		time.Since(t0)
@@ -663,10 +665,10 @@ func track(buildID int32, step, buildDir string, cmdstdout, cmdstderr io.ReadClo
 	lcheck(err, "creating stderr file")
 	defer stderr.Close()
 
-	// let it be known that we started this phase
+	// Let it be known that we started this phase.
 	events <- EventOutput{buildID, step, "stdout", ""}
 
-	// first we read all the data from stdout & stderr
+	// First we read all the data from stdout & stderr.
 	type Lines struct {
 		text   string
 		stdout bool
@@ -684,12 +686,12 @@ func track(buildID int32, step, buildDir string, cmdstdout, cmdstderr io.ReadClo
 				have += n
 				end := bytes.LastIndexByte(buf[:have], '\n')
 				if end < 0 && have == len(buf) {
-					// cannot gather any more data, flush it
+					// Cannot gather any more data, flush it.
 					end = len(buf)
 				} else if end < 0 {
 					continue
 				} else {
-					// include the newline
+					// Include the newline.
 					end++
 				}
 				lines <- Lines{string(buf[:end]), stdout, nil}
@@ -739,11 +741,11 @@ func track(buildID int32, step, buildDir string, cmdstdout, cmdstderr io.ReadClo
 		events <- EventOutput{buildID, step, where, l.text}
 	}
 
-	// second, we wait for the command result
+	// Second, we wait for the command result.
 	return <-wait
 }
 
-// disk usage, best effort
+// Disk usage, best effort.
 func buildDiskUsage(buildDir string) (diskUsage int64) {
 	filepath.Walk(buildDir, func(path string, info os.FileInfo, err error) error {
 		if err == nil {

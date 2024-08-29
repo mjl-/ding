@@ -7,7 +7,7 @@ export interface Build {
 	ID: number
 	RepoName: string
 	Branch: string
-	CommitHash: string  // can be empty until `checkout` step, when building latest version of a branch
+	CommitHash: string  // Can be empty until `checkout` step, when building latest version of a branch.
 	Status: BuildStatus
 	Created: Date  // Time of creation of this build. Ding only has one concurrent build per repo, so the start time may be later.
 	Start?: Date | null  // Time the build was started. Of a build is finish - start.
@@ -29,19 +29,19 @@ export interface Build {
 
 // Result is a file created during a build, as the result of a build.
 export interface Result {
-	Command: string  // short name of command, without version, as you would want to run it from a command-line
-	Os: string  // eg `any`, `linux`, `darwin, `openbsd`, `windows`
-	Arch: string  // eg `any`, `amd64`, `arm64`
-	Toolchain: string  // string describing the tools used during build, eg SDK version
+	Command: string  // Short name of command, without version, as you would want to run it from a command-line.
+	Os: string  // eg `any`, `linux`, `darwin, `openbsd`, `windows`.
+	Arch: string  // eg `any`, `amd64`, `arm64`.
+	Toolchain: string  // String describing the tools used during build, eg SDK version.
 	Filename: string  // Path relative to the checkout directory where build.sh is run. For builds, the file is started at <dataDir>/build/<repoName>/<buildID>/checkout/<checkoutPath>/<filename>. For releases, the file is stored gzipped at <dataDir>/release/<repoName>/<buildID>/<basename of filename>.gz.
-	Filesize: number  // size of filename
+	Filesize: number  // Size of filename.
 }
 
 // Step is one phase of a build and stores the output generated in that step.
 export interface Step {
-	Name: string  // mostly same values as build.status
-	Output: string  // combined output of stdout and stderr
-	Nsec: number  // time it took this step to finish, initially 0
+	Name: string  // Mostly same values as build.status.
+	Output: string  // Combined output of stdout and stderr.
+	Nsec: number  // Time it took this step to finish, initially 0.
 }
 
 // RepoBuilds is a repository and its recent builds, per branch.
@@ -52,12 +52,12 @@ export interface RepoBuilds {
 
 // Repo is a repository as stored in the database.
 export interface Repo {
-	Name: string  // short name for repo, typically last element of repo URL/path
+	Name: string  // Short name for repo, typically last element of repo URL/path.
 	VCS: VCS
 	Origin: string  // git/mercurial "URL" (as understood by the respective commands), often SSH or HTTPS. if `vcs` is `command`, this is executed using sh.
 	DefaultBranch: string  // Name of default branch, e.g. "main" or "master" for git, or "default" for mercurial, empty for command.
-	CheckoutPath: string  // path to place the checkout in.
-	BuildScript: string  // shell scripts that compiles the software, runs tests, and creates releasable files.
+	CheckoutPath: string  // Path to place the checkout in.
+	BuildScript: string  // Shell scripts that compiles the software, runs tests, and creates releasable files.
 	UID?: number | null  // If set, fixed uid to use for builds, sharing a home directory where files can be cached, to speed up builds.
 	HomeDiskUsage: number  // Disk usage of shared home directory after last finished build. Only if UID is set.
 }
@@ -107,9 +107,9 @@ export interface EventRemoveBuild {
 // Text only contains the newly added output, not the full output so far.
 export interface EventOutput {
 	BuildID: number
-	Step: string  // during which the output was generated, eg `clone`, `build`
-	Where: string  // `stdout` or `stderr`
-	Text: string  // lines of text written
+	Step: string  // During which the output was generated, eg `clone`, `build`.
+	Where: string  // `stdout` or `stderr`.
+	Text: string  // Lines of text written.
 }
 
 export const structTypes: {[typename: string]: boolean} = {"Build":true,"EventBuild":true,"EventOutput":true,"EventRemoveBuild":true,"EventRemoveRepo":true,"EventRepo":true,"Repo":true,"RepoBuilds":true,"Result":true,"Step":true}
@@ -127,7 +127,7 @@ export const types: TypenameMap = {
 	"EventRemoveRepo": {"Name":"EventRemoveRepo","Docs":"EventRemoveRepo represents the removal of a repository.","Fields":[{"Name":"RepoName","Docs":"","Typewords":["string"]}]},
 	"EventBuild": {"Name":"EventBuild","Docs":"EventBuild represents an update to a build, or the start of a new build.\nOutput is not part of the build, see EventOutput below.","Fields":[{"Name":"RepoName","Docs":"","Typewords":["string"]},{"Name":"Build","Docs":"","Typewords":["Build"]}]},
 	"EventRemoveBuild": {"Name":"EventRemoveBuild","Docs":"EventRemoveBuild represents the removal of a build from the database.","Fields":[{"Name":"RepoName","Docs":"","Typewords":["string"]},{"Name":"BuildID","Docs":"","Typewords":["int32"]}]},
-	"EventOutput": {"Name":"EventOutput","Docs":"EventOutput represents new output from a build.\nText only contains the newly added output, not the full output so far.","Fields":[{"Name":"BuildID","Docs":"","Typewords":["int32"]},{"Name":"Step","Docs":"during which the output was generated, eg `clone`, `build`","Typewords":["string"]},{"Name":"Where","Docs":"`stdout` or `stderr`","Typewords":["string"]},{"Name":"Text","Docs":"lines of text written","Typewords":["string"]}]},
+	"EventOutput": {"Name":"EventOutput","Docs":"EventOutput represents new output from a build.\nText only contains the newly added output, not the full output so far.","Fields":[{"Name":"BuildID","Docs":"","Typewords":["int32"]},{"Name":"Step","Docs":"During which the output was generated, eg `clone`, `build`.","Typewords":["string"]},{"Name":"Where","Docs":"`stdout` or `stderr`.","Typewords":["string"]},{"Name":"Text","Docs":"Lines of text written.","Typewords":["string"]}]},
 }
 
 export const parser = {
@@ -145,7 +145,8 @@ export const parser = {
 	EventOutput: (v: any) => parse("EventOutput", v) as EventOutput,
 }
 
-// The Ding API lets you compile git branches, build binaries, run tests, and publish binaries.
+// The Ding API lets you compile git branches, build binaries, run tests, and
+// publish binaries.
 //
 // # Server-Sent Events
 // SSE is a real-time streaming updates API using server-sent event, available at /events.
@@ -296,7 +297,8 @@ export class Client {
 		return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params) as Repo
 	}
 
-	// RepoClearHomedir removes the home directory this repository shares across builds.
+	// RepoClearHomedir removes the home directory this repository shares across
+	// builds.
 	async RepoClearHomedir(password: string, repoName: string): Promise<void> {
 		const fn: string = "RepoClearHomedir"
 		const paramTypes: string[][] = [["string"],["string"]]
