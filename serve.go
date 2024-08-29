@@ -27,6 +27,7 @@ var (
 )
 
 func serve(args []string) {
+	origArgs := args
 	serveFlag.Init("serve", flag.ExitOnError)
 	serveFlag.Usage = func() {
 		fmt.Println("usage: ding [flags] serve ding.conf")
@@ -80,7 +81,7 @@ func serve(args []string) {
 	privConn := xunixconn(privFD)
 	privFD = nil
 
-	argv := []string{os.Args[0], "-loglevel=" + loglevel.Level().String(), "serve-http"}
+	argv := append([]string{os.Args[0], "-loglevel=" + loglevel.Level().String(), "serve-http"}, origArgs[:len(origArgs)-1]...)
 	attr := &os.ProcAttr{
 		Files: []*os.File{
 			os.Stdin,
