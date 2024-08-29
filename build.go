@@ -387,7 +387,7 @@ func _doBuild0(ctx context.Context, repo Repo, build Build, buildDir string) {
 	}
 
 	if repo.VCS == VCSGit {
-		err = run(buildCmd.ctx, build.ID, env, "clone", buildDir, checkoutDir, runPrefix("git", "checkout", build.CommitHash)...)
+		err = run(buildCmd.ctx, build.ID, env, "clone", buildDir, checkoutDir, runPrefix("git", "checkout", "--detach", build.CommitHash)...)
 		_checkUserf(err, "checkout revision")
 	}
 
