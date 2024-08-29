@@ -10,7 +10,6 @@ import (
 	"io"
 	"io/fs"
 	"log"
-	"mime"
 	"net"
 	"net/http"
 	"os"
@@ -83,11 +82,6 @@ func servehttp(args []string) {
 	dbopts := bstore.Options{Timeout: 5 * time.Second}
 	database, err = bstore.Open(context.Background(), dbpath, &dbopts, Repo{}, Build{})
 	xcheckf(err, "open database")
-
-	// so http package returns these known mimetypes
-	mime.AddExtensionType(".woff2", "font/woff2")
-	mime.AddExtensionType(".ttf", "font/ttf")
-	mime.AddExtensionType(".otf", "font/otf")
 
 	var doc sherpadoc.Section
 	ff, err := openEmbed("ding.json")
