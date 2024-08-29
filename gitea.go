@@ -64,11 +64,6 @@ func giteaHookHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad json", http.StatusBadRequest)
 		return
 	}
-	if event.Repository.Name != repoName {
-		slog.Debug("gitea webhook: repository name does not match", "got", event.Repository.Name, "expect", repoName)
-		http.Error(w, "repository mismatch", http.StatusBadRequest)
-		return
-	}
 	branch := repo.DefaultBranch
 	if strings.HasPrefix(event.Ref, "refs/heads/") {
 		branch = event.Ref[len("refs/heads/"):]

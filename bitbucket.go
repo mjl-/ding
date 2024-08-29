@@ -60,11 +60,6 @@ func bitbucketHookHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad json", http.StatusBadRequest)
 		return
 	}
-	if event.Repository.Name != repoName {
-		slog.Info("bitbucket webhook: unexpected repoName", "got", event.Repository.Name, "expected", repoName)
-		http.Error(w, "bad request", http.StatusBadRequest)
-		return
-	}
 
 	repo := Repo{Name: repoName}
 	if err := database.Get(r.Context(), &repo); err == bstore.ErrAbsent {
