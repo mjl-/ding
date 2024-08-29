@@ -548,7 +548,7 @@ const pageHome = async (): Promise<Page> => {
 	render()
 
 	page.subscribe(streams.build, (e: api.EventBuild) => {
-		const rb = rbl.find(rb => rb.Repo.Name === e.RepoName)
+		const rb = rbl.find(rb => rb.Repo.Name === e.Build.RepoName)
 		if (!rb) {
 			return
 		}
@@ -886,7 +886,7 @@ const pageRepo = async (repoName: string): Promise<Page> => {
 	renderBuilds()
 
 	page.subscribe(streams.build, (e: api.EventBuild) => {
-		if (e.RepoName !== repo.Name) {
+		if (e.Build.RepoName !== repo.Name) {
 			return
 		}
 		const i = builds.findIndex(b => b.ID === e.Build.ID)
@@ -1233,7 +1233,7 @@ const pageBuild = async (repoName: string, buildID: number): Promise<Page> => {
 	render()
 
 	page.subscribe(streams.build, (e: api.EventBuild) => {
-		if (e.RepoName !== repo.Name) {
+		if (e.Build.RepoName !== repo.Name) {
 			return
 		}
 		if (e.Build.ID === b.ID) {

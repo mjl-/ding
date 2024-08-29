@@ -31,8 +31,7 @@ func (e EventRemoveRepo) eventString() (string, []byte, error) {
 // EventBuild represents an update to a build, or the start of a new build.
 // Output is not part of the build, see EventOutput below.
 type EventBuild struct {
-	RepoName string
-	Build    Build
+	Build Build
 }
 
 func (e EventBuild) eventString() (string, []byte, error) {

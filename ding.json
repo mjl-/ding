@@ -641,13 +641,6 @@
 					"Docs": "EventBuild represents an update to a build, or the start of a new build.\nOutput is not part of the build, see EventOutput below.",
 					"Fields": [
 						{
-							"Name": "RepoName",
-							"Docs": "",
-							"Typewords": [
-								"string"
-							]
-						},
-						{
 							"Name": "Build",
 							"Docs": "",
 							"Typewords": [

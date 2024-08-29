@@ -101,7 +101,6 @@ export interface EventRemoveRepo {
 // EventBuild represents an update to a build, or the start of a new build.
 // Output is not part of the build, see EventOutput below.
 export interface EventBuild {
-	RepoName: string
 	Build: Build
 }
 
@@ -134,7 +133,7 @@ export const types: TypenameMap = {
 	"LogLevel": {"Name":"LogLevel","Docs":"","Values":[{"Name":"LogDebug","Value":"debug","Docs":""},{"Name":"LogInfo","Value":"info","Docs":""},{"Name":"LogWarn","Value":"warn","Docs":""},{"Name":"LogError","Value":"error","Docs":""}]},
 	"EventRepo": {"Name":"EventRepo","Docs":"EventRepo represents an update of a repository or creation of a repository.","Fields":[{"Name":"Repo","Docs":"","Typewords":["Repo"]}]},
 	"EventRemoveRepo": {"Name":"EventRemoveRepo","Docs":"EventRemoveRepo represents the removal of a repository.","Fields":[{"Name":"RepoName","Docs":"","Typewords":["string"]}]},
-	"EventBuild": {"Name":"EventBuild","Docs":"EventBuild represents an update to a build, or the start of a new build.\nOutput is not part of the build, see EventOutput below.","Fields":[{"Name":"RepoName","Docs":"","Typewords":["string"]},{"Name":"Build","Docs":"","Typewords":["Build"]}]},
+	"EventBuild": {"Name":"EventBuild","Docs":"EventBuild represents an update to a build, or the start of a new build.\nOutput is not part of the build, see EventOutput below.","Fields":[{"Name":"Build","Docs":"","Typewords":["Build"]}]},
 	"EventRemoveBuild": {"Name":"EventRemoveBuild","Docs":"EventRemoveBuild represents the removal of a build from the database.","Fields":[{"Name":"RepoName","Docs":"","Typewords":["string"]},{"Name":"BuildID","Docs":"","Typewords":["int32"]}]},
 	"EventOutput": {"Name":"EventOutput","Docs":"EventOutput represents new output from a build.\nText only contains the newly added output, not the full output so far.","Fields":[{"Name":"BuildID","Docs":"","Typewords":["int32"]},{"Name":"Step","Docs":"During which the output was generated, eg `clone`, `build`.","Typewords":["string"]},{"Name":"Where","Docs":"`stdout` or `stderr`.","Typewords":["string"]},{"Name":"Text","Docs":"Lines of text written.","Typewords":["string"]}]},
 }

@@ -106,7 +106,7 @@ func _prepareBuild(ctx context.Context, repoName, branch, commit string, lowPrio
 
 		build = b
 	})
-	events <- EventBuild{repo.Name, build}
+	events <- EventBuild{build}
 	return
 }
 
@@ -221,7 +221,7 @@ func _doBuild0(ctx context.Context, repo Repo, build Build, buildDir string) {
 			}
 
 		})
-		events <- EventBuild{repo.Name, b}
+		events <- EventBuild{b}
 
 		_cleanupBuilds(ctx, repo.Name, build.Branch)
 
@@ -236,7 +236,7 @@ func _doBuild0(ctx context.Context, repo Repo, build Build, buildDir string) {
 					err = tx.Update(&b)
 					_checkf(err, "update error message for build in database")
 				})
-				events <- EventBuild{repo.Name, b}
+				events <- EventBuild{b}
 			} else {
 				panic(r)
 			}
@@ -294,7 +294,7 @@ func _doBuild0(ctx context.Context, repo Repo, build Build, buildDir string) {
 			err = tx.Update(&b)
 			_checkf(err, "updating build status in database")
 
-			events <- EventBuild{repo.Name, b}
+			events <- EventBuild{b}
 		})
 	}
 
@@ -381,7 +381,7 @@ func _doBuild0(ctx context.Context, repo Repo, build Build, buildDir string) {
 			b.CommitHash = build.CommitHash
 			err = tx.Update(&b)
 			_checkf(err, "update commit hash for build in database")
-			events <- EventBuild{repo.Name, b}
+			events <- EventBuild{b}
 		})
 	}
 
@@ -449,7 +449,7 @@ func _doBuild0(ctx context.Context, repo Repo, build Build, buildDir string) {
 		_checkf(err, "marking build as success in database")
 		slog.Debug("updating build status", "buildid", build.ID, "status", b.Status)
 	})
-	events <- EventBuild{repo.Name, b}
+	events <- EventBuild{b}
 }
 
 func _cleanupBuilds(ctx context.Context, repoName, branch string) {

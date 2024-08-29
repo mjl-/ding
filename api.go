@@ -178,7 +178,7 @@ func (Ding) ReleaseCreate(ctx context.Context, password, repoName string, buildI
 
 		release = b
 	})
-	events <- EventBuild{release.RepoName, release}
+	events <- EventBuild{release}
 	return
 }
 
@@ -501,7 +501,7 @@ func (Ding) BuildCleanupBuilddir(ctx context.Context, password, repoName string,
 
 		build = b
 	})
-	events <- EventBuild{repoName, build}
+	events <- EventBuild{build}
 	return
 }
 
