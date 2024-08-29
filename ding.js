@@ -257,13 +257,14 @@ var api;
 		LogLevel["LogWarn"] = "warn";
 		LogLevel["LogError"] = "error";
 	})(LogLevel = api.LogLevel || (api.LogLevel = {}));
-	api.structTypes = { "Build": true, "EventBuild": true, "EventOutput": true, "EventRemoveBuild": true, "EventRemoveRepo": true, "EventRepo": true, "Repo": true, "RepoBuilds": true, "Result": true, "Step": true };
+	api.structTypes = { "Build": true, "BuildSettings": true, "EventBuild": true, "EventOutput": true, "EventRemoveBuild": true, "EventRemoveRepo": true, "EventRepo": true, "Repo": true, "RepoBuilds": true, "Result": true, "Step": true };
 	api.stringsTypes = { "BuildStatus": true, "LogLevel": true, "VCS": true };
 	api.intsTypes = {};
 	api.types = {
 		"Build": { "Name": "Build", "Docs": "", "Fields": [{ "Name": "ID", "Docs": "", "Typewords": ["int32"] }, { "Name": "RepoName", "Docs": "", "Typewords": ["string"] }, { "Name": "Branch", "Docs": "", "Typewords": ["string"] }, { "Name": "CommitHash", "Docs": "", "Typewords": ["string"] }, { "Name": "Status", "Docs": "", "Typewords": ["BuildStatus"] }, { "Name": "Created", "Docs": "", "Typewords": ["timestamp"] }, { "Name": "Start", "Docs": "", "Typewords": ["nullable", "timestamp"] }, { "Name": "Finish", "Docs": "", "Typewords": ["nullable", "timestamp"] }, { "Name": "ErrorMessage", "Docs": "", "Typewords": ["string"] }, { "Name": "Released", "Docs": "", "Typewords": ["nullable", "timestamp"] }, { "Name": "BuilddirRemoved", "Docs": "", "Typewords": ["bool"] }, { "Name": "Coverage", "Docs": "", "Typewords": ["nullable", "float32"] }, { "Name": "CoverageReportFile", "Docs": "", "Typewords": ["string"] }, { "Name": "Version", "Docs": "", "Typewords": ["string"] }, { "Name": "BuildScript", "Docs": "", "Typewords": ["string"] }, { "Name": "LowPrio", "Docs": "", "Typewords": ["bool"] }, { "Name": "LastLine", "Docs": "", "Typewords": ["string"] }, { "Name": "DiskUsage", "Docs": "", "Typewords": ["int64"] }, { "Name": "HomeDiskUsageDelta", "Docs": "", "Typewords": ["int64"] }, { "Name": "Results", "Docs": "", "Typewords": ["[]", "Result"] }, { "Name": "Steps", "Docs": "", "Typewords": ["[]", "Step"] }] },
 		"Result": { "Name": "Result", "Docs": "", "Fields": [{ "Name": "Command", "Docs": "", "Typewords": ["string"] }, { "Name": "Os", "Docs": "", "Typewords": ["string"] }, { "Name": "Arch", "Docs": "", "Typewords": ["string"] }, { "Name": "Toolchain", "Docs": "", "Typewords": ["string"] }, { "Name": "Filename", "Docs": "", "Typewords": ["string"] }, { "Name": "Filesize", "Docs": "", "Typewords": ["int64"] }] },
 		"Step": { "Name": "Step", "Docs": "", "Fields": [{ "Name": "Name", "Docs": "", "Typewords": ["string"] }, { "Name": "Output", "Docs": "", "Typewords": ["string"] }, { "Name": "Nsec", "Docs": "", "Typewords": ["int64"] }] },
+		"BuildSettings": { "Name": "BuildSettings", "Docs": "", "Fields": [{ "Name": "Run", "Docs": "", "Typewords": ["[]", "string"] }, { "Name": "Environment", "Docs": "", "Typewords": ["[]", "string"] }] },
 		"RepoBuilds": { "Name": "RepoBuilds", "Docs": "", "Fields": [{ "Name": "Repo", "Docs": "", "Typewords": ["Repo"] }, { "Name": "Builds", "Docs": "", "Typewords": ["[]", "Build"] }] },
 		"Repo": { "Name": "Repo", "Docs": "", "Fields": [{ "Name": "Name", "Docs": "", "Typewords": ["string"] }, { "Name": "VCS", "Docs": "", "Typewords": ["VCS"] }, { "Name": "Origin", "Docs": "", "Typewords": ["string"] }, { "Name": "DefaultBranch", "Docs": "", "Typewords": ["string"] }, { "Name": "CheckoutPath", "Docs": "", "Typewords": ["string"] }, { "Name": "BuildScript", "Docs": "", "Typewords": ["string"] }, { "Name": "UID", "Docs": "", "Typewords": ["nullable", "uint32"] }, { "Name": "HomeDiskUsage", "Docs": "", "Typewords": ["int64"] }, { "Name": "NotifyEmailAddrs", "Docs": "", "Typewords": ["[]", "string"] }] },
 		"BuildStatus": { "Name": "BuildStatus", "Docs": "", "Values": [{ "Name": "StatusNew", "Value": "new", "Docs": "" }, { "Name": "StatusClone", "Value": "clone", "Docs": "" }, { "Name": "StatusBuild", "Value": "build", "Docs": "" }, { "Name": "StatusSuccess", "Value": "success", "Docs": "" }, { "Name": "StatusCancelled", "Value": "cancelled", "Docs": "" }] },
@@ -279,6 +280,7 @@ var api;
 		Build: (v) => api.parse("Build", v),
 		Result: (v) => api.parse("Result", v),
 		Step: (v) => api.parse("Step", v),
+		BuildSettings: (v) => api.parse("BuildSettings", v),
 		RepoBuilds: (v) => api.parse("RepoBuilds", v),
 		Repo: (v) => api.parse("Repo", v),
 		BuildStatus: (v) => api.parse("BuildStatus", v),
@@ -370,6 +372,14 @@ var api;
 			const paramTypes = [["string"], ["string"], ["int32"]];
 			const returnTypes = [];
 			const params = [password, repoName, buildID];
+			return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params);
+		}
+		// BuildSettings returns the environment for builds.
+		async BuildSettings(password) {
+			const fn = "BuildSettings";
+			const paramTypes = [["string"]];
+			const returnTypes = [["BuildSettings"]];
+			const params = [password];
 			return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params);
 		}
 		// ReleaseCreate release a build.
@@ -1424,9 +1434,10 @@ echo release: app $GOOS $GOARCH $goversion app-$version-$GOOS-$GOARCH`), dom.br(
 };
 const pageRepo = async (repoName) => {
 	const page = new Page();
-	let [repo, builds0] = await authed(() => Promise.all([
+	let [repo, builds0, buildSettings] = await authed(() => Promise.all([
 		client.Repo(password, repoName),
-		client.Builds(password, repoName)
+		client.Builds(password, repoName),
+		client.BuildSettings(password),
 	]));
 	let builds = builds0 || [];
 	const buildsElem = dom.div();
@@ -1540,7 +1551,7 @@ const pageRepo = async (repoName) => {
 				HomeDiskUsage: 0,
 			};
 			repo = await authed(() => client.RepoSave(password, nr), fieldset);
-		}, fieldset = dom.fieldset(dom.div(style({ display: 'grid', columnGap: '1em', rowGap: '.5ex', gridTemplateColumns: 'min-content 1fr', alignItems: 'top' }), 'Name', name = dom.input(attr.disabled(''), attr.value(repo.Name)), 'VCS', vcs = dom.select(dom.option('git', repo.VCS == 'git' ? attr.selected('') : []), dom.option('mercurial', repo.VCS == 'mercurial' ? attr.selected('') : []), dom.option('command', repo.VCS == 'command' ? attr.selected('') : []), vcsChanged), 'Origin', originBox = dom.div(originInput = origin = dom.input(attr.value(repo.Origin), attr.required(''), attr.placeholder('https://... or ssh://... or user@host:path.git'), style({ width: '100%' }))), dom.div('Default branch', style({ whiteSpace: 'nowrap' })), defaultBranch = dom.input(attr.value(repo.DefaultBranch), attr.placeholder('main, master, default')), dom.div('Checkout path', style({ whiteSpace: 'nowrap' })), checkoutPath = dom.input(attr.value(repo.CheckoutPath), attr.required(''), attr.title('Name of the directory to checkout the repository. Go builds may use this name for the binary it creates.')), dom.div('Notify email addresses', style({ whiteSpace: 'nowrap' })), notifyEmailAddrs = dom.input(attr.value((repo.NotifyEmailAddrs || []).join(', ')), attr.title('Comma-separated list of email address that will receive notifications when a build breaks or is fixed. If empty, the email address configured in the configuration file receives a notification, if any.')), dom.div(), dom.label(reuseUID = dom.input(attr.type('checkbox'), repo.UID !== null ? attr.checked('') : []), ' Reuse $HOME and UID for builds for this repo', attr.title('By reusing $HOME and running builds for this repository under the same UID, build caches can be used. This typically leads to faster builds but reduces isolation of builds.'))), dom.div(dom.label(dom.div('Build script', style({ marginBottom: '.25ex' })), buildScript = dom.textarea(repo.BuildScript, attr.required(''), attr.rows('24'), style({ width: '100%' })))), dom.br(), dom.div(dom.submitbutton('Save'))))), dom.br(), dom.div(docsBuildScript()))),
+		}, fieldset = dom.fieldset(dom.div(style({ display: 'grid', columnGap: '1em', rowGap: '.5ex', gridTemplateColumns: 'min-content 1fr', alignItems: 'top' }), 'Name', name = dom.input(attr.disabled(''), attr.value(repo.Name)), 'VCS', vcs = dom.select(dom.option('git', repo.VCS == 'git' ? attr.selected('') : []), dom.option('mercurial', repo.VCS == 'mercurial' ? attr.selected('') : []), dom.option('command', repo.VCS == 'command' ? attr.selected('') : []), vcsChanged), 'Origin', originBox = dom.div(originInput = origin = dom.input(attr.value(repo.Origin), attr.required(''), attr.placeholder('https://... or ssh://... or user@host:path.git'), style({ width: '100%' }))), dom.div('Default branch', style({ whiteSpace: 'nowrap' })), defaultBranch = dom.input(attr.value(repo.DefaultBranch), attr.placeholder('main, master, default')), dom.div('Checkout path', style({ whiteSpace: 'nowrap' })), checkoutPath = dom.input(attr.value(repo.CheckoutPath), attr.required(''), attr.title('Name of the directory to checkout the repository. Go builds may use this name for the binary it creates.')), dom.div('Notify email addresses', style({ whiteSpace: 'nowrap' })), notifyEmailAddrs = dom.input(attr.value((repo.NotifyEmailAddrs || []).join(', ')), attr.title('Comma-separated list of email address that will receive notifications when a build breaks or is fixed. If empty, the email address configured in the configuration file receives a notification, if any.')), dom.div(), dom.label(reuseUID = dom.input(attr.type('checkbox'), repo.UID !== null ? attr.checked('') : []), ' Reuse $HOME and UID for builds for this repo', attr.title('By reusing $HOME and running builds for this repository under the same UID, build caches can be used. This typically leads to faster builds but reduces isolation of builds.'))), dom.div(dom.label(dom.div('Build script', style({ marginBottom: '.25ex' })), buildScript = dom.textarea(repo.BuildScript, attr.required(''), attr.rows('24'), style({ width: '100%' })))), dom.br(), dom.div(dom.submitbutton('Save'))))), dom.br(), dom.div(docsBuildScript()), dom.h1('Build settings'), (buildSettings.Run || []).length > 0 ? dom.p('Build commands are prefixed with: ', dom.tt((buildSettings.Run || []).join(' '))) : dom.p('Build commands are not run within other commands.'), dom.div('Additional environments available during builds:'), (buildSettings.Environment || []).length === 0 ? dom.p('None') : dom.ul((buildSettings.Environment || []).map(s => dom.li(dom.tt(s)))))),
 	];
 	const elem = render();
 	vcsChanged();

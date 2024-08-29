@@ -44,6 +44,12 @@ export interface Step {
 	Nsec: number  // Time it took this step to finish, initially 0.
 }
 
+// BuildSettings describes the environment a build script is run in.
+export interface BuildSettings {
+	Run?: string[] | null  // The command to run the build script is prefixed with these commands, e.g. /usr/bin/nice.
+	Environment?: string[] | null  // Additional environment variables available during builds, of the form key=value.
+}
+
 // RepoBuilds is a repository and its recent builds, per branch.
 export interface RepoBuilds {
 	Repo: Repo
@@ -120,13 +126,14 @@ export interface EventOutput {
 	Text: string  // Lines of text written.
 }
 
-export const structTypes: {[typename: string]: boolean} = {"Build":true,"EventBuild":true,"EventOutput":true,"EventRemoveBuild":true,"EventRemoveRepo":true,"EventRepo":true,"Repo":true,"RepoBuilds":true,"Result":true,"Step":true}
+export const structTypes: {[typename: string]: boolean} = {"Build":true,"BuildSettings":true,"EventBuild":true,"EventOutput":true,"EventRemoveBuild":true,"EventRemoveRepo":true,"EventRepo":true,"Repo":true,"RepoBuilds":true,"Result":true,"Step":true}
 export const stringsTypes: {[typename: string]: boolean} = {"BuildStatus":true,"LogLevel":true,"VCS":true}
 export const intsTypes: {[typename: string]: boolean} = {}
 export const types: TypenameMap = {
 	"Build": {"Name":"Build","Docs":"","Fields":[{"Name":"ID","Docs":"","Typewords":["int32"]},{"Name":"RepoName","Docs":"","Typewords":["string"]},{"Name":"Branch","Docs":"","Typewords":["string"]},{"Name":"CommitHash","Docs":"","Typewords":["string"]},{"Name":"Status","Docs":"","Typewords":["BuildStatus"]},{"Name":"Created","Docs":"","Typewords":["timestamp"]},{"Name":"Start","Docs":"","Typewords":["nullable","timestamp"]},{"Name":"Finish","Docs":"","Typewords":["nullable","timestamp"]},{"Name":"ErrorMessage","Docs":"","Typewords":["string"]},{"Name":"Released","Docs":"","Typewords":["nullable","timestamp"]},{"Name":"BuilddirRemoved","Docs":"","Typewords":["bool"]},{"Name":"Coverage","Docs":"","Typewords":["nullable","float32"]},{"Name":"CoverageReportFile","Docs":"","Typewords":["string"]},{"Name":"Version","Docs":"","Typewords":["string"]},{"Name":"BuildScript","Docs":"","Typewords":["string"]},{"Name":"LowPrio","Docs":"","Typewords":["bool"]},{"Name":"LastLine","Docs":"","Typewords":["string"]},{"Name":"DiskUsage","Docs":"","Typewords":["int64"]},{"Name":"HomeDiskUsageDelta","Docs":"","Typewords":["int64"]},{"Name":"Results","Docs":"","Typewords":["[]","Result"]},{"Name":"Steps","Docs":"","Typewords":["[]","Step"]}]},
 	"Result": {"Name":"Result","Docs":"","Fields":[{"Name":"Command","Docs":"","Typewords":["string"]},{"Name":"Os","Docs":"","Typewords":["string"]},{"Name":"Arch","Docs":"","Typewords":["string"]},{"Name":"Toolchain","Docs":"","Typewords":["string"]},{"Name":"Filename","Docs":"","Typewords":["string"]},{"Name":"Filesize","Docs":"","Typewords":["int64"]}]},
 	"Step": {"Name":"Step","Docs":"","Fields":[{"Name":"Name","Docs":"","Typewords":["string"]},{"Name":"Output","Docs":"","Typewords":["string"]},{"Name":"Nsec","Docs":"","Typewords":["int64"]}]},
+	"BuildSettings": {"Name":"BuildSettings","Docs":"","Fields":[{"Name":"Run","Docs":"","Typewords":["[]","string"]},{"Name":"Environment","Docs":"","Typewords":["[]","string"]}]},
 	"RepoBuilds": {"Name":"RepoBuilds","Docs":"","Fields":[{"Name":"Repo","Docs":"","Typewords":["Repo"]},{"Name":"Builds","Docs":"","Typewords":["[]","Build"]}]},
 	"Repo": {"Name":"Repo","Docs":"","Fields":[{"Name":"Name","Docs":"","Typewords":["string"]},{"Name":"VCS","Docs":"","Typewords":["VCS"]},{"Name":"Origin","Docs":"","Typewords":["string"]},{"Name":"DefaultBranch","Docs":"","Typewords":["string"]},{"Name":"CheckoutPath","Docs":"","Typewords":["string"]},{"Name":"BuildScript","Docs":"","Typewords":["string"]},{"Name":"UID","Docs":"","Typewords":["nullable","uint32"]},{"Name":"HomeDiskUsage","Docs":"","Typewords":["int64"]},{"Name":"NotifyEmailAddrs","Docs":"","Typewords":["[]","string"]}]},
 	"BuildStatus": {"Name":"BuildStatus","Docs":"","Values":[{"Name":"StatusNew","Value":"new","Docs":""},{"Name":"StatusClone","Value":"clone","Docs":""},{"Name":"StatusBuild","Value":"build","Docs":""},{"Name":"StatusSuccess","Value":"success","Docs":""},{"Name":"StatusCancelled","Value":"cancelled","Docs":""}]},
@@ -143,6 +150,7 @@ export const parser = {
 	Build: (v: any) => parse("Build", v) as Build,
 	Result: (v: any) => parse("Result", v) as Result,
 	Step: (v: any) => parse("Step", v) as Step,
+	BuildSettings: (v: any) => parse("BuildSettings", v) as BuildSettings,
 	RepoBuilds: (v: any) => parse("RepoBuilds", v) as RepoBuilds,
 	Repo: (v: any) => parse("Repo", v) as Repo,
 	BuildStatus: (v: any) => parse("BuildStatus", v) as BuildStatus,
@@ -245,6 +253,15 @@ export class Client {
 		const returnTypes: string[][] = []
 		const params: any[] = [password, repoName, buildID]
 		return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params) as void
+	}
+
+	// BuildSettings returns the environment for builds.
+	async BuildSettings(password: string): Promise<BuildSettings> {
+		const fn: string = "BuildSettings"
+		const paramTypes: string[][] = [["string"]]
+		const returnTypes: string[][] = [["BuildSettings"]]
+		const params: any[] = [password]
+		return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params) as BuildSettings
 	}
 
 	// ReleaseCreate release a build.

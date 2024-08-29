@@ -155,6 +155,19 @@ func (Ding) BuildCancel(ctx context.Context, password, repoName string, buildID 
 	}()
 }
 
+
+// BuildSettings describes the environment a build script is run in.
+type BuildSettings struct {
+	Run []string // The command to run the build script is prefixed with these commands, e.g. /usr/bin/nice.
+	Environment []string // Additional environment variables available during builds, of the form key=value.
+}
+
+// BuildSettings returns the environment for builds.
+func (Ding) BuildSettings(ctx context.Context, password string) BuildSettings {
+	_checkPassword(password)
+	return BuildSettings{config.Run, config.Environment}
+}
+
 // ReleaseCreate release a build.
 func (Ding) ReleaseCreate(ctx context.Context, password, repoName string, buildID int32) (release Build) {
 	_checkPassword(password)

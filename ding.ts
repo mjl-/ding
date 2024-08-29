@@ -821,10 +821,11 @@ echo release: app $GOOS $GOARCH $goversion app-$version-$GOOS-$GOARCH`
 
 const pageRepo = async (repoName: string): Promise<Page> => {
 	const page = new Page()
-	let [repo, builds0] = await authed(() =>
+	let [repo, builds0, buildSettings] = await authed(() =>
 		Promise.all([
 			client.Repo(password, repoName),
-			client.Builds(password, repoName)
+			client.Builds(password, repoName),
+			client.BuildSettings(password),
 		])
 	)
 	let builds = builds0 || []
@@ -1065,6 +1066,10 @@ const pageRepo = async (repoName: string): Promise<Page> => {
 				dom.div(
 					docsBuildScript()
 				),
+				dom.h1('Build settings'),
+				(buildSettings.Run || []).length > 0 ? dom.p('Build commands are prefixed with: ', dom.tt((buildSettings.Run || []).join(' '))) : dom.p('Build commands are not run within other commands.'),
+				dom.div('Additional environments available during builds:'),
+				(buildSettings.Environment || []).length === 0 ? dom.p('None') : dom.ul((buildSettings.Environment || []).map(s => dom.li(dom.tt(s)))),
 			),
 		),
 	]

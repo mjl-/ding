@@ -129,6 +129,26 @@
 			"Returns": []
 		},
 		{
+			"Name": "BuildSettings",
+			"Docs": "BuildSettings returns the environment for builds.",
+			"Params": [
+				{
+					"Name": "password",
+					"Typewords": [
+						"string"
+					]
+				}
+			],
+			"Returns": [
+				{
+					"Name": "r0",
+					"Typewords": [
+						"BuildSettings"
+					]
+				}
+			]
+		},
+		{
 			"Name": "ReleaseCreate",
 			"Docs": "ReleaseCreate release a build.",
 			"Params": [
@@ -940,6 +960,28 @@
 					"Docs": "Time it took this step to finish, initially 0.",
 					"Typewords": [
 						"int64"
+					]
+				}
+			]
+		},
+		{
+			"Name": "BuildSettings",
+			"Docs": "BuildSettings describes the environment a build script is run in.",
+			"Fields": [
+				{
+					"Name": "Run",
+					"Docs": "The command to run the build script is prefixed with these commands, e.g. /usr/bin/nice.",
+					"Typewords": [
+						"[]",
+						"string"
+					]
+				},
+				{
+					"Name": "Environment",
+					"Docs": "Additional environment variables available during builds, of the form key=value.",
+					"Typewords": [
+						"[]",
+						"string"
 					]
 				}
 			]
