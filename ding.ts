@@ -790,6 +790,7 @@ echo release: app $GOOS $GOARCH $goversion app-$version-$GOOS-$GOARCH`
 			dom.li('$DING_BUILDDIR, where all files related to the build are stored, set to data/build/$DING_REPONAME/$DING_BUILDID/'),
 			dom.li('$DING_DOWNLOADDIR, files stored here are available over HTTP at /dl/file/$DING_REPONAME/$DING_BUILDID/...'),
 			dom.li('$DING_CHECKOUTPATH, where files are checked out as configured for the repository, relative to $DING_BUILDDIR/checkout/'),
+			dom.li('$DING_TOOLCHAINDIR, only if configured, the directory where toolchains are stored, like the Go toolchains'),
 			dom.li('any key/value pair from the "environment" object in the ding config file'),
 		),
 

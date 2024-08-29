@@ -309,6 +309,21 @@ func _doBuild0(ctx context.Context, repo Repo, build Build, buildDir string) {
 		"DING_BRANCH=" + build.Branch,
 		"DING_COMMIT=" + build.CommitHash,
 	}
+	if config.GoToolchainDir != "" {
+		toolchainDir := config.GoToolchainDir
+		if !path.IsAbs(toolchainDir) {
+			workDir, err := os.Getwd()
+			if err != nil {
+				slog.Error("get workdir for toolchain dir", "err", err)
+				toolchainDir = ""
+			} else {
+				toolchainDir = path.Join(workDir, toolchainDir)
+			}
+		}
+		if toolchainDir != "" {
+			env = append(env, "DING_TOOLCHAINDIR="+toolchainDir)
+		}
+	}
 	env = append(env, config.Environment...)
 
 	runPrefix := func(args ...string) []string {
