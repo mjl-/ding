@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -486,8 +487,8 @@ func _cleanupBuilds(ctx context.Context, repoName, branch string) {
 	}
 }
 
-func parseResults(repo Repo, build Build, checkoutDir, path string) (version string, results []Result, coverage *float32, coverageReportFile string) {
-	f, err := os.Open(path)
+func parseResults(repo Repo, build Build, checkoutDir, outputPath string) (version string, results []Result, coverage *float32, coverageReportFile string) {
+	f, err := os.Open(outputPath)
 	_checkUserf(err, "opening build output")
 	defer func() {
 		_checkUserf(f.Close(), "closing build output")
@@ -502,9 +503,12 @@ func parseResults(repo Repo, build Build, checkoutDir, path string) (version str
 			if len(t) != 6 {
 				_userError("invalid \"release:\"-line, should have 6 words: " + line)
 			}
-			result := Result{t[1], t[2], t[3], t[4], t[5], 0}
-			if !strings.HasPrefix(result.Filename, "/") {
-				result.Filename = checkoutDir + "/" + result.Filename
+			result := Result{t[1], t[2], t[3], t[4], path.Clean(t[5]), 0}
+			if !path.IsAbs(result.Filename) {
+				result.Filename = path.Join(checkoutDir, result.Filename)
+			}
+			if !strings.HasPrefix(result.Filename, path.Clean(checkoutDir)+"/") {
+				_userError("result file must be in checkout directory")
 			}
 			info, err := os.Stat(result.Filename)
 			_checkUserf(err, "testing whether released file exists")
@@ -533,8 +537,14 @@ func parseResults(repo Repo, build Build, checkoutDir, path string) (version str
 			if len(t) != 2 {
 				_userError("invalid \"coverage-report:\"-line, should have 1 parameter: " + line)
 			}
-			coverageReportFile = t[1]
-			p := fmt.Sprintf("%s/build/%s/%d/dl/%s", dingDataDir, repo.Name, build.ID, coverageReportFile)
+			p := path.Clean(t[1])
+			dldir := path.Clean(fmt.Sprintf("%s/build/%s/%d/dl", dingDataDir, repo.Name, build.ID))
+			if !path.IsAbs(p) {
+				p = path.Join(dldir, p)
+			}
+			if !strings.HasPrefix(p, dldir+"/") {
+				_userError("coverage file must be within $DING_DOWNLOADDIR")
+			}
 			_, err := os.Stat(p)
 			if err != nil {
 				_userError(fmt.Sprintf("bad file in \"coverage-report:\"-line (%q): %s", line, err))
