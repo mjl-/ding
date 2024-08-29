@@ -5,10 +5,10 @@ export GOPROXY=off
 PG=/usr/lib/postgresql/9.5
 
 run: build
-	./ding serve local/local.conf
+	./ding -loglevel debug serve local/local.conf
 
 run-root: build
-	sudo sh -c 'umask 027; ./ding serve -listen localhost:6186 -listenwebhook localhost:6187 -listenadmin localhost:6188 local/local-root.conf'
+	sudo sh -c 'umask 027; ./ding -loglevel debug serve -listen localhost:6186 -listenwebhook localhost:6187 -listenadmin localhost:6188 local/local-root.conf'
 
 build: node_modules/.bin/tsc
 	go build

@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -36,12 +36,12 @@ func giteaHookHandler(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	} else if err != nil {
-		log.Printf("gitea webhook: reading repo from database: %s", err)
+		slog.Error("gitea webhook: reading repo from database", "err", err)
 		http.Error(w, "error", http.StatusInternalServerError)
 		return
 	}
 	if !(repo.VCS == VCSGit || repo.VCS == VCSCommand) {
-		log.Printf("gitea webhook: push event for a non-git repository")
+		slog.Debug("gitea webhook: push event for a non-git repository")
 		http.Error(w, "misconfigured repositories", http.StatusInternalServerError)
 		return
 	}
@@ -60,12 +60,12 @@ func giteaHookHandler(w http.ResponseWriter, r *http.Request) {
 	var event giteaEvent
 	err = json.Unmarshal(buf, &event)
 	if err != nil {
-		log.Printf("gitea webhook: bad JSON body: %s", err)
+		slog.Debug("gitea webhook: bad JSON body", "err", err)
 		http.Error(w, "bad json", http.StatusBadRequest)
 		return
 	}
 	if event.Repository.Name != repoName {
-		log.Printf("gitea webhook: repository does not match, gitea sent %s for URL for %s", event.Repository.Name, repoName)
+		slog.Debug("gitea webhook: repository name does not match", "got", event.Repository.Name, "expect", repoName)
 		http.Error(w, "repository mismatch", http.StatusBadRequest)
 		return
 	}
@@ -76,14 +76,14 @@ func giteaHookHandler(w http.ResponseWriter, r *http.Request) {
 	commit := event.After
 	repo, build, buildDir, err := prepareBuild(r.Context(), repoName, branch, commit, false)
 	if err != nil {
-		log.Printf("gitea webhook: error starting build for push event for repo %s, branch %s, commit %s", repoName, branch, commit)
+		slog.Error("gitea webhook: error starting build for push event", "repo", repoName, "branch", branch, "commit", commit, "err", err)
 		http.Error(w, "could not create build", http.StatusInternalServerError)
 		return
 	}
 	go func() {
 		err := doBuild(context.Background(), repo, build, buildDir)
 		if err != nil {
-			log.Printf("build: %s", err)
+			slog.Error("build", "err", err)
 		}
 	}()
 	w.WriteHeader(http.StatusNoContent)

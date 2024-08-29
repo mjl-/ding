@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -43,8 +43,6 @@ var (
 )
 
 func servehttp(args []string) {
-	log.SetFlags(0)
-	log.SetPrefix("http-serve: ")
 	serveFlag.Init("serve-http", flag.ExitOnError)
 	serveFlag.Usage = func() {
 		fmt.Println("usage: ding [flags] serve-http")
@@ -72,7 +70,8 @@ func servehttp(args []string) {
 
 	// Be cautious.
 	if config.IsolateBuilds.Enabled && (uint32(os.Getuid()) != config.IsolateBuilds.DingUID || uint32(os.Getgid()) != config.IsolateBuilds.DingGID) {
-		log.Fatalln("not running under expected uid/gid")
+		slog.Error("not running under expected uid/gid")
+		os.Exit(1)
 	}
 
 	fdpass := os.NewFile(4, "fdpass")
@@ -122,7 +121,7 @@ func servehttp(args []string) {
 			return err
 		})
 		if err != nil {
-			log.Printf("writing database dump: %v", err)
+			slog.Debug("writing database dump", "err", err)
 		}
 	})
 
@@ -139,11 +138,11 @@ func servehttp(args []string) {
 		b.ErrorMessage = "marked as failed/unfinished at ding startup."
 		b.DiskUsage = du
 		if err := sherpaCatch(func() { b.Steps = _buildSteps(b) }); err != nil {
-			log.Printf("gathering build steps for failed build: %v (ignoring)", err)
+			slog.Error("gathering build steps for failed build, ignoring", "err", err)
 		}
 		err = database.Update(context.Background(), &b)
 		xcheckf(err, "marking build as failed/unfinished")
-		log.Printf("marked %s stale build as failed", buildDir)
+		slog.Info("marked stale build as failed", "builddir", buildDir)
 	}
 
 	newBuilds, err := bstore.QueryDB[Build](context.Background(), database).FilterNonzero(Build{Status: StatusNew}).List()
@@ -170,30 +169,29 @@ func servehttp(args []string) {
 		}()
 	}
 
-	msg := fmt.Sprintf("ding version %s, listening on %s", version, *listenAddress)
-	if *listenWebhookAddress != "" {
-		msg += fmt.Sprintf(", for webhooks on %s", *listenWebhookAddress)
-	}
-	if *listenAdminAddress != "" {
-		msg += fmt.Sprintf(", for admin on %s", *listenAdminAddress)
-	}
-	log.Print(msg)
+	slog.Info("starting ding", "version", version, "addr", *listenAddress, "webhookaddr", *listenWebhookAddress, "adminaddr", *listenAdminAddress)
 	if *listenWebhookAddress != "" {
 		webhookMux := http.NewServeMux()
 		webhookMux.HandleFunc("POST /github/", githubHookHandler)
 		webhookMux.HandleFunc("POST /gitea/", giteaHookHandler)
 		webhookMux.HandleFunc("POST /bitbucket/", bitbucketHookHandler)
 		go func() {
-			log.Fatal(http.ListenAndServe(*listenWebhookAddress, webhookMux))
+			err := http.ListenAndServe(*listenWebhookAddress, webhookMux)
+			slog.Error("listen and serve", "err", err)
+			os.Exit(1)
 		}()
 	}
 	if *listenAdminAddress != "" {
 		go func() {
-			log.Fatal(http.ListenAndServe(*listenAdminAddress, nil))
+			err := http.ListenAndServe(*listenAdminAddress, nil)
+			slog.Error("listen and serve", "err", err)
+			os.Exit(1)
 		}()
 	}
 	go func() {
-		log.Fatal(http.ListenAndServe(*listenAddress, mux))
+		err := http.ListenAndServe(*listenAddress, mux)
+		slog.Error("listen and serve", "err", err)
+		os.Exit(1)
 	}()
 
 	serveUnprivileged(dec, enc, unprivConn)
@@ -213,7 +211,7 @@ func serveUnprivileged(dec *gob.Decoder, enc *gob.Encoder, unixconn *net.UnixCon
 		case req.msg.Build != nil:
 			if r != "" {
 				err = fmt.Errorf("%s", r)
-				log.Println("run failed:", err)
+				slog.Error("run failed", "err", err)
 				req.buildResponse <- buildResult{err, nil, nil, nil}
 				continue
 			}
@@ -225,13 +223,15 @@ func serveUnprivileged(dec *gob.Decoder, enc *gob.Encoder, unixconn *net.UnixCon
 			scms, err := unix.ParseSocketControlMessage(oob[:oobn])
 			xcheckf(err, "parsing control message")
 			if len(scms) != 1 {
-				log.Fatalln("client: expected 1 SocketControlMessage; got scms =", scms)
+				slog.Error("client: expected 1 SocketControlMessage", "scms", scms)
+				os.Exit(1)
 			}
 
 			fds, err := unix.ParseUnixRights(&scms[0])
 			xcheckf(err, "parse unix rights")
 			if len(fds) != 3 {
-				log.Fatalf("wanted 3 fds; got %d fds", len(fds))
+				slog.Error("wanted 3 fds", "got", len(fds))
+				os.Exit(1)
 			}
 
 			stdout := os.NewFile(uintptr(fds[0]), fmt.Sprintf("build-%d-stdout", req.msg.Build.BuildID))
@@ -356,7 +356,7 @@ func serveAsset(w http.ResponseWriter, r *http.Request) {
 	defer f.Close()
 	info, err := f.Stat()
 	if err != nil {
-		log.Printf("serving asset %s: %s", r.URL.Path, err)
+		slog.Error("serving asset", "path", r.URL.Path, "err", err)
 		http.Error(w, "500 - internal server error - "+err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -407,7 +407,7 @@ func serveRelease(w http.ResponseWriter, r *http.Request) {
 	} else {
 		gzr, err := gzip.NewReader(f)
 		if err != nil {
-			log.Printf("release: reading gzip file %s: %s", path, err)
+			slog.Error("release: reading gzip file", "path", path, "err", err)
 			http.Error(w, "server error", http.StatusInternalServerError)
 			return
 		}
@@ -466,7 +466,7 @@ func serveResult(w http.ResponseWriter, r *http.Request) {
 	if err == bstore.ErrAbsent || err == nil && p == "" {
 		http.NotFound(w, r)
 	} else if err != nil {
-		log.Printf("fetching build results from database: %s", err)
+		slog.Error("fetching build results from database", "err", err)
 		http.Error(w, "500 internal error", http.StatusInternalServerError)
 	} else {
 		http.ServeFile(w, r, p)

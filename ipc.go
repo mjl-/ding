@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log/slog"
 	"os"
 
 	"github.com/mjl-/goreleases"
@@ -62,6 +63,10 @@ type msgActivateGoToolchain struct {
 	Shortname string // "go" or "go-prev"
 }
 
+type msgLogLevelSet struct {
+	LogLevel slog.Level
+}
+
 // Message from unprivileged webserver to root process.
 // Only the first non-nil field is handled.
 type msg struct {
@@ -74,6 +79,7 @@ type msg struct {
 	InstallGoToolchain  *msgInstallGoToolchain
 	RemoveGoToolchain   *msgRemoveGoToolchain
 	ActivateGoToolchain *msgActivateGoToolchain
+	LogLevelSet         *msgLogLevelSet
 }
 
 // request from one of the http handlers to httpserve's request mux

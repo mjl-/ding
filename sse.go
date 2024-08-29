@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 )
@@ -33,7 +33,7 @@ type eventWorker struct {
 func serveEvents(w http.ResponseWriter, r *http.Request) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
-		log.Println("internal error: ResponseWriter not a http.Flusher")
+		slog.Error("internal error: ResponseWriter not a http.Flusher")
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
@@ -112,7 +112,7 @@ func eventMux() {
 			} else {
 				event, evbuf, err := ev.eventString()
 				if err != nil {
-					log.Printf("sse: marshalling event: %s", err)
+					slog.Error("sse: marshalling event", "err", err)
 					continue
 				}
 				buf = []byte(fmt.Sprintf("event: %s\ndata: %s\n\n", event, evbuf))
@@ -121,7 +121,7 @@ func eventMux() {
 				select {
 				case w.events <- buf:
 				default:
-					// log.Println("sse: dropping event, client cannot keep up...")
+					slog.Debug("sse: dropping event, client cannot keep up...")
 				}
 			}
 		}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"path"
 	"strings"
@@ -11,6 +12,8 @@ import (
 )
 
 func installGoToolchain(file goreleases.File, shortname string) error {
+	slog.Debug("installing go toolchain", "filename", file.Filename)
+
 	if config.GoToolchainDir == "" {
 		return fmt.Errorf("go toolchain dir not configured")
 	}
@@ -83,6 +86,8 @@ func makeGoreleasesPermissions() (*goreleases.Permissions, error) {
 }
 
 func removeGoToolchain(goversion string) error {
+	slog.Debug("removing go toolchain", "goversion", goversion)
+
 	// Verify sanity of request.
 	if config.GoToolchainDir == "" {
 		return fmt.Errorf("go toolchain dir not configured")
@@ -101,6 +106,8 @@ func removeGoToolchain(goversion string) error {
 }
 
 func activateGoToolchain(goversion, shortname string) error {
+	slog.Debug("activating go toolchain", "goversion", goversion, "shortname", shortname)
+
 	// Verify sanity of request.
 	if config.GoToolchainDir == "" {
 		return fmt.Errorf("go toolchain dir not configured")

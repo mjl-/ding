@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -48,7 +48,7 @@ func bitbucketHookHandler(w http.ResponseWriter, r *http.Request) {
 	repoName := t[0]
 	key := t[1]
 	if key != config.BitbucketWebhookSecret {
-		log.Printf("bitbucket webhook: invalid secret in request for repoName %s", repoName)
+		slog.Info("bitbucket webhook: invalid secret in request", "repo", repoName)
 		http.NotFound(w, r)
 		return
 	}
@@ -56,12 +56,12 @@ func bitbucketHookHandler(w http.ResponseWriter, r *http.Request) {
 	var event bitbucketEvent
 	err := json.NewDecoder(r.Body).Decode(&event)
 	if err != nil {
-		log.Printf("bitbucket webhook: parsing JSON body: %s", err)
+		slog.Debug("bitbucket webhook: parsing JSON body", "err", err)
 		http.Error(w, "bad json", http.StatusBadRequest)
 		return
 	}
 	if event.Repository.Name != repoName {
-		log.Printf("bitbucket webhook: unexpected repoName %s at endpoint for repoName %s", event.Repository.Name, repoName)
+		slog.Info("bitbucket webhook: unexpected repoName", "got", event.Repository.Name, "expected", repoName)
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
@@ -71,17 +71,17 @@ func bitbucketHookHandler(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	} else if err != nil {
-		log.Printf("bitbucket webhook: reading repo from database: %s", err)
+		slog.Error("bitbucket webhook: reading repo from database", "err", err)
 		http.Error(w, "error", http.StatusInternalServerError)
 		return
 	}
 	if event.Repository.SCM == "hg" && !(repo.VCS == VCSMercurial || repo.VCS == VCSCommand) {
-		log.Printf("bitbucket webhook: misconfigured repository type, bitbucket thinks mercurial, ding thinks %s", repo.VCS)
+		slog.Info("bitbucket webhook: misconfigured repository type, got mercurial", "expect", repo.VCS)
 		http.Error(w, "misconfigured webhook", http.StatusInternalServerError)
 		return
 	}
 	if event.Repository.SCM == "git" && !(repo.VCS == VCSGit || repo.VCS == VCSCommand) {
-		log.Printf("bitbucket webhook: misconfigured repository type, bitbucket thinks git, ding thinks %s", repo.VCS)
+		slog.Info("bitbucket webhook: misconfigured repository type, got git", "expect", repo.VCS)
 		http.Error(w, "misconfigured webhook", http.StatusInternalServerError)
 		return
 	}
@@ -114,14 +114,14 @@ func bitbucketHookHandler(w http.ResponseWriter, r *http.Request) {
 				commit := change.New.Target.Hash
 				repo, build, buildDir, err := prepareBuild(r.Context(), repoName, branch, commit, false)
 				if err != nil {
-					log.Printf("bitbucket webhook: error starting build for push event for repo %s, branch %s, commit %s", repoName, branch, commit)
+					slog.Error("bitbucket webhook: error starting build for push event", "repo", repoName, "branch", branch, "commit", commit, "err", err)
 					http.Error(w, "could not create build", http.StatusInternalServerError)
 					return
 				}
 				go func() {
 					err := doBuild(context.Background(), repo, build, buildDir)
 					if err != nil {
-						log.Printf("build: %s", err)
+						slog.Error("build", "err", err)
 					}
 				}()
 			} else {

@@ -80,6 +80,14 @@ export enum VCS {
 	VCSCommand = "command",
 }
 
+// LogLevel indicates the severity of a log message.
+export enum LogLevel {
+	LogDebug = "debug",
+	LogInfo = "info",
+	LogWarn = "warn",
+	LogError = "error",
+}
+
 // EventRepo represents an update of a repository or creation of a repository.
 export interface EventRepo {
 	Repo: Repo
@@ -113,7 +121,7 @@ export interface EventOutput {
 }
 
 export const structTypes: {[typename: string]: boolean} = {"Build":true,"EventBuild":true,"EventOutput":true,"EventRemoveBuild":true,"EventRemoveRepo":true,"EventRepo":true,"Repo":true,"RepoBuilds":true,"Result":true,"Step":true}
-export const stringsTypes: {[typename: string]: boolean} = {"BuildStatus":true,"VCS":true}
+export const stringsTypes: {[typename: string]: boolean} = {"BuildStatus":true,"LogLevel":true,"VCS":true}
 export const intsTypes: {[typename: string]: boolean} = {}
 export const types: TypenameMap = {
 	"Build": {"Name":"Build","Docs":"","Fields":[{"Name":"ID","Docs":"","Typewords":["int32"]},{"Name":"RepoName","Docs":"","Typewords":["string"]},{"Name":"Branch","Docs":"","Typewords":["string"]},{"Name":"CommitHash","Docs":"","Typewords":["string"]},{"Name":"Status","Docs":"","Typewords":["BuildStatus"]},{"Name":"Created","Docs":"","Typewords":["timestamp"]},{"Name":"Start","Docs":"","Typewords":["nullable","timestamp"]},{"Name":"Finish","Docs":"","Typewords":["nullable","timestamp"]},{"Name":"ErrorMessage","Docs":"","Typewords":["string"]},{"Name":"Released","Docs":"","Typewords":["nullable","timestamp"]},{"Name":"BuilddirRemoved","Docs":"","Typewords":["bool"]},{"Name":"Coverage","Docs":"","Typewords":["nullable","float32"]},{"Name":"CoverageReportFile","Docs":"","Typewords":["string"]},{"Name":"Version","Docs":"","Typewords":["string"]},{"Name":"BuildScript","Docs":"","Typewords":["string"]},{"Name":"LowPrio","Docs":"","Typewords":["bool"]},{"Name":"LastLine","Docs":"","Typewords":["string"]},{"Name":"DiskUsage","Docs":"","Typewords":["int64"]},{"Name":"HomeDiskUsageDelta","Docs":"","Typewords":["int64"]},{"Name":"Results","Docs":"","Typewords":["[]","Result"]},{"Name":"Steps","Docs":"","Typewords":["[]","Step"]}]},
@@ -123,6 +131,7 @@ export const types: TypenameMap = {
 	"Repo": {"Name":"Repo","Docs":"","Fields":[{"Name":"Name","Docs":"","Typewords":["string"]},{"Name":"VCS","Docs":"","Typewords":["VCS"]},{"Name":"Origin","Docs":"","Typewords":["string"]},{"Name":"DefaultBranch","Docs":"","Typewords":["string"]},{"Name":"CheckoutPath","Docs":"","Typewords":["string"]},{"Name":"BuildScript","Docs":"","Typewords":["string"]},{"Name":"UID","Docs":"","Typewords":["nullable","uint32"]},{"Name":"HomeDiskUsage","Docs":"","Typewords":["int64"]}]},
 	"BuildStatus": {"Name":"BuildStatus","Docs":"","Values":[{"Name":"StatusNew","Value":"new","Docs":""},{"Name":"StatusClone","Value":"clone","Docs":""},{"Name":"StatusBuild","Value":"build","Docs":""},{"Name":"StatusSuccess","Value":"success","Docs":""},{"Name":"StatusCancelled","Value":"cancelled","Docs":""}]},
 	"VCS": {"Name":"VCS","Docs":"","Values":[{"Name":"VCSGit","Value":"git","Docs":""},{"Name":"VCSMercurial","Value":"mercurial","Docs":""},{"Name":"VCSCommand","Value":"command","Docs":""}]},
+	"LogLevel": {"Name":"LogLevel","Docs":"","Values":[{"Name":"LogDebug","Value":"debug","Docs":""},{"Name":"LogInfo","Value":"info","Docs":""},{"Name":"LogWarn","Value":"warn","Docs":""},{"Name":"LogError","Value":"error","Docs":""}]},
 	"EventRepo": {"Name":"EventRepo","Docs":"EventRepo represents an update of a repository or creation of a repository.","Fields":[{"Name":"Repo","Docs":"","Typewords":["Repo"]}]},
 	"EventRemoveRepo": {"Name":"EventRemoveRepo","Docs":"EventRemoveRepo represents the removal of a repository.","Fields":[{"Name":"RepoName","Docs":"","Typewords":["string"]}]},
 	"EventBuild": {"Name":"EventBuild","Docs":"EventBuild represents an update to a build, or the start of a new build.\nOutput is not part of the build, see EventOutput below.","Fields":[{"Name":"RepoName","Docs":"","Typewords":["string"]},{"Name":"Build","Docs":"","Typewords":["Build"]}]},
@@ -138,6 +147,7 @@ export const parser = {
 	Repo: (v: any) => parse("Repo", v) as Repo,
 	BuildStatus: (v: any) => parse("BuildStatus", v) as BuildStatus,
 	VCS: (v: any) => parse("VCS", v) as VCS,
+	LogLevel: (v: any) => parse("LogLevel", v) as LogLevel,
 	EventRepo: (v: any) => parse("EventRepo", v) as EventRepo,
 	EventRemoveRepo: (v: any) => parse("EventRemoveRepo", v) as EventRemoveRepo,
 	EventBuild: (v: any) => parse("EventBuild", v) as EventBuild,
@@ -403,6 +413,24 @@ export class Client {
 		const paramTypes: string[][] = [["string"],["string"],["string"]]
 		const returnTypes: string[][] = []
 		const params: any[] = [password, goversion, shortname]
+		return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params) as void
+	}
+
+	// LogLevel returns the current log level.
+	async LogLevel(): Promise<LogLevel> {
+		const fn: string = "LogLevel"
+		const paramTypes: string[][] = []
+		const returnTypes: string[][] = [["LogLevel"]]
+		const params: any[] = []
+		return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params) as LogLevel
+	}
+
+	// LogLevelSet sets a new log level.
+	async LogLevelSet(level: LogLevel): Promise<void> {
+		const fn: string = "LogLevelSet"
+		const paramTypes: string[][] = [["LogLevel"]]
+		const returnTypes: string[][] = []
+		const params: any[] = [level]
 		return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params) as void
 	}
 	// ExampleSSE is a no-op.

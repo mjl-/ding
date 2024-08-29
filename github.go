@@ -7,7 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -39,12 +39,12 @@ func githubHookHandler(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	} else if err != nil {
-		log.Printf("github webhook: reading repo from database: %s", err)
+		slog.Error("github webhook: reading repo from database", "err", err)
 		http.Error(w, "error", http.StatusInternalServerError)
 		return
 	}
 	if !(repo.VCS == VCSGit || repo.VCS == VCSCommand) {
-		log.Printf("github webhook: push event for a non-git repository")
+		slog.Debug("github webhook: push event for a non-git repository")
 		http.Error(w, "misconfigured repositories", http.StatusInternalServerError)
 		return
 	}
@@ -69,19 +69,19 @@ func githubHookHandler(w http.ResponseWriter, r *http.Request) {
 	mac.Write(buf)
 	exp := mac.Sum(nil)
 	if !hmac.Equal(exp, sig) {
-		log.Printf("github webhook: bad signature, refusing message")
+		slog.Info("github webhook: bad signature, refusing message")
 		http.Error(w, "invalid signature", http.StatusBadRequest)
 		return
 	}
 	var event githubEvent
 	err = json.Unmarshal(buf, &event)
 	if err != nil {
-		log.Printf("github webhook: bad JSON body: %s", err)
+		slog.Debug("github webhook: bad JSON body", "err", err)
 		http.Error(w, "bad json", http.StatusBadRequest)
 		return
 	}
 	if event.Repository.Name != repoName {
-		log.Printf("github webhook: repository does not match, github sent %s for URL for %s", event.Repository.Name, repoName)
+		slog.Debug("github webhook: repository name does not match", "got", event.Repository.Name, "expect", repoName)
 		http.Error(w, "repository mismatch", http.StatusBadRequest)
 		return
 	}
@@ -92,14 +92,14 @@ func githubHookHandler(w http.ResponseWriter, r *http.Request) {
 	commit := event.After
 	repo, build, buildDir, err := prepareBuild(r.Context(), repoName, branch, commit, false)
 	if err != nil {
-		log.Printf("github webhook: error starting build for push event for repo %s, branch %s, commit %s", repoName, branch, commit)
+		slog.Error("github webhook: error starting build for push event", "repo", repoName, "branch", branch, "commit", commit)
 		http.Error(w, "could not create build", http.StatusInternalServerError)
 		return
 	}
 	go func() {
 		err := doBuild(context.Background(), repo, build, buildDir)
 		if err != nil {
-			log.Printf("build: %s", err)
+			slog.Error("build", "err", err)
 		}
 	}()
 	w.WriteHeader(http.StatusNoContent)

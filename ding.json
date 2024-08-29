@@ -537,6 +537,32 @@
 				}
 			],
 			"Returns": []
+		},
+		{
+			"Name": "LogLevel",
+			"Docs": "LogLevel returns the current log level.",
+			"Params": [],
+			"Returns": [
+				{
+					"Name": "r0",
+					"Typewords": [
+						"LogLevel"
+					]
+				}
+			]
+		},
+		{
+			"Name": "LogLevelSet",
+			"Docs": "LogLevelSet sets a new log level.",
+			"Params": [
+				{
+					"Name": "level",
+					"Typewords": [
+						"LogLevel"
+					]
+				}
+			],
+			"Returns": []
 		}
 	],
 	"Sections": [
@@ -1061,6 +1087,32 @@
 					"Name": "VCSCommand",
 					"Value": "command",
 					"Docs": "Custom shell script that will do the cloning. Escape hatch mechanism to support\npast/future systems."
+				}
+			]
+		},
+		{
+			"Name": "LogLevel",
+			"Docs": "LogLevel indicates the severity of a log message.",
+			"Values": [
+				{
+					"Name": "LogDebug",
+					"Value": "debug",
+					"Docs": ""
+				},
+				{
+					"Name": "LogInfo",
+					"Value": "info",
+					"Docs": ""
+				},
+				{
+					"Name": "LogWarn",
+					"Value": "warn",
+					"Docs": ""
+				},
+				{
+					"Name": "LogError",
+					"Value": "error",
+					"Docs": ""
 				}
 			]
 		}

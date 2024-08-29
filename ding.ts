@@ -450,10 +450,19 @@ const popupRepoAdd = async () => {
 
 const pageHome = async (): Promise<Page> => {
 	const page = new Page()
-	let rbl = await authed(() => client.RepoBuilds(password)) || []
+	let [rbl0, loglevel] = await authed(() =>
+		Promise.all([
+			client.RepoBuilds(password),
+			client.LogLevel(),
+		])
+	)
+	let rbl = rbl0 || []
 
 	dom._kids(crumbElem, 'Home')
 	document.title = 'Ding - Repos'
+
+	let loglevelElem: HTMLSelectElement
+	let loglevelFieldset: HTMLFieldSetElement
 
 	const atexit = page.newAtexit()
 	const render = () => {
@@ -465,19 +474,39 @@ const pageHome = async (): Promise<Page> => {
 				dom.a(attr.href('#toolchains'), 'Toolchains'), ' ',
 			),
 			dom.div(
-				style({marginBottom: '1ex'}),
-				dom.clickbutton('Add repo', attr.title('Add new repository, to build.'), function click() {
-					popupRepoAdd()
-				}), ' ',
-				dom.clickbutton('Clear homedirs', attr.title('Remove home directories for all repositories that reuse home directories across builds. Cache in such directories can grow over time, consuming quite some disk space.'), async function click(e: MouseEvent & TargetDisableable) {
-					if (!confirm('Are you sure?')) {
-						return
-					}
-					await authed(() => client.ClearRepoHomedirs(password), e.target)
-				}), ' ',
-				dom.clickbutton('Build all lowprio', attr.title('Schedule builds for all repositories, but at low priority.'), async function click(e: MouseEvent & TargetDisableable) {
-					await authed(() => client.BuildsCreateLowPrio(password), e.target)
-				})
+				style({marginBottom: '1ex', display: 'flex', justifyContent: 'space-between'}),
+				dom.div(
+					dom.clickbutton('Add repo', attr.title('Add new repository, to build.'), function click() {
+						popupRepoAdd()
+					}), ' ',
+					dom.clickbutton('Clear homedirs', attr.title('Remove home directories for all repositories that reuse home directories across builds. Cache in such directories can grow over time, consuming quite some disk space.'), async function click(e: MouseEvent & TargetDisableable) {
+						if (!confirm('Are you sure?')) {
+							return
+						}
+						await authed(() => client.ClearRepoHomedirs(password), e.target)
+					}), ' ',
+					dom.clickbutton('Build all lowprio', attr.title('Schedule builds for all repositories, but at low priority.'), async function click(e: MouseEvent & TargetDisableable) {
+						await authed(() => client.BuildsCreateLowPrio(password), e.target)
+					})
+				),
+				dom.div(
+					dom.form(
+						async function submit(e: SubmitEvent) {
+							e.preventDefault()
+							e.stopPropagation()
+							await authed(() => client.LogLevelSet(loglevelElem.value as api.LogLevel), loglevelFieldset)
+						},
+						loglevelFieldset=dom.fieldset(
+							dom.label(
+								'Log level ',
+								loglevelElem=dom.select(
+									['debug', 'info', 'warn', 'error'].map(s => dom.option(s, loglevel == s ? attr.selected('') : [])),
+								), ' ',
+								dom.submitbutton('Set'),
+							),
+						),
+					),
+				),
 			),
 			dom.table(
 				dom._class('striped', 'wide'),

@@ -249,8 +249,16 @@ var api;
 		// past/future systems.
 		VCS["VCSCommand"] = "command";
 	})(VCS = api.VCS || (api.VCS = {}));
+	// LogLevel indicates the severity of a log message.
+	let LogLevel;
+	(function (LogLevel) {
+		LogLevel["LogDebug"] = "debug";
+		LogLevel["LogInfo"] = "info";
+		LogLevel["LogWarn"] = "warn";
+		LogLevel["LogError"] = "error";
+	})(LogLevel = api.LogLevel || (api.LogLevel = {}));
 	api.structTypes = { "Build": true, "EventBuild": true, "EventOutput": true, "EventRemoveBuild": true, "EventRemoveRepo": true, "EventRepo": true, "Repo": true, "RepoBuilds": true, "Result": true, "Step": true };
-	api.stringsTypes = { "BuildStatus": true, "VCS": true };
+	api.stringsTypes = { "BuildStatus": true, "LogLevel": true, "VCS": true };
 	api.intsTypes = {};
 	api.types = {
 		"Build": { "Name": "Build", "Docs": "", "Fields": [{ "Name": "ID", "Docs": "", "Typewords": ["int32"] }, { "Name": "RepoName", "Docs": "", "Typewords": ["string"] }, { "Name": "Branch", "Docs": "", "Typewords": ["string"] }, { "Name": "CommitHash", "Docs": "", "Typewords": ["string"] }, { "Name": "Status", "Docs": "", "Typewords": ["BuildStatus"] }, { "Name": "Created", "Docs": "", "Typewords": ["timestamp"] }, { "Name": "Start", "Docs": "", "Typewords": ["nullable", "timestamp"] }, { "Name": "Finish", "Docs": "", "Typewords": ["nullable", "timestamp"] }, { "Name": "ErrorMessage", "Docs": "", "Typewords": ["string"] }, { "Name": "Released", "Docs": "", "Typewords": ["nullable", "timestamp"] }, { "Name": "BuilddirRemoved", "Docs": "", "Typewords": ["bool"] }, { "Name": "Coverage", "Docs": "", "Typewords": ["nullable", "float32"] }, { "Name": "CoverageReportFile", "Docs": "", "Typewords": ["string"] }, { "Name": "Version", "Docs": "", "Typewords": ["string"] }, { "Name": "BuildScript", "Docs": "", "Typewords": ["string"] }, { "Name": "LowPrio", "Docs": "", "Typewords": ["bool"] }, { "Name": "LastLine", "Docs": "", "Typewords": ["string"] }, { "Name": "DiskUsage", "Docs": "", "Typewords": ["int64"] }, { "Name": "HomeDiskUsageDelta", "Docs": "", "Typewords": ["int64"] }, { "Name": "Results", "Docs": "", "Typewords": ["[]", "Result"] }, { "Name": "Steps", "Docs": "", "Typewords": ["[]", "Step"] }] },
@@ -260,6 +268,7 @@ var api;
 		"Repo": { "Name": "Repo", "Docs": "", "Fields": [{ "Name": "Name", "Docs": "", "Typewords": ["string"] }, { "Name": "VCS", "Docs": "", "Typewords": ["VCS"] }, { "Name": "Origin", "Docs": "", "Typewords": ["string"] }, { "Name": "DefaultBranch", "Docs": "", "Typewords": ["string"] }, { "Name": "CheckoutPath", "Docs": "", "Typewords": ["string"] }, { "Name": "BuildScript", "Docs": "", "Typewords": ["string"] }, { "Name": "UID", "Docs": "", "Typewords": ["nullable", "uint32"] }, { "Name": "HomeDiskUsage", "Docs": "", "Typewords": ["int64"] }] },
 		"BuildStatus": { "Name": "BuildStatus", "Docs": "", "Values": [{ "Name": "StatusNew", "Value": "new", "Docs": "" }, { "Name": "StatusClone", "Value": "clone", "Docs": "" }, { "Name": "StatusBuild", "Value": "build", "Docs": "" }, { "Name": "StatusSuccess", "Value": "success", "Docs": "" }, { "Name": "StatusCancelled", "Value": "cancelled", "Docs": "" }] },
 		"VCS": { "Name": "VCS", "Docs": "", "Values": [{ "Name": "VCSGit", "Value": "git", "Docs": "" }, { "Name": "VCSMercurial", "Value": "mercurial", "Docs": "" }, { "Name": "VCSCommand", "Value": "command", "Docs": "" }] },
+		"LogLevel": { "Name": "LogLevel", "Docs": "", "Values": [{ "Name": "LogDebug", "Value": "debug", "Docs": "" }, { "Name": "LogInfo", "Value": "info", "Docs": "" }, { "Name": "LogWarn", "Value": "warn", "Docs": "" }, { "Name": "LogError", "Value": "error", "Docs": "" }] },
 		"EventRepo": { "Name": "EventRepo", "Docs": "EventRepo represents an update of a repository or creation of a repository.", "Fields": [{ "Name": "Repo", "Docs": "", "Typewords": ["Repo"] }] },
 		"EventRemoveRepo": { "Name": "EventRemoveRepo", "Docs": "EventRemoveRepo represents the removal of a repository.", "Fields": [{ "Name": "RepoName", "Docs": "", "Typewords": ["string"] }] },
 		"EventBuild": { "Name": "EventBuild", "Docs": "EventBuild represents an update to a build, or the start of a new build.\nOutput is not part of the build, see EventOutput below.", "Fields": [{ "Name": "RepoName", "Docs": "", "Typewords": ["string"] }, { "Name": "Build", "Docs": "", "Typewords": ["Build"] }] },
@@ -274,6 +283,7 @@ var api;
 		Repo: (v) => api.parse("Repo", v),
 		BuildStatus: (v) => api.parse("BuildStatus", v),
 		VCS: (v) => api.parse("VCS", v),
+		LogLevel: (v) => api.parse("LogLevel", v),
 		EventRepo: (v) => api.parse("EventRepo", v),
 		EventRemoveRepo: (v) => api.parse("EventRemoveRepo", v),
 		EventBuild: (v) => api.parse("EventBuild", v),
@@ -512,6 +522,22 @@ var api;
 			const paramTypes = [["string"], ["string"], ["string"]];
 			const returnTypes = [];
 			const params = [password, goversion, shortname];
+			return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params);
+		}
+		// LogLevel returns the current log level.
+		async LogLevel() {
+			const fn = "LogLevel";
+			const paramTypes = [];
+			const returnTypes = [["LogLevel"]];
+			const params = [];
+			return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params);
+		}
+		// LogLevelSet sets a new log level.
+		async LogLevelSet(level) {
+			const fn = "LogLevelSet";
+			const paramTypes = [["LogLevel"]];
+			const returnTypes = [];
+			const params = [level];
 			return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params);
 		}
 		// ExampleSSE is a no-op.
@@ -1230,13 +1256,19 @@ const popupRepoAdd = async () => {
 };
 const pageHome = async () => {
 	const page = new Page();
-	let rbl = await authed(() => client.RepoBuilds(password)) || [];
+	let [rbl0, loglevel] = await authed(() => Promise.all([
+		client.RepoBuilds(password),
+		client.LogLevel(),
+	]));
+	let rbl = rbl0 || [];
 	dom._kids(crumbElem, 'Home');
 	document.title = 'Ding - Repos';
+	let loglevelElem;
+	let loglevelFieldset;
 	const atexit = page.newAtexit();
 	const render = () => {
 		atexit.run();
-		dom._kids(pageElem, dom.div(style({ marginBottom: '1ex' }), dom.a(attr.href('#toolchains'), 'Toolchains'), ' '), dom.div(style({ marginBottom: '1ex' }), dom.clickbutton('Add repo', attr.title('Add new repository, to build.'), function click() {
+		dom._kids(pageElem, dom.div(style({ marginBottom: '1ex' }), dom.a(attr.href('#toolchains'), 'Toolchains'), ' '), dom.div(style({ marginBottom: '1ex', display: 'flex', justifyContent: 'space-between' }), dom.div(dom.clickbutton('Add repo', attr.title('Add new repository, to build.'), function click() {
 			popupRepoAdd();
 		}), ' ', dom.clickbutton('Clear homedirs', attr.title('Remove home directories for all repositories that reuse home directories across builds. Cache in such directories can grow over time, consuming quite some disk space.'), async function click(e) {
 			if (!confirm('Are you sure?')) {
@@ -1245,7 +1277,11 @@ const pageHome = async () => {
 			await authed(() => client.ClearRepoHomedirs(password), e.target);
 		}), ' ', dom.clickbutton('Build all lowprio', attr.title('Schedule builds for all repositories, but at low priority.'), async function click(e) {
 			await authed(() => client.BuildsCreateLowPrio(password), e.target);
-		})), dom.table(dom._class('striped', 'wide'), dom.thead(dom.tr(['Repo', 'Branch', 'Build ID', 'Status', 'Duration', 'Version', 'Coverage', 'Disk usage', 'Home disk usage', 'Age'].map(s => dom.th(s)), dom.th(style({ textAlign: 'left' }), 'Error'))), dom.tbody(rbl.length === 0 ? dom.tr(dom.td(attr.colspan('10'), 'No repositories', style({ textAlign: 'left' }))) : [], rbl.map(rb => {
+		})), dom.div(dom.form(async function submit(e) {
+			e.preventDefault();
+			e.stopPropagation();
+			await authed(() => client.LogLevelSet(loglevelElem.value), loglevelFieldset);
+		}, loglevelFieldset = dom.fieldset(dom.label('Log level ', loglevelElem = dom.select(['debug', 'info', 'warn', 'error'].map(s => dom.option(s, loglevel == s ? attr.selected('') : []))), ' ', dom.submitbutton('Set')))))), dom.table(dom._class('striped', 'wide'), dom.thead(dom.tr(['Repo', 'Branch', 'Build ID', 'Status', 'Duration', 'Version', 'Coverage', 'Disk usage', 'Home disk usage', 'Age'].map(s => dom.th(s)), dom.th(style({ textAlign: 'left' }), 'Error'))), dom.tbody(rbl.length === 0 ? dom.tr(dom.td(attr.colspan('10'), 'No repositories', style({ textAlign: 'left' }))) : [], rbl.map(rb => {
 			if ((rb.Builds || []).length === 0) {
 				return dom.tr(dom.td(dom.a(rb.Repo.Name, attr.href('#repo/' + encodeURIComponent(rb.Repo.Name)))));
 			}

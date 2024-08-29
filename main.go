@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/fs"
 	"log"
+	"log/slog"
 	"os"
 	"path"
 	"runtime/debug"
@@ -95,7 +96,8 @@ func init() {
 func xcheckf(err error, format string, args ...any) {
 	msg := fmt.Sprintf(format, args...)
 	if err != nil {
-		log.Fatalf("%s: %s", msg, err)
+		slog.Error(msg, "err", err)
+		os.Exit(2)
 	}
 }
 
@@ -109,17 +111,34 @@ func initDingDataDir() {
 	}
 }
 
+var loglevel slog.LevelVar
+
 func main() {
+	flag.TextVar(&loglevel, "loglevel", &loglevel, "log level: debug, info, warn, error")
 	flag.Usage = func() {
-		log.Fatalf("usage: ding { config | testconfig | help | kick | serve | version | license }")
-	}
-	if len(os.Args) <= 1 {
-		flag.Usage()
+		log.Fatalf("usage: ding [-loglevel level] { config | testconfig | help | kick | serve | version | license }")
+		flag.PrintDefaults()
 		os.Exit(2)
 	}
+	flag.Parse()
+	args := flag.Args()
+	if len(args) == 0 {
+		flag.Usage()
+	}
 
-	cmd := os.Args[1]
-	args := os.Args[2:]
+	slogOpts := slog.HandlerOptions{
+		Level: &loglevel,
+		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+			if a.Key == "time" {
+				return slog.Attr{}
+			}
+			return a
+		},
+	}
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slogOpts))
+	slog.SetDefault(logger)
+
+	cmd, args := args[0], args[1:]
 	switch cmd {
 	case "config":
 		fmt.Println("# Example config file")
@@ -147,7 +166,6 @@ func main() {
 		printLicenses()
 	default:
 		flag.Usage()
-		os.Exit(2)
 	}
 }
 

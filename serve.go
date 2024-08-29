@@ -5,7 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"log"
+	"log/slog"
 	"net"
 	"os"
 	"os/exec"
@@ -27,8 +27,6 @@ var (
 )
 
 func serve(args []string) {
-	log.SetFlags(0)
-	log.SetPrefix("serve: ")
 	serveFlag.Init("serve", flag.ExitOnError)
 	serveFlag.Usage = func() {
 		fmt.Println("usage: ding [flags] serve ding.conf")
@@ -48,27 +46,33 @@ func serve(args []string) {
 
 	if config.IsolateBuilds.Enabled {
 		if os.Getuid() != 0 {
-			log.Fatalln(`must run as root when isolateBuilds is enabled`)
+			slog.Error(`must run as root when isolateBuilds is enabled`)
+			os.Exit(1)
 		}
 		if syscall.Umask(027) != 027 {
-			log.Fatalln("must run with umask 027 with isolateBuilds enabled")
+			slog.Error("must run with umask 027 with isolateBuilds enabled")
+			os.Exit(1)
 		}
 		info, err := os.Stat(dingDataDir)
 		xcheckf(err, "stat data dir")
 		sysinfo := info.Sys()
 		if sysinfo == nil {
-			log.Fatalf("cannot determine owner of data dir %q", dingDataDir)
+			slog.Error("cannot determine owner of data dir", "datadir", dingDataDir)
+			os.Exit(1)
 		}
 		st, ok := sysinfo.(*syscall.Stat_t)
 		if !ok {
-			log.Fatalf("underlying fileinfo for data dir %q: sys is a %T", dingDataDir, sysinfo)
+			slog.Error("underlying fileinfo for data dir", "datadir", dingDataDir, "systype", fmt.Sprintf("%T", sysinfo))
+			os.Exit(1)
 		}
 		if info.Mode()&077 != 070 || st.Gid != config.IsolateBuilds.DingGID {
-			log.Fatalf("data dir %q must have permissions g=rwx,o= and ding gid %d, but has permissions %#o and gid %d", dingDataDir, config.IsolateBuilds.DingGID, info.Mode()&os.ModePerm, st.Gid)
+			slog.Error("data dir must have permissions g=rwx,o= and ding gid", "datadir", dingDataDir, "expectgid", config.IsolateBuilds.DingGID, "gotperm", info.Mode()&os.ModePerm, "gotgit", st.Gid)
+			os.Exit(1)
 		}
 	} else {
 		if os.Getuid() == 0 {
-			log.Fatalln(`must not run as root when isolateBuilds is disabled`)
+			slog.Error(`must not run as root when isolateBuilds is disabled`)
+			os.Exit(1)
 		}
 	}
 
@@ -76,7 +80,7 @@ func serve(args []string) {
 	privConn := xunixconn(privFD)
 	privFD = nil
 
-	argv := append([]string{os.Args[0], "serve-http"}, os.Args[2:len(os.Args)-1]...)
+	argv := []string{os.Args[0], "-loglevel=" + loglevel.Level().String(), "serve-http"}
 	attr := &os.ProcAttr{
 		Files: []*os.File{
 			os.Stdin,
@@ -134,7 +138,8 @@ func xunixconn(f *os.File) *net.UnixConn {
 	xcheckf(err, "fileconn")
 	uc, ok := fc.(*net.UnixConn)
 	if !ok {
-		log.Fatalln("file not a unixconn")
+		slog.Error("file not a unixconn")
+		os.Exit(1)
 	}
 	err = f.Close()
 	xcheckf(err, "closing unix file")
@@ -166,8 +171,13 @@ func servePrivileged(dec *gob.Decoder, enc *gob.Encoder, unixconn *net.UnixConn)
 			err = removeGoToolchain(msg.RemoveGoToolchain.Goversion)
 		case msg.ActivateGoToolchain != nil:
 			err = activateGoToolchain(msg.ActivateGoToolchain.Goversion, msg.ActivateGoToolchain.Shortname)
+		case msg.LogLevelSet != nil:
+			olevel := loglevel.Level()
+			loglevel.Set(msg.LogLevelSet.LogLevel)
+			slog.Warn("log level changed", "oldlevel", olevel, "newlevel", loglevel.Level())
 		default:
-			log.Fatalf("no field set in msg %v", msg)
+			slog.Error("no field set in msg", "msg", msg)
+			os.Exit(2)
 		}
 
 		err = enc.Encode(errstr(err))
@@ -190,6 +200,9 @@ func doMsgChown(msg *msgChown, enc *gob.Encoder) error {
 	}
 
 	buildDir := fmt.Sprintf("%s/build/%s/%d", dingDataDir, msg.RepoName, msg.BuildID)
+
+	slog.Debug("changing ownership", "builddir", buildDir)
+
 	homeDir := fmt.Sprintf("%s/home", buildDir)
 	if msg.SharedHome {
 		homeDir = fmt.Sprintf("%s/home/%s", dingDataDir, msg.RepoName)
@@ -234,18 +247,19 @@ func ensureWritable(dir string) {
 		}
 		if (info.Mode() & 0200) == 0 {
 			if err := os.Chmod(path, info.Mode()|0200); err != nil {
-				log.Printf("making path writable before removing, %q: %v", path, err)
+				slog.Error("making path writable before removing", "path", path, "err", err)
 			}
 		}
 		return nil
 	})
 	if err != nil {
-		log.Printf("walking dir %q to ensure files are writable, for removal: %v", dir, err)
+		slog.Error("walking dir to ensure files are writable, for removal", "dir", dir, "err", err)
 	}
 }
 
 func doMsgRemoveBuilddir(msg *msgRemoveBuilddir, enc *gob.Encoder) error {
 	p := fmt.Sprintf("%s/build/%s/%d", dingDataDir, msg.RepoName, msg.BuildID)
+	slog.Debug("removing build dir", "builddir", p)
 	if path.Clean(p) != p {
 		return errBadParams
 	}
@@ -256,6 +270,9 @@ func doMsgRemoveBuilddir(msg *msgRemoveBuilddir, enc *gob.Encoder) error {
 func doMsgRemoveRepo(msg *msgRemoveRepo, enc *gob.Encoder) error {
 	homeDir := fmt.Sprintf("%s/home/%s", dingDataDir, msg.RepoName)
 	repoDir := fmt.Sprintf("%s/build/%s", dingDataDir, msg.RepoName)
+
+	slog.Debug("removing repository", "repo", msg.RepoName, "homedir", homeDir, "repodir", repoDir)
+
 	if path.Clean(homeDir) != homeDir || path.Clean(repoDir) != repoDir {
 		return errBadParams
 	}
@@ -275,6 +292,9 @@ func doMsgRemoveRepo(msg *msgRemoveRepo, enc *gob.Encoder) error {
 
 func doMsgRemoveSharedHome(msg *msgRemoveSharedHome, enc *gob.Encoder) error {
 	homeDir := fmt.Sprintf("%s/home/%s", dingDataDir, msg.RepoName)
+
+	slog.Debug("removing shared homedir", "repo", msg.RepoName, "homedir", homeDir)
+
 	if path.Clean(homeDir) != homeDir {
 		return errBadParams
 	}
@@ -321,10 +341,12 @@ func doMsgBuild(msg *msgBuild, enc *gob.Encoder, unixconn *net.UnixConn) error {
 	cmd.Env = msg.Env
 	cmd.Stdout = outw
 	cmd.Stderr = errw
+	uidgid := ""
 	if config.IsolateBuilds.Enabled {
 		if msg.UID < config.IsolateBuilds.UIDStart || msg.UID >= config.IsolateBuilds.UIDEnd {
 			return errBadParams
 		}
+		uidgid = fmt.Sprintf("%d/%d", msg.UID, config.IsolateBuilds.DingGID)
 		cmd.SysProcAttr = &syscall.SysProcAttr{
 			Credential: &syscall.Credential{
 				Uid:    msg.UID,
@@ -333,6 +355,8 @@ func doMsgBuild(msg *msgBuild, enc *gob.Encoder, unixconn *net.UnixConn) error {
 			},
 		}
 	}
+
+	slog.Debug("running build command", "repo", msg.RepoName, "buildid", msg.BuildID, "builddir", buildDir, "workdir", workDir, "cmd", cmd.Path, "uidgid", uidgid)
 
 	err = cmd.Start()
 	if err != nil {

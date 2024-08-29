@@ -7,7 +7,7 @@ import (
 	"encoding/gob"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -57,6 +57,7 @@ func buildIDCommandCancel(buildID int32) {
 	delete(buildIDCommands.commands, buildID)
 	buildIDCommands.Unlock()
 	if ok {
+		slog.Debug("canceling build command", "buildid", buildID)
 		bc.cancel()
 	}
 }
@@ -140,14 +141,12 @@ func prepareBuild(ctx context.Context, repoName, branch, commit string, lowPrio 
 
 func doBuild(ctx context.Context, repo Repo, build Build, buildDir string) (rerr error) {
 	defer func() {
-		x := recover()
-		if x == nil {
-			return
-		}
-		if err, ok := x.(*sherpa.Error); ok {
-			rerr = fmt.Errorf("%s (%s)", err.Message, err.Code)
-		} else {
-			rerr = fmt.Errorf("%v", x)
+		if x := recover(); x != nil {
+			if err, ok := x.(*sherpa.Error); ok {
+				rerr = fmt.Errorf("%s (%s)", err.Message, err.Code)
+			} else {
+				rerr = fmt.Errorf("%v", x)
+			}
 		}
 	}()
 	_doBuild(ctx, repo, build, buildDir)
@@ -169,6 +168,8 @@ func _doBuild(ctx context.Context, repo Repo, build Build, buildDir string) {
 }
 
 func _doBuild0(ctx context.Context, repo Repo, build Build, buildDir string) {
+	slog.Debug("building", "repo", repo.Name, "buildid", build.ID)
+
 	buildCmd := buildIDCommandRegister(build.ID)
 	defer buildIDCommandCancel(build.ID)
 
@@ -283,6 +284,7 @@ func _doBuild0(ctx context.Context, repo Repo, build Build, buildDir string) {
 			err := tx.Get(&b)
 			_checkf(err, "get build for status update")
 			b.Status = status
+			slog.Debug("updating build status", "buildid", build.ID, "status", status)
 
 			if isStart {
 				now := time.Now()
@@ -445,7 +447,7 @@ func _doBuild0(ctx context.Context, repo Repo, build Build, buildDir string) {
 		b.Results = results
 		err = tx.Update(&b)
 		_checkf(err, "marking build as success in database")
-
+		slog.Debug("updating build status", "buildid", build.ID, "status", b.Status)
 	})
 	events <- EventBuild{repo.Name, b}
 }
@@ -679,9 +681,7 @@ func track(buildID int32, step, buildDir string, cmdstdout, cmdstderr io.ReadClo
 		buf := make([]byte, 1024)
 		have := 0
 		for {
-			//log.Println("calling read")
 			n, err := r.Read(buf[have:])
-			//log.Println("read returned")
 			if n > 0 {
 				have += n
 				end := bytes.LastIndexByte(buf[:have], '\n')
@@ -708,20 +708,17 @@ func track(buildID int32, step, buildDir string, cmdstdout, cmdstderr io.ReadClo
 			}
 		}
 	}
-	//log.Println("new command, reading input")
 	go linereader(cmdstdout, true)
 	go linereader(cmdstderr, false)
 	eofs := 0
 	for {
 		l := <-lines
-		//log.Println("have line", l)
 		if l.text == "" || l.err != nil {
 			if l.err != nil {
-				log.Println("reading output from command:", l.err)
+				slog.Error("reading output from command", "err", l.err)
 			}
 			eofs++
 			if eofs >= 2 {
-				//log.Println("done with command output")
 				break
 			}
 			continue

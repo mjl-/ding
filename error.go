@@ -3,7 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"runtime/debug"
 
 	"github.com/mjl-/bstore"
@@ -35,7 +35,7 @@ func _checkf(err error, format string, args ...any) {
 	}
 	m += err.Error()
 	if config.PrintSherpaErrorStack {
-		log.Println("sherpa serverError:", m)
+		slog.Error("sherpa serverError", "err", m)
 		debug.PrintStack()
 	}
 	if config.ShowSherpaErrors {
@@ -62,10 +62,6 @@ func _checkUserf(err error, format string, args ...any) {
 		m += ": "
 	}
 	m += err.Error()
-	if false && config.PrintSherpaErrorStack {
-		log.Println("sherpa userError:", m)
-		debug.PrintStack()
-	}
 	if config.ShowSherpaErrors {
 		m = msg + ": " + err.Error()
 	} else {

@@ -5,7 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"maps"
 	"os"
 	"path"
@@ -32,7 +32,7 @@ func (Ding) Status(ctx context.Context) {
 	f, err := os.Create(dingDataDir + "/test")
 	if err != nil {
 		msg := fmt.Sprintf("creating file: %v", err)
-		log.Println("status:", msg)
+		slog.Error("status", "err", msg)
 		panic(&sherpa.InternalServerError{Code: "server:error", Message: msg})
 	}
 	f.Close()
@@ -79,7 +79,7 @@ func (Ding) BuildCreate(ctx context.Context, password, repoName, branch, commit 
 	go func() {
 		defer func() {
 			if x := recover(); x != nil {
-				log.Println("build:", x)
+				slog.Error("build", "err", x)
 			}
 		}()
 		_doBuild(context.Background(), repo, build, buildDir)
@@ -116,7 +116,7 @@ func (Ding) BuildsCreateLowPrio(ctx context.Context, password string) {
 		go func() {
 			defer func() {
 				if x := recover(); x != nil {
-					log.Println("lowprio build:", x)
+					slog.Error("lowprio build", "err", x)
 				}
 			}()
 			_doBuild(context.Background(), repo, build, buildDir)
@@ -652,4 +652,52 @@ func _findRelease(releases []goreleases.Release, goversion string) goreleases.Re
 	}
 	_userError("version not found")
 	return goreleases.Release{}
+}
+
+// LogLevel indicates the severity of a log message.
+type LogLevel string
+
+// LogLevels for setting the active log level.
+const (
+	LogDebug LogLevel = "debug"
+	LogInfo  LogLevel = "info"
+	LogWarn  LogLevel = "warn"
+	LogError LogLevel = "error"
+)
+
+// LogLevel returns the current log level.
+func (Ding) LogLevel(ctx context.Context) LogLevel {
+	switch loglevel.Level() {
+	case slog.LevelDebug:
+		return LogDebug
+	case slog.LevelInfo:
+		return LogInfo
+	case slog.LevelWarn:
+		return LogWarn
+	case slog.LevelError:
+		return LogError
+	}
+	return LogLevel("")
+}
+
+// LogLevelSet sets a new log level.
+func (Ding) LogLevelSet(ctx context.Context, level LogLevel) {
+	var nlevel slog.Level
+	switch level {
+	case LogDebug:
+		nlevel = slog.LevelDebug
+	case LogInfo:
+		nlevel = slog.LevelInfo
+	case LogWarn:
+		nlevel = slog.LevelWarn
+	case LogError:
+		nlevel = slog.LevelError
+	default:
+		_userError(fmt.Sprintf("unknown loglevel %q", level))
+	}
+
+	// Propagate to privileged process.
+	err := requestPrivileged(msg{LogLevelSet: &msgLogLevelSet{LogLevel: nlevel}})
+	_checkf(err, "setting log level")
+	loglevel.Set(nlevel)
 }
