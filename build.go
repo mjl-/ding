@@ -309,8 +309,9 @@ func _doBuild0(ctx context.Context, repo Repo, build Build, buildDir string) {
 		"DING_BRANCH=" + build.Branch,
 		"DING_COMMIT=" + build.CommitHash,
 	}
+	var toolchainDir string
 	if config.GoToolchainDir != "" {
-		toolchainDir := config.GoToolchainDir
+		toolchainDir = config.GoToolchainDir
 		if !path.IsAbs(toolchainDir) {
 			workDir, err := os.Getwd()
 			if err != nil {
@@ -423,7 +424,7 @@ func _doBuild0(ctx context.Context, repo Repo, build Build, buildDir string) {
 
 	_updateStatus(StatusBuild, false)
 	req := request{
-		msg{Build: &msgBuild{repo.Name, build.ID, uid, repo.CheckoutPath, env}},
+		msg{Build: &msgBuild{repo.Name, build.ID, uid, repo.CheckoutPath, env, toolchainDir, homeDir, repo.Bubblewrap, repo.BubblewrapNoNet}},
 		nil,
 		make(chan buildResult),
 	}

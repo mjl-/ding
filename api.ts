@@ -66,6 +66,8 @@ export interface Repo {
 	BuildScript: string  // Shell scripts that compiles the software, runs tests, and creates releasable files.
 	UID?: number | null  // If set, fixed uid to use for builds, sharing a home directory where files can be cached, to speed up builds.
 	HomeDiskUsage: number  // Disk usage of shared home directory after last finished build. Only if UID is set.
+	Bubblewrap: boolean  // If true, build is run with bubblewrap (bwrap) to isolate the environment further. Only the system, the build directory, home directory and toolchain directory is available.
+	BubblewrapNoNet: boolean  // If true, along with Bubblewrap, then no network access is possible during the build (though it is during clone).
 	NotifyEmailAddrs?: string[] | null  // If not empty, each address gets notified about build breakage/fixage, overriding the default address configured in the configuration file.
 }
 
@@ -135,7 +137,7 @@ export const types: TypenameMap = {
 	"Step": {"Name":"Step","Docs":"","Fields":[{"Name":"Name","Docs":"","Typewords":["string"]},{"Name":"Output","Docs":"","Typewords":["string"]},{"Name":"Nsec","Docs":"","Typewords":["int64"]}]},
 	"BuildSettings": {"Name":"BuildSettings","Docs":"","Fields":[{"Name":"Run","Docs":"","Typewords":["[]","string"]},{"Name":"Environment","Docs":"","Typewords":["[]","string"]}]},
 	"RepoBuilds": {"Name":"RepoBuilds","Docs":"","Fields":[{"Name":"Repo","Docs":"","Typewords":["Repo"]},{"Name":"Builds","Docs":"","Typewords":["[]","Build"]}]},
-	"Repo": {"Name":"Repo","Docs":"","Fields":[{"Name":"Name","Docs":"","Typewords":["string"]},{"Name":"VCS","Docs":"","Typewords":["VCS"]},{"Name":"Origin","Docs":"","Typewords":["string"]},{"Name":"DefaultBranch","Docs":"","Typewords":["string"]},{"Name":"CheckoutPath","Docs":"","Typewords":["string"]},{"Name":"BuildScript","Docs":"","Typewords":["string"]},{"Name":"UID","Docs":"","Typewords":["nullable","uint32"]},{"Name":"HomeDiskUsage","Docs":"","Typewords":["int64"]},{"Name":"NotifyEmailAddrs","Docs":"","Typewords":["[]","string"]}]},
+	"Repo": {"Name":"Repo","Docs":"","Fields":[{"Name":"Name","Docs":"","Typewords":["string"]},{"Name":"VCS","Docs":"","Typewords":["VCS"]},{"Name":"Origin","Docs":"","Typewords":["string"]},{"Name":"DefaultBranch","Docs":"","Typewords":["string"]},{"Name":"CheckoutPath","Docs":"","Typewords":["string"]},{"Name":"BuildScript","Docs":"","Typewords":["string"]},{"Name":"UID","Docs":"","Typewords":["nullable","uint32"]},{"Name":"HomeDiskUsage","Docs":"","Typewords":["int64"]},{"Name":"Bubblewrap","Docs":"","Typewords":["bool"]},{"Name":"BubblewrapNoNet","Docs":"","Typewords":["bool"]},{"Name":"NotifyEmailAddrs","Docs":"","Typewords":["[]","string"]}]},
 	"BuildStatus": {"Name":"BuildStatus","Docs":"","Values":[{"Name":"StatusNew","Value":"new","Docs":""},{"Name":"StatusClone","Value":"clone","Docs":""},{"Name":"StatusBuild","Value":"build","Docs":""},{"Name":"StatusSuccess","Value":"success","Docs":""},{"Name":"StatusCancelled","Value":"cancelled","Docs":""}]},
 	"VCS": {"Name":"VCS","Docs":"","Values":[{"Name":"VCSGit","Value":"git","Docs":""},{"Name":"VCSMercurial","Value":"mercurial","Docs":""},{"Name":"VCSCommand","Value":"command","Docs":""}]},
 	"LogLevel": {"Name":"LogLevel","Docs":"","Values":[{"Name":"LogDebug","Value":"debug","Docs":""},{"Name":"LogInfo","Value":"info","Docs":""},{"Name":"LogWarn","Value":"warn","Docs":""},{"Name":"LogError","Value":"error","Docs":""}]},

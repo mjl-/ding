@@ -336,7 +336,35 @@ func doMsgBuild(msg *msgBuild, enc *gob.Encoder, unixconn *net.UnixConn) error {
 		return errBadParams
 	}
 
-	cmd := exec.CommandContext(buildCommand.ctx, buildDir+"/scripts/build.sh")
+	argv := []string{}
+	if msg.Bubblewrap {
+		argv = []string{"bwrap"}
+		if msg.BubblewrapNoNet {
+			argv = append(argv, "--unshare-all")
+		} else {
+			argv = append(argv, "--unshare-user-try", "--unshare-ipc", "--unshare-pid", "--unshare-uts", "--unshare-cgroup-try")
+		}
+		argv = append(argv,
+			"--hostname", "ding",
+			"--dev", "/dev",
+			"--tmpfs", "/tmp",
+			"--proc", "/proc",
+			"--ro-bind", "/etc", "/etc",
+			"--ro-bind", "/bin", "/bin",
+			"--ro-bind", "/usr", "/usr",
+			"--ro-bind", "/lib", "/lib",
+			"--ro-bind", "/lib32", "/lib32",
+			"--ro-bind", "/lib64", "/lib64",
+			"--bind", msg.HomeDir, msg.HomeDir,
+			"--bind", buildDir, buildDir,
+		)
+		if msg.ToolchainDir != "" {
+			argv = append(argv, "--bind", msg.ToolchainDir, msg.ToolchainDir)
+		}
+	}
+	argv = append(argv, config.Run...)
+	argv = append(argv, buildDir+"/scripts/build.sh")
+	cmd := exec.CommandContext(buildCommand.ctx, argv[0], argv[1:]...)
 	cmd.Dir = workDir
 	cmd.Env = msg.Env
 	cmd.Stdout = outw
@@ -356,7 +384,7 @@ func doMsgBuild(msg *msgBuild, enc *gob.Encoder, unixconn *net.UnixConn) error {
 		}
 	}
 
-	slog.Debug("running build command", "repo", msg.RepoName, "buildid", msg.BuildID, "builddir", buildDir, "workdir", workDir, "cmd", cmd.Path, "uidgid", uidgid)
+	slog.Debug("running build command", "repo", msg.RepoName, "buildid", msg.BuildID, "builddir", buildDir, "workdir", workDir, "cmd", argv, "uidgid", uidgid)
 
 	err = cmd.Start()
 	if err != nil {

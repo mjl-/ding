@@ -40,6 +40,14 @@ type Repo struct {
 	UID           *uint32 // If set, fixed uid to use for builds, sharing a home directory where files can be cached, to speed up builds.
 	HomeDiskUsage int64   // Disk usage of shared home directory after last finished build. Only if UID is set.
 
+	// If true, build is run with bubblewrap (bwrap) to isolate the environment
+	// further. Only the system, the build directory, home directory and toolchain
+	// directory is available.
+	Bubblewrap bool
+	// If true, along with Bubblewrap, then no network access is possible during the
+	// build (though it is during clone).
+	BubblewrapNoNet bool
+
 	// If not empty, each address gets notified about build
 	// breakage/fixage, overriding the default address configured in the
 	// configuration file.

@@ -155,10 +155,9 @@ func (Ding) BuildCancel(ctx context.Context, password, repoName string, buildID 
 	}()
 }
 
-
 // BuildSettings describes the environment a build script is run in.
 type BuildSettings struct {
-	Run []string // The command to run the build script is prefixed with these commands, e.g. /usr/bin/nice.
+	Run         []string // The command to run the build script is prefixed with these commands, e.g. /usr/bin/nice.
 	Environment []string // Additional environment variables available during builds, of the form key=value.
 }
 
@@ -390,6 +389,8 @@ func (Ding) RepoSave(ctx context.Context, password string, repo Repo) (r Repo) {
 		r.UID = uid
 		r.BuildScript = repo.BuildScript
 		r.NotifyEmailAddrs = repo.NotifyEmailAddrs
+		r.Bubblewrap = repo.Bubblewrap
+		r.BubblewrapNoNet = repo.BubblewrapNoNet
 		err := tx.Update(&r)
 		_checkf(err, "updating repo in database")
 		r = _repo(tx, repo.Name)

@@ -1069,6 +1069,20 @@
 					]
 				},
 				{
+					"Name": "Bubblewrap",
+					"Docs": "If true, build is run with bubblewrap (bwrap) to isolate the environment further. Only the system, the build directory, home directory and toolchain directory is available.",
+					"Typewords": [
+						"bool"
+					]
+				},
+				{
+					"Name": "BubblewrapNoNet",
+					"Docs": "If true, along with Bubblewrap, then no network access is possible during the build (though it is during clone).",
+					"Typewords": [
+						"bool"
+					]
+				},
+				{
 					"Name": "NotifyEmailAddrs",
 					"Docs": "If not empty, each address gets notified about build breakage/fixage, overriding the default address configured in the configuration file.",
 					"Typewords": [

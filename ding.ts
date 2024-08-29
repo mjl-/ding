@@ -349,6 +349,8 @@ const popupRepoAdd = async () => {
 	let name: HTMLInputElement
 	let defaultBranch: HTMLInputElement
 	let reuseUID: HTMLInputElement
+	let bubblewrap: HTMLInputElement
+	let bubblewrapNoNet: HTMLInputElement
 	let fieldset: HTMLFieldSetElement
 
 	let branchChanged = false
@@ -398,6 +400,8 @@ const popupRepoAdd = async () => {
 					DefaultBranch: defaultBranch.value,
 					UID: reuseUID.checked ? 1 : null,
 					CheckoutPath: name.value,
+					Bubblewrap: bubblewrap.checked,
+					BubblewrapNoNet: bubblewrapNoNet.checked,
 					BuildScript: '',
 					HomeDiskUsage: 0,
 				}
@@ -434,6 +438,18 @@ const popupRepoAdd = async () => {
 						reuseUID=dom.input(attr.type('checkbox'), attr.checked('')),
 						' Reuse $HOME and UID for builds for this repo',
 						attr.title('By reusing $HOME and running builds for this repository under the same UID, build caches can be used. This typically leads to faster builds but reduces isolation of builds.'),
+					),
+					dom.div(),
+					dom.label(
+						bubblewrap=dom.input(attr.type('checkbox'), attr.checked('')),
+						' Run build script in bubblewrap, with limited system access',
+						attr.title('Only available on Linux, with bubblewrap (bwrap) installed. Commands are run in a new mount namespace with access to system directories like /bin /lib /usr, and to the ding build, home and toolchain directories.'),
+					),
+					dom.div(),
+					dom.label(
+						bubblewrapNoNet=dom.input(attr.type('checkbox'), attr.checked('')),
+						' Prevent network access from build script. Only active if bubblewrap is active.',
+						attr.title('Hide network interfaces from the build script. Only a loopback device is available.'),
 					),
 				),
 				dom.br(),
@@ -916,6 +932,8 @@ const pageRepo = async (repoName: string): Promise<Page> => {
 	let defaultBranch: HTMLInputElement
 	let checkoutPath: HTMLInputElement
 	let reuseUID: HTMLInputElement
+	let bubblewrap: HTMLInputElement
+	let bubblewrapNoNet: HTMLInputElement
 	let notifyEmailAddrs: HTMLInputElement
 	let buildScript: HTMLTextAreaElement
 	let fieldset: HTMLFieldSetElement
@@ -1016,6 +1034,8 @@ const pageRepo = async (repoName: string): Promise<Page> => {
 								DefaultBranch: defaultBranch.value,
 								CheckoutPath: checkoutPath.value,
 								UID: !reuseUID.checked ? null : (repo.UID || 1),
+								Bubblewrap: bubblewrap.checked,
+								BubblewrapNoNet: bubblewrapNoNet.checked,
 								NotifyEmailAddrs: notifyEmailAddrs.value ? notifyEmailAddrs.value.split(',').map(s => s.trim()) : [],
 								BuildScript: buildScript.value,
 								HomeDiskUsage: 0,
@@ -1047,6 +1067,18 @@ const pageRepo = async (repoName: string): Promise<Page> => {
 									reuseUID=dom.input(attr.type('checkbox'), repo.UID !== null ? attr.checked('') : []),
 									' Reuse $HOME and UID for builds for this repo',
 									attr.title('By reusing $HOME and running builds for this repository under the same UID, build caches can be used. This typically leads to faster builds but reduces isolation of builds.'),
+								),
+								dom.div(),
+								dom.label(
+									bubblewrap=dom.input(attr.type('checkbox'), repo.Bubblewrap ? attr.checked('') : []),
+									' Run build script in bubblewrap, with limited system access',
+									attr.title('Only available on Linux, with bubblewrap (bwrap) installed. Commands are run in a new mount namespace with access to system directories like /bin /lib /usr, and to the ding build, home and toolchain directories.'),
+								),
+								dom.div(),
+								dom.label(
+									bubblewrapNoNet=dom.input(attr.type('checkbox'), repo.BubblewrapNoNet ? attr.checked('') : []),
+									' Prevent network access from build script. Only active if bubblewrap is active.',
+									attr.title('Hide network interfaces from the build script. Only a loopback device is available.'),
 								),
 							),
 							dom.div(

@@ -9,11 +9,15 @@ import (
 
 // Start a build, running build.sh.
 type msgBuild struct {
-	RepoName     string
-	BuildID      int32
-	UID          uint32 // UID to run this build under. Ignored if IsolateBuilds is entirely off. Otherwise it is set to either a unique UID, or a fixed UID per repo, depending on configuration.
-	CheckoutPath string
-	Env          []string
+	RepoName        string
+	BuildID         int32
+	UID             uint32 // UID to run this build under. Ignored if IsolateBuilds is entirely off. Otherwise it is set to either a unique UID, or a fixed UID per repo, depending on configuration.
+	CheckoutPath    string
+	Env             []string
+	ToolchainDir    string
+	HomeDir         string
+	Bubblewrap      bool
+	BubblewrapNoNet bool
 }
 
 // Chown the home, checkout and download dir of a build.
