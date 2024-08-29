@@ -1027,6 +1027,7 @@ const authed = async (fn, elem) => {
 						resolve();
 						close();
 					}, dom.fieldset(dom.div(dom.label(dom.div('Password'), passwordElem = dom.input(attr.type('password'), attr.required('')))), dom.br(), dom.div(dom.submitbutton('Login')))));
+					passwordElem.focus();
 				});
 				await loginPromise;
 				loginPromise = undefined;

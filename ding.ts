@@ -185,6 +185,7 @@ const authed = async <T>(fn: () => Promise<T>, elem?: {disabled: boolean}): Prom
 							),
 						),
 					)
+					passwordElem.focus()
 				})
 				await loginPromise
 				loginPromise = undefined
