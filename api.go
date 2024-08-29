@@ -147,7 +147,12 @@ func (Ding) BuildCancel(ctx context.Context, password, repoName string, buildID 
 
 	// And cancel the actual build command controlled by the serve process.
 	cancelMsg := msg{CancelCommand: &msgCancelCommand{buildID}}
-	go requestPrivileged(cancelMsg)
+	go func() {
+		err := requestPrivileged(cancelMsg)
+		if err != nil {
+			slog.Error("requesting build cancel", "err", err)
+		}
+	}()
 }
 
 // ReleaseCreate release a build.

@@ -161,6 +161,9 @@ func servehttp(args []string) {
 		go func() {
 			<-job.rc
 			defer func() {
+				if x := recover(); x != nil {
+					slog.Error("build panic for build at startup", "err", x)
+				}
 				finishedJobs <- job.repoName
 			}()
 
