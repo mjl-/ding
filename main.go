@@ -47,7 +47,7 @@ var config struct {
 	Password              string   `sconf-doc:"For login to the web interface. Ding does not have users."`
 	DataDir               string   `sconf-doc:"Directory where all data is stored for builds, releases, home directories. In case of isolate builds, this must have a umask 027 and owned by the ding uid/gid. Can be an absolute path, or a path relative to the ding working directory."`
 	GoToolchainDir        string   `sconf:"optional" sconf-doc:"Directory containing Go toolchains, for easy installation of new Go versions. Go toolchains are assumed to be in directories named after their version, e.g. go1.13.8. All names starting with 'go' are assumed to be Go toolchains. Active versions are marked by a symlink named go or go-prev to one of the versioned directories. Ding needs write access to this directory to download new toolchains. If configured, this directory is available during a build as DING_TOOLCHAINDIR."`
-	Environment           []string `sconf-doc:"List of environment variables in form KEY=VALUE."`
+	Environment           []string `sconf:"optional" sconf-doc:"List of environment variables in form KEY=VALUE."`
 	Notify                struct {
 		Name  string `sconf-doc:"Name to use along Email address."`
 		Email string `sconf:"optional" sconf-doc:"Address to send build failure notifications to, if Mail.Enabled is set."`
