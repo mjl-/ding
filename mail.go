@@ -4,6 +4,17 @@ import (
 	"fmt"
 )
 
+func repoRecipients(r Repo) []mailAddr {
+	if len(r.NotifyEmailAddrs) == 0 {
+		return []mailAddr{{Name: config.Notify.Name, Address: config.Notify.Email}}
+	}
+	rcpts := make([]mailAddr, len(r.NotifyEmailAddrs))
+	for i, addr := range r.NotifyEmailAddrs {
+		rcpts[i] = mailAddr{Address: addr}
+	}
+	return rcpts
+}
+
 func _sendMailFailing(repo Repo, build Build, errmsg string) {
 	link := fmt.Sprintf("%s/#/repo/%s/build/%d/", config.BaseURL, repo.Name, build.ID)
 	subject := fmt.Sprintf("ding: failure: repo %s branch %s failing", repo.Name, build.Branch)
@@ -24,7 +35,7 @@ Cheers,
 Ding
 `, build.Branch, repo.Name, link, build.LastLine, errmsg)
 
-	_sendmail(config.Notify.Name, config.Notify.Email, subject, textMsg)
+	_sendmail(repoRecipients(repo), subject, textMsg)
 }
 
 func _sendMailFixed(repo Repo, build Build) {
@@ -42,5 +53,5 @@ Cheers,
 Ding
 `, build.Branch, repo.Name, link)
 
-	_sendmail(config.Notify.Name, config.Notify.Email, subject, textMsg)
+	_sendmail(repoRecipients(repo), subject, textMsg)
 }

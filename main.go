@@ -51,7 +51,7 @@ var config struct {
 	Notify                struct {
 		Name  string `sconf-doc:"Name to use along Email address."`
 		Email string `sconf:"optional" sconf-doc:"Address to send build failure notifications to, if Mail.Enabled is set."`
-	} `sconf:"optional"`
+	} `sconf:"optional" sconf-doc:"Default target to notify, unless overridden per repository."`
 	BaseURL                string   `sconf-doc:"URL to point to from notifications about failed builds."`
 	GithubWebhookSecret    string   `sconf:"optional" sconf-doc:"For github webhook push events, to create a build; configure the same secret in the github repository settings."`
 	GiteaWebhookSecret     string   `sconf:"optional" sconf-doc:"For gitea webhooks for builds (like github). With 'Authorization: Bearer <secret>' header for authorization."`

@@ -1025,6 +1025,14 @@
 					"Typewords": [
 						"int64"
 					]
+				},
+				{
+					"Name": "NotifyEmailAddrs",
+					"Docs": "If not empty, each address gets notified about build breakage/fixage, overriding the default address configured in the configuration file.",
+					"Typewords": [
+						"[]",
+						"string"
+					]
 				}
 			]
 		}

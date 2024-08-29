@@ -49,7 +49,19 @@ func dialSMTPClient() smtpClient {
 	return c
 }
 
-func _sendmail(toName, toEmail, subject, textMsg string) {
+type mailAddr struct {
+	Name    string
+	Address string
+}
+
+func (a mailAddr) MessageString() string {
+	if a.Name != "" {
+		return fmt.Sprintf("%s <%s>", a.Name, a.Address)
+	}
+	return fmt.Sprintf("<%s>", a.Address)
+}
+
+func _sendmail(to []mailAddr, subject, textMsg string) {
 	c := newSMTPClient()
 	defer func() {
 		if c != nil {
@@ -69,7 +81,9 @@ func _sendmail(toName, toEmail, subject, textMsg string) {
 	}
 
 	_checkf(c.Mail(config.Mail.FromEmail), "setting from address")
-	_checkf(c.Rcpt(toEmail), "setting recipient address")
+	for _, rcpt := range to {
+		_checkf(c.Rcpt(rcpt.Address), "setting recipient address")
+	}
 
 	data, err := c.Data()
 	_checkf(err, "preparing to write mail")
@@ -78,12 +92,20 @@ func _sendmail(toName, toEmail, subject, textMsg string) {
 	if config.Mail.ReplyToEmail != "" {
 		msg = fmt.Sprintf("Reply-To: %s <%s>\n", config.Mail.ReplyToName, config.Mail.ReplyToEmail)
 	}
+	// todo: should wrap long line, encode name/address.
+	var tohdr string
+	for i, rcpt := range to {
+		if i > 0 {
+			tohdr += ", "
+		}
+		tohdr += rcpt.MessageString()
+	}
 	msg += fmt.Sprintf(`From: %s <%s>
-To: %s <%s>
+To: %s
 Subject: %s
 
 %s
-`, config.Mail.FromName, config.Mail.FromEmail, toName, toEmail, subject, textMsg)
+`, config.Mail.FromName, config.Mail.FromEmail, tohdr, subject, textMsg)
 	msg = strings.ReplaceAll(msg, "\n", "\r\n")
 
 	_, err = fmt.Fprint(data, msg)

@@ -914,6 +914,7 @@ const pageRepo = async (repoName: string): Promise<Page> => {
 	let defaultBranch: HTMLInputElement
 	let checkoutPath: HTMLInputElement
 	let reuseUID: HTMLInputElement
+	let notifyEmailAddrs: HTMLInputElement
 	let buildScript: HTMLTextAreaElement
 	let fieldset: HTMLFieldSetElement
 
@@ -1013,6 +1014,7 @@ const pageRepo = async (repoName: string): Promise<Page> => {
 								DefaultBranch: defaultBranch.value,
 								CheckoutPath: checkoutPath.value,
 								UID: !reuseUID.checked ? null : (repo.UID || 1),
+								NotifyEmailAddrs: notifyEmailAddrs.value ? notifyEmailAddrs.value.split(',').map(s => s.trim()) : [],
 								BuildScript: buildScript.value,
 								HomeDiskUsage: 0,
 							}
@@ -1036,6 +1038,8 @@ const pageRepo = async (repoName: string): Promise<Page> => {
 								defaultBranch=dom.input(attr.value(repo.DefaultBranch), attr.placeholder('main, master, default')),
 								dom.div('Checkout path', style({whiteSpace: 'nowrap'})),
 								checkoutPath=dom.input(attr.value(repo.CheckoutPath), attr.required(''), attr.title('Name of the directory to checkout the repository. Go builds may use this name for the binary it creates.')),
+								dom.div('Notify email addresses', style({whiteSpace: 'nowrap'})),
+								notifyEmailAddrs=dom.input(attr.value((repo.NotifyEmailAddrs || []).join(', ')), attr.title('Comma-separated list of email address that will receive notifications when a build breaks or is fixed. If empty, the email address configured in the configuration file receives a notification, if any.')),
 								dom.div(),
 								dom.label(
 									reuseUID=dom.input(attr.type('checkbox'), repo.UID !== null ? attr.checked('') : []),

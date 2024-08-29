@@ -39,6 +39,11 @@ type Repo struct {
 	BuildScript   string  // Shell scripts that compiles the software, runs tests, and creates releasable files.
 	UID           *uint32 // If set, fixed uid to use for builds, sharing a home directory where files can be cached, to speed up builds.
 	HomeDiskUsage int64   // Disk usage of shared home directory after last finished build. Only if UID is set.
+
+	// If not empty, each address gets notified about build
+	// breakage/fixage, overriding the default address configured in the
+	// configuration file.
+	NotifyEmailAddrs []string
 }
 
 // Build is an attempt at building a repository.

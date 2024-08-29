@@ -376,6 +376,7 @@ func (Ding) RepoSave(ctx context.Context, password string, repo Repo) (r Repo) {
 		r.CheckoutPath = repo.CheckoutPath
 		r.UID = uid
 		r.BuildScript = repo.BuildScript
+		r.NotifyEmailAddrs = repo.NotifyEmailAddrs
 		err := tx.Update(&r)
 		_checkf(err, "updating repo in database")
 		r = _repo(tx, repo.Name)
