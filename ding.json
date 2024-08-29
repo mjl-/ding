@@ -92,7 +92,7 @@
 		},
 		{
 			"Name": "BuildsCreateLowPrio",
-			"Docs": "BuildCreateLowPrio creates low priority builds for each repository, for the default branch.",
+			"Docs": "BuildsCreateLowPrio creates low priority builds for each repository, for the default branch.",
 			"Params": [
 				{
 					"Name": "password",
@@ -450,7 +450,7 @@
 		},
 		{
 			"Name": "GoToolchainsListReleased",
-			"Docs": "GoToolchainListReleased returns all known released Go toolchains available at\ngolang.org/dl/, eg \"go1.13.8\", \"go1.14\".",
+			"Docs": "GoToolchainsListReleased returns all known released Go toolchains available at\ngolang.org/dl/, eg \"go1.13.8\", \"go1.14\".",
 			"Params": [
 				{
 					"Name": "password",

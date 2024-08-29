@@ -345,7 +345,7 @@ var api;
 			const params = [password, repoName, branch, commit];
 			return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params);
 		}
-		// BuildCreateLowPrio creates low priority builds for each repository, for the default branch.
+		// BuildsCreateLowPrio creates low priority builds for each repository, for the default branch.
 		async BuildsCreateLowPrio(password) {
 			const fn = "BuildsCreateLowPrio";
 			const paramTypes = [["string"]];
@@ -474,7 +474,7 @@ var api;
 			const params = [password];
 			return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params);
 		}
-		// GoToolchainListReleased returns all known released Go toolchains available at
+		// GoToolchainsListReleased returns all known released Go toolchains available at
 		// golang.org/dl/, eg "go1.13.8", "go1.14".
 		async GoToolchainsListReleased(password) {
 			const fn = "GoToolchainsListReleased";

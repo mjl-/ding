@@ -218,7 +218,7 @@ export class Client {
 		return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params) as Build
 	}
 
-	// BuildCreateLowPrio creates low priority builds for each repository, for the default branch.
+	// BuildsCreateLowPrio creates low priority builds for each repository, for the default branch.
 	async BuildsCreateLowPrio(password: string): Promise<void> {
 		const fn: string = "BuildsCreateLowPrio"
 		const paramTypes: string[][] = [["string"]]
@@ -362,7 +362,7 @@ export class Client {
 		return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params) as [string[] | null, { [key: string]: string }]
 	}
 
-	// GoToolchainListReleased returns all known released Go toolchains available at
+	// GoToolchainsListReleased returns all known released Go toolchains available at
 	// golang.org/dl/, eg "go1.13.8", "go1.14".
 	async GoToolchainsListReleased(password: string): Promise<string[] | null> {
 		const fn: string = "GoToolchainsListReleased"

@@ -91,7 +91,7 @@ func (Ding) CreateBuild(ctx context.Context, password, repoName, branch, commit 
 	return Ding{}.BuildCreate(ctx, password, repoName, branch, commit, false)
 }
 
-// BuildCreateLowPrio creates low priority builds for each repository, for the default branch.
+// BuildsCreateLowPrio creates low priority builds for each repository, for the default branch.
 func (Ding) BuildsCreateLowPrio(ctx context.Context, password string) {
 	_checkPassword(password)
 
@@ -543,7 +543,7 @@ var releasedCache struct {
 	released []string
 }
 
-// GoToolchainListReleased returns all known released Go toolchains available at
+// GoToolchainsListReleased returns all known released Go toolchains available at
 // golang.org/dl/, eg "go1.13.8", "go1.14".
 func (Ding) GoToolchainsListReleased(ctx context.Context, password string) (released []string) {
 	_checkPassword(password)
