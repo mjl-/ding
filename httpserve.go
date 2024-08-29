@@ -101,17 +101,19 @@ func servehttp(args []string) {
 	handler, err := sherpa.NewHandler("/ding/", version, Ding{}, &doc, opts)
 	xcheckf(err, "making sherpa handler")
 
-	http.Handle("/info", httpinfo.NewHandler(httpinfo.CodeVersion{Full: version}, nil))
-	http.Handle("/metrics", promhttp.Handler())
+	http.Handle("GET /info", httpinfo.NewHandler(httpinfo.CodeVersion{Full: version}, nil))
+	http.Handle("GET /metrics", promhttp.Handler())
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", serveAsset)
-	mux.Handle("/ding/", handler)
-	mux.HandleFunc("/release/", serveRelease)
-	mux.HandleFunc("/result/", serveResult)
-	mux.HandleFunc("/download/", serveDownload) // Old
-	mux.HandleFunc("/dl/", serveDownload)       // New
-	mux.HandleFunc("/events", serveEvents)
+	mux.HandleFunc("GET /", serveAsset)
+	mux.Handle("GET /ding/", handler)
+	mux.Handle("POST /ding/", handler)
+	mux.Handle("OPTIONS /ding/", handler)
+	mux.HandleFunc("GET /release/", serveRelease)
+	mux.HandleFunc("GET /result/", serveResult)
+	mux.HandleFunc("GET /download/", serveDownload) // Old
+	mux.HandleFunc("GET /dl/", serveDownload)       // New
+	mux.HandleFunc("GET /events", serveEvents)
 
 	// Admin is serving the default mux.
 	http.HandleFunc("GET /ding.db", func(w http.ResponseWriter, r *http.Request) {
@@ -179,9 +181,9 @@ func servehttp(args []string) {
 	log.Print(msg)
 	if *listenWebhookAddress != "" {
 		webhookMux := http.NewServeMux()
-		webhookMux.HandleFunc("/github/", githubHookHandler)
-		webhookMux.HandleFunc("/gitea/", giteaHookHandler)
-		webhookMux.HandleFunc("/bitbucket/", bitbucketHookHandler)
+		webhookMux.HandleFunc("POST /github/", githubHookHandler)
+		webhookMux.HandleFunc("POST /gitea/", giteaHookHandler)
+		webhookMux.HandleFunc("POST /bitbucket/", bitbucketHookHandler)
 		go func() {
 			log.Fatal(http.ListenAndServe(*listenWebhookAddress, webhookMux))
 		}()
@@ -381,10 +383,6 @@ func hasBadElems(elems []string) bool {
 }
 
 func serveRelease(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
-		http.Error(w, "bad method", http.StatusMethodNotAllowed)
-		return
-	}
 	t := strings.Split(r.URL.Path[1:], "/")
 	if len(t) != 4 || hasBadElems(t[1:]) {
 		http.NotFound(w, r)
@@ -434,10 +432,6 @@ func acceptsGzip(s string) bool {
 }
 
 func serveResult(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
-		http.Error(w, "bad method", http.StatusMethodNotAllowed)
-		return
-	}
 	t := strings.Split(r.URL.Path[1:], "/")
 	if len(t) != 4 || hasBadElems(t[1:]) {
 		http.NotFound(w, r)

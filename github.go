@@ -27,10 +27,6 @@ func githubHookHandler(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	if r.Method != "POST" {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
 
 	if !strings.HasPrefix(r.URL.Path, "/github/") {
 		http.NotFound(w, r)

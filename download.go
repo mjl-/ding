@@ -18,11 +18,6 @@ import (
 )
 
 func serveDownload(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
-		http.Error(w, "bad method", http.StatusMethodNotAllowed)
-		return
-	}
-
 	// /dl/{release,result,file}/<reponame>/<buildid>/
 	// For release & result, <name>.{zip.tgz}
 	// For file, any path is allowed.

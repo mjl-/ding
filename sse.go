@@ -38,11 +38,6 @@ func serveEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if r.Method != "GET" {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
 	password := r.FormValue("password")
 	if password != config.Password {
 		http.Error(w, "bad auth", http.StatusUnauthorized)
