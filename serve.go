@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"syscall"
 
@@ -193,7 +194,7 @@ func doMsgChown(msg *msgChown, enc *gob.Encoder) error {
 	if msg.SharedHome {
 		homeDir = fmt.Sprintf("%s/home/%s", dingDataDir, msg.RepoName)
 	}
-	if filepath.Clean(buildDir) != buildDir || filepath.Clean(homeDir) != homeDir {
+	if path.Clean(buildDir) != buildDir || path.Clean(homeDir) != homeDir {
 		return errBadParams
 	}
 
@@ -245,7 +246,7 @@ func ensureWritable(dir string) {
 
 func doMsgRemoveBuilddir(msg *msgRemoveBuilddir, enc *gob.Encoder) error {
 	p := fmt.Sprintf("%s/build/%s/%d", dingDataDir, msg.RepoName, msg.BuildID)
-	if filepath.Clean(p) != p {
+	if path.Clean(p) != p {
 		return errBadParams
 	}
 	ensureWritable(p)
@@ -255,7 +256,7 @@ func doMsgRemoveBuilddir(msg *msgRemoveBuilddir, enc *gob.Encoder) error {
 func doMsgRemoveRepo(msg *msgRemoveRepo, enc *gob.Encoder) error {
 	homeDir := fmt.Sprintf("%s/home/%s", dingDataDir, msg.RepoName)
 	repoDir := fmt.Sprintf("%s/build/%s", dingDataDir, msg.RepoName)
-	if filepath.Clean(homeDir) != homeDir || filepath.Clean(repoDir) != repoDir {
+	if path.Clean(homeDir) != homeDir || path.Clean(repoDir) != repoDir {
 		return errBadParams
 	}
 
@@ -274,7 +275,7 @@ func doMsgRemoveRepo(msg *msgRemoveRepo, enc *gob.Encoder) error {
 
 func doMsgRemoveSharedHome(msg *msgRemoveSharedHome, enc *gob.Encoder) error {
 	homeDir := fmt.Sprintf("%s/home/%s", dingDataDir, msg.RepoName)
-	if filepath.Clean(homeDir) != homeDir {
+	if path.Clean(homeDir) != homeDir {
 		return errBadParams
 	}
 	ensureWritable(homeDir)
@@ -311,7 +312,7 @@ func doMsgBuild(msg *msgBuild, enc *gob.Encoder, unixconn *net.UnixConn) error {
 
 	buildDir := fmt.Sprintf("%s/build/%s/%d", dingDataDir, msg.RepoName, msg.BuildID)
 	workDir := fmt.Sprintf("%s/checkout/%s", buildDir, msg.CheckoutPath)
-	if filepath.Clean(buildDir) != buildDir || filepath.Clean(workDir) != workDir {
+	if path.Clean(buildDir) != buildDir || path.Clean(workDir) != workDir {
 		return errBadParams
 	}
 

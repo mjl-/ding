@@ -13,7 +13,7 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"path/filepath"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -78,7 +78,7 @@ func servehttp(args []string) {
 	fdpass := os.NewFile(4, "fdpass")
 	unprivConn := xunixconn(fdpass)
 
-	dbpath := filepath.Join(config.DataDir, "ding.db")
+	dbpath := path.Join(config.DataDir, "ding.db")
 	dbopts := bstore.Options{Timeout: 5 * time.Second}
 	database, err = bstore.Open(context.Background(), dbpath, &dbopts, Repo{}, Build{})
 	xcheckf(err, "open database")

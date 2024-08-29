@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"path"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -78,7 +77,7 @@ func serveDownload(w http.ResponseWriter, r *http.Request) {
 	for _, res := range b.Results {
 		var p string
 		if what == "release" {
-			p = fmt.Sprintf("%s/release/%s/%d/%s", dingDataDir, repoName, buildID, filepath.Base(res.Filename))
+			p = fmt.Sprintf("%s/release/%s/%d/%s", dingDataDir, repoName, buildID, path.Base(res.Filename))
 		} else {
 			p = fmt.Sprintf("%s/build/%s/%d/checkout/%s/%s", dingDataDir, repoName, buildID, repo.CheckoutPath, res.Filename)
 		}
