@@ -201,7 +201,7 @@ const authed = async <T>(fn: () => Promise<T>, elem?: {disabled: boolean}): Prom
 const formatCoverage = (repo: api.Repo, b: api.Build) => {
 	const anchor = b.Coverage ? (Math.round(b.Coverage)+'%') : 'report'
 	if (b.CoverageReportFile && !b.BuilddirRemoved) {
-		return link('dl/file/'+encodeURIComponent(repo.Name)+'/'+b.ID + '/' + b.CoverageReportFile, anchor)
+		return dom.a(attr.href('dl/file/'+encodeURIComponent(repo.Name)+'/'+b.ID + '/' + b.CoverageReportFile), attr.download(''), anchor)
 	}
 	return anchor === 'report' ? '' : anchor
 }
@@ -489,8 +489,8 @@ const pageHome = async (): Promise<Page> => {
 		dom._kids(pageElem,
 			dom.div(
 				style({marginBottom: '1ex'}),
-				dom.a(attr.href('#gotoolchains'), 'Go Toolchains'), ' ',
-				dom.a(attr.href('#settings'), 'Settings'), ' ',
+				link('#gotoolchains', 'Go Toolchains'), ' ',
+				link('#settings', 'Settings'), ' ',
 			),
 			dom.div(
 				style({marginBottom: '1ex', display: 'flex', justifyContent: 'space-between'}),
@@ -540,14 +540,14 @@ const pageHome = async (): Promise<Page> => {
 					rbl.map(rb => {
 						if ((rb.Builds || []).length === 0) {
 							return dom.tr(
-								dom.td(dom.a(rb.Repo.Name, attr.href('#repo/'+encodeURIComponent(rb.Repo.Name))))
+								dom.td(link('#repo/'+encodeURIComponent(rb.Repo.Name), rb.Repo.Name))
 							)
 						}
 						return (rb.Builds || []).map((b, i) =>
 							dom.tr(
-								i === 0 ? dom.td(dom.a(rb.Repo.Name, attr.href('#repo/'+encodeURIComponent(rb.Repo.Name))), attr.rowspan(''+(rb.Builds || []).length)) : [],
+								i === 0 ? dom.td(link('#repo/'+encodeURIComponent(rb.Repo.Name), rb.Repo.Name), attr.rowspan(''+(rb.Builds || []).length)) : [],
 								dom.td(b.Branch),
-								dom.td(dom.a(''+b.ID, attr.href('#repo/'+encodeURIComponent(rb.Repo.Name)+'/build/'+b.ID))),
+								dom.td(link('#repo/'+encodeURIComponent(rb.Repo.Name)+'/build/'+b.ID, ''+b.ID)),
 								dom.td(buildStatus(b)),
 								dom.td(b.Start ? atexit.age(b.Start, b.Finish || undefined) : ''),
 								dom.td(b.Version),
@@ -940,7 +940,7 @@ const pageRepo = async (repoName: string): Promise<Page> => {
 					builds.length === 0 ? dom.tr(dom.td(attr.colspan('10'), 'No builds', style({textAlign: 'left'}))) : [],
 					builds.map(b =>
 						dom.tr(
-							dom.td(dom.a(''+b.ID, attr.href('#repo/'+encodeURIComponent(repo.Name)+'/build/'+b.ID))),
+							dom.td(link('#repo/'+encodeURIComponent(repo.Name)+'/build/'+b.ID, ''+b.ID)),
 							dom.td(b.Branch),
 							dom.td(buildStatus(b)),
 							dom.td(b.Start ? atexit.age(b.Start, b.Finish || undefined) : ''),
@@ -1321,8 +1321,8 @@ const pageBuild = async (repoName: string, buildID: number): Promise<Page> => {
 							style({display: 'flex', gap: '1em'}),
 							dom.h1('Results'),
 							b.Status === api.BuildStatus.StatusSuccess ? dom.div(
-								link('dl/' + (b.Released ? 'release' : 'result') + '/'+encodeURIComponent(repo.Name) + '/' + b.ID + '/' + encodeURIComponent(repo.Name) + '-' + b.Version + '.zip', 'zip'),' ',
-								link('dl/' + (b.Released ? 'release' : 'result') + '/'+encodeURIComponent(repo.Name) + '/' + b.ID + '/' + encodeURIComponent(repo.Name) + '-' + b.Version + '.tgz', 'tgz'),
+								dom.a(attr.href('dl/' + (b.Released ? 'release' : 'result') + '/'+encodeURIComponent(repo.Name) + '/' + b.ID + '/' + encodeURIComponent(repo.Name) + '-' + b.Version + '.zip'), attr.download(''), 'zip'),' ',
+								dom.a(attr.href('dl/' + (b.Released ? 'release' : 'result') + '/'+encodeURIComponent(repo.Name) + '/' + b.ID + '/' + encodeURIComponent(repo.Name) + '-' + b.Version + '.tgz'), attr.download(''), 'tgz'),
 							) : [],
 						),
 						dom.table(
@@ -1339,7 +1339,7 @@ const pageBuild = async (repoName: string, buildID: number): Promise<Page> => {
 										dom.td(rel.Os),
 										dom.td(rel.Arch),
 										dom.td(rel.Toolchain),
-										dom.td(link((b.Released ? 'release/' : 'result/') + encodeURIComponent(repo.Name) + '/' + b.ID + '/' + (b.Released ? basename(rel.Filename) : rel.Filename), rel.Filename)),
+										dom.td(dom.a(attr.href((b.Released ? 'release/' : 'result/') + encodeURIComponent(repo.Name) + '/' + b.ID + '/' + (b.Released ? basename(rel.Filename) : rel.Filename)), attr.download(''), rel.Filename)),
 										dom.td(formatSize(rel.Filesize)),
 									)
 								),
