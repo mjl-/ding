@@ -102,6 +102,7 @@ func servehttp(args []string) {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /", serveAsset)
+	mux.HandleFunc("GET /licenses", serveLicenses)
 	mux.Handle("GET /ding/", handler)
 	mux.Handle("POST /ding/", handler)
 	mux.Handle("OPTIONS /ding/", handler)
@@ -318,6 +319,11 @@ func serveAsset(w http.ResponseWriter, r *http.Request) {
 	path := path.Join("web", r.URL.Path[1:])
 	w.Header().Set("Cache-Control", "no-cache, max-age=0")
 	http.ServeFileFS(w, r, fsys, path)
+}
+
+func serveLicenses(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	printLicenses(w)
 }
 
 func hasBadElems(elems []string) bool {

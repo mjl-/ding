@@ -167,7 +167,7 @@ func main() {
 	case "version":
 		fmt.Printf("%s\n", version)
 	case "license":
-		printLicenses()
+		printLicenses(os.Stdout)
 	default:
 		flag.Usage()
 	}
@@ -182,24 +182,24 @@ func printFile(name string) {
 	xcheckf(err, "close")
 }
 
-func printLicenses() {
+func printLicenses(dst io.Writer) {
 	copyFile := func(p string) {
 		f, err := fsys.Open(p)
 		xcheckf(err, "open license file")
-		_, err = io.Copy(os.Stdout, f)
+		_, err = io.Copy(dst, f)
 		xcheckf(err, "copy license file")
 		err = f.Close()
 		xcheckf(err, "close license file")
 	}
 
-	fmt.Printf("# github.com/mjl-/ding/LICENSE\n\n")
+	fmt.Fprintf(dst, "# github.com/mjl-/ding/LICENSE\n\n")
 	copyFile("LICENSE")
 
 	err := fs.WalkDir(fsys, "licenses", func(path string, d fs.DirEntry, err error) error {
 		if !d.Type().IsRegular() {
 			return nil
 		}
-		fmt.Printf("\n\n# %s\n\n", strings.TrimPrefix(path, "licenses/"))
+		fmt.Fprintf(dst, "\n\n# %s\n\n", strings.TrimPrefix(path, "licenses/"))
 		copyFile(path)
 		return nil
 	})

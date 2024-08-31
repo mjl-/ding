@@ -764,6 +764,8 @@ data/
 		dom.br(),
 
 		docsBuildScript(),
+		dom.h1('Licenses'),
+		dom.p('Ding is open source software. See ', link('licenses', 'licenses'), '.'),
 	)
 
 	return page
