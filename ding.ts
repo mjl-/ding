@@ -836,28 +836,37 @@ data/
 const docsBuildScript = (): HTMLElement => {
 	return dom.div(
 		dom.h1('Build script environment'),
-		dom.p('The build script is run in a clean environment. It should exit with status 0 only when successful. Patterns in the output indicate where build results can be found, such as files and test coverage.'),
+		dom.p('The build script is run in a clean environment. It should exit with status 0 only when successful. Patterns in the output indicate where build results can be found, such as files and test coverage, see below.'),
 		dom.p('The working directory is set to $DING_BUILDDIR/checkout/$DING_CHECKOUTPATH.'),
 
 		dom.h2('Example'),
-		dom.pre(`#!/bin/bash
+		dom.pre(`#!/usr/bin/env bash
 set -xeuo pipefail
 
-export GOOS=linux
-export GOARCH=amd64
+export PATH=$DING_TOOLCHAINDIR/go/bin:$PATH
+
+export CGO_ENABLED=0
+export GOFLAGS="-mod=vendor -trimpath"
+export GOPROXY=off
+
+export goos=linux
+export goarch=amd64
 version=$(git describe --always)
 goversion=$(go version | cut -f3 -d' ')
+name=$(basename $PWD)
 
 echo version: $version
 
-go build -o app-$version-$GOOS-$GOARCH
+GOOS=$goos GOARCH=$goarch go build -o $name-$version-$goos-$goarch
 go vet
-go test -coverprofile cover.out | sed "s/^coverage: \(.*\)% of statements/coverage: \\1/"
+go test -shuffle=on -coverprofile cover.out | sed "s/^coverage: \\(.*\\)% of statements/coverage: \\1/"
 go tool cover -html=cover.out -o $DING_DOWNLOADDIR/cover.html
 echo coverage-report: cover.html
 
-echo release: app $GOOS $GOARCH $goversion app-$version-$GOOS-$GOARCH`
-		),
+echo release: $name $goos $goarch $goversion $name-$version-$goos-$goarch
+`),
+		dom.br(),
+		dom.p('You can include a script like the above in a repository, and call that.'),
 
 		dom.br(),
 		dom.h2('Environment variables'),
