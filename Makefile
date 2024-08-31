@@ -51,7 +51,7 @@ test-gotoolchains:
 	go tool cover -html=cover.out -o cover.html
 
 fmt:
-	go fmt ./...
+	gofmt -w -s *.go
 
 clean:
 	go clean
