@@ -3,10 +3,8 @@ module github.com/mjl-/ding
 go 1.23
 
 require (
-	github.com/lib/pq v1.1.1
 	github.com/mjl-/bstore v0.0.6
 	github.com/mjl-/goreleases v0.0.4
-	github.com/mjl-/httpinfo v0.0.2
 	github.com/mjl-/sconf v0.0.7
 	github.com/mjl-/sherpa v0.6.7
 	github.com/mjl-/sherpadoc v0.0.17

@@ -23,7 +23,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/mjl-/bstore"
-	"github.com/mjl-/httpinfo"
 	"github.com/mjl-/sherpa"
 	"github.com/mjl-/sherpadoc"
 	"github.com/mjl-/sherpaprom"
@@ -100,7 +99,6 @@ func servehttp(args []string) {
 	handler, err := sherpa.NewHandler("/ding/", version, Ding{}, &doc, opts)
 	xcheckf(err, "making sherpa handler")
 
-	http.Handle("GET /info", httpinfo.NewHandler(httpinfo.CodeVersion{Full: version}, nil))
 	http.Handle("GET /metrics", promhttp.Handler())
 
 	mux := http.NewServeMux()

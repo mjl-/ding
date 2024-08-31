@@ -137,12 +137,10 @@ Now run: "make build test"
 
 # Todo
 
-- remove temporary code for migrating from postgresql to bstore
-- rewrite ui in typescript
 - when doing a concurrent build, check how much memory is available, and how much the build likely needs (based on previous build, need to start keeping track of rusage), and delay execution if there isn't enough memory.
 - make some config runtime-configurable. like email address to notify. also allow multiple. and allow configuring per repo.
 - allow configuring webhooks per repo.
-- authentication on downloadable files.
+- authentication on downloadable files? currently very useful to just wget a built binary (with internal endpoints).
 - add a quickstart. make it easier to setup, and easier to get a first successful build.
 - on reconnect after sse failure, make sure our state is up to date again. it isn't now.
 - improve showing the cause of a failed build. 1. show then just last single line of output (make just prints that it failed at the end). 2. create files in output/ earlier? so we don't show errors about missing such files when the vcs clone failes (eg due to no git in path, or no permision to run build.sh (eg because a dir leading to build.sh isn't accessible).

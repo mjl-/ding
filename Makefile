@@ -2,8 +2,6 @@ export CGO_ENABLED=0
 export GOFLAGS=-mod=vendor
 export GOPROXY=off
 
-PG=/usr/lib/postgresql/9.5
-
 run: build
 	./ding -loglevel debug serve local/local.conf
 
@@ -39,21 +37,6 @@ install-js:
 	-mkdir -p node_modules/.bin
 	npm install --save-dev --save-exact typescript@5.1.6
 
-postgres-init:
-	$(PG)/bin/initdb -D local/postgres95
-
-postgres-makeuser:
-	$(PG)/bin/createuser -h localhost -p 5437 --no-createdb --pwprompt ding
-	$(PG)/bin/createdb -h localhost -p 5437 -O ding ding
-	$(PG)/bin/createuser -h localhost -p 5437 --no-createdb --pwprompt ding_test
-	$(PG)/bin/createdb -h localhost -p 5437 -O ding_test ding_test
-
-postgres:
-	$(PG)/bin/postgres -D local/postgres95 -p 5437 -k '' 2>&1 | tee local/postgres95/postgres.log
-
-psql:
-	$(PG)/bin/psql -h localhost -p 5437 -d ding
-
 # note: running as root (with umask 0022) tests the privsep paths
 test:
 	CGO_ENABLED=0 go test -coverprofile cover.out
@@ -72,10 +55,3 @@ fmt:
 
 clean:
 	go clean
-
-setup:
-	npm ci
-
-setup0:
-	-mkdir -p node_modules/.bin
-	npm install --save-dev --save-exact jshint@2.9.3 sass@1.71.1

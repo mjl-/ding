@@ -20,10 +20,6 @@ import (
 	"github.com/mjl-/sconf"
 )
 
-const (
-	databaseVersion = 18
-)
-
 //go:embed ding.html ding.js ding.json INSTALL.txt favicon.ico LICENSE licenses/*
 var embedFS embed.FS
 
@@ -81,7 +77,7 @@ var config struct {
 func init() {
 	config.DataDir = "data"
 	config.BaseURL = "http://localhost:6084"
-	config.Mail.SMTPPort = 25
+	config.Mail.SMTPPort = 587
 	config.IsolateBuilds.UIDStart = 10000
 	config.IsolateBuilds.UIDEnd = 20000
 	config.IsolateBuilds.DingUID = 1234
@@ -161,7 +157,7 @@ func main() {
 	case "kick":
 		kick(args)
 	case "version":
-		fmt.Printf("%s\ndatabase schema version %d\n", version, databaseVersion)
+		fmt.Printf("%s\n", version)
 	case "license":
 		printLicenses()
 	default:
