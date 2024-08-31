@@ -2,8 +2,6 @@ package main
 
 import (
 	"bytes"
-	"crypto/hmac"
-	"crypto/sha1"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -18,12 +16,6 @@ func toJSON(v any) []byte {
 		panic(err)
 	}
 	return buf
-}
-
-func hmacsha1(key string, data []byte) []byte {
-	hm := hmac.New(sha1.New, []byte(key))
-	hm.Write(data)
-	return hm.Sum(nil)
 }
 
 func TestWebhook(t *testing.T) {
@@ -53,25 +45,25 @@ func TestWebhook(t *testing.T) {
 		CheckoutPath:  "hooktest",
 		BuildScript:   "#!/bin/bash\necho build...\n",
 	}
-	api.RepoCreate(ctxbg, config.Password, repo)
+	repo = api.RepoCreate(ctxbg, config.Password, repo)
 
 	ghevent := githubEvent{Ref: "refs/heads/main", After: "e8dab6168e75a88346bc0d2b95ea8227552debf2"}
 	ghevent.Repository.Name = "hooktest"
 	githubBody := toJSON(ghevent)
-	testHook(githubHookHandler, "/github/hooktest", map[string]string{"X-Hub-Signature": fmt.Sprintf("sha1=%x", hmacsha1(config.GithubWebhookSecret, githubBody))}, githubBody, http.StatusNoContent)
-	testHook(githubHookHandler, "/github/bogus", map[string]string{"X-Hub-Signature": fmt.Sprintf("sha1=%x", hmacsha1(config.GithubWebhookSecret, githubBody))}, githubBody, http.StatusNotFound)
+	testHook(githubHookHandler, "/github/hooktest", map[string]string{"X-Hub-Signature": fmt.Sprintf("sha1=%x", hmacsha1(repo.WebhookSecret, githubBody))}, githubBody, http.StatusNoContent)
+	testHook(githubHookHandler, "/github/bogus", map[string]string{"X-Hub-Signature": fmt.Sprintf("sha1=%x", hmacsha1(repo.WebhookSecret, githubBody))}, githubBody, http.StatusNotFound)
 	testHook(githubHookHandler, "/github/hooktest", map[string]string{}, githubBody, http.StatusBadRequest)
-	testHook(githubHookHandler, "/github/hooktest", map[string]string{"X-Hub-Signature": fmt.Sprintf("sha1=%x", hmacsha1(config.GithubWebhookSecret, nil))}, githubBody, http.StatusBadRequest)
-	testHook(githubHookHandler, "/github/hooktest", map[string]string{"X-Hub-Signature": fmt.Sprintf("sha1=%x", hmacsha1(config.GithubWebhookSecret, nil))}, nil, http.StatusBadRequest)
+	testHook(githubHookHandler, "/github/hooktest", map[string]string{"X-Hub-Signature": fmt.Sprintf("sha1=%x", hmacsha1(repo.WebhookSecret, nil))}, githubBody, http.StatusBadRequest)
+	testHook(githubHookHandler, "/github/hooktest", map[string]string{"X-Hub-Signature": fmt.Sprintf("sha1=%x", hmacsha1(repo.WebhookSecret, nil))}, nil, http.StatusBadRequest)
 
 	gtevent := githubEvent{Ref: "refs/heads/main", After: "e8dab6168e75a88346bc0d2b95ea8227552debf2"}
 	gtevent.Repository.Name = "hooktest"
 	giteaBody := toJSON(gtevent)
-	testHook(giteaHookHandler, "/gitea/hooktest", map[string]string{"Authorization": "Bearer " + config.GiteaWebhookSecret}, giteaBody, http.StatusNoContent)
-	testHook(giteaHookHandler, "/gitea/bogus", map[string]string{"Authorization": "Bearer " + config.GiteaWebhookSecret}, giteaBody, http.StatusNotFound)
+	testHook(giteaHookHandler, "/gitea/hooktest", map[string]string{"Authorization": "Bearer " + repo.WebhookSecret}, giteaBody, http.StatusNoContent)
+	testHook(giteaHookHandler, "/gitea/bogus", map[string]string{"Authorization": "Bearer " + repo.WebhookSecret}, giteaBody, http.StatusNotFound)
 	testHook(giteaHookHandler, "/gitea/hooktest", map[string]string{}, giteaBody, http.StatusBadRequest)
 	testHook(giteaHookHandler, "/gitea/hooktest", map[string]string{"Authorization": "Bearer bogus"}, giteaBody, http.StatusBadRequest)
-	testHook(giteaHookHandler, "/gitea/hooktest", map[string]string{"Authorization": "Bearer " + config.GiteaWebhookSecret}, nil, http.StatusBadRequest)
+	testHook(giteaHookHandler, "/gitea/hooktest", map[string]string{"Authorization": "Bearer " + repo.WebhookSecret}, nil, http.StatusBadRequest)
 
 	bitbucketBody := []byte(`
 {
@@ -94,8 +86,8 @@ func TestWebhook(t *testing.T) {
 		]
 	}
 }`)
-	testHook(bitbucketHookHandler, "/bitbucket/hooktest/"+config.BitbucketWebhookSecret, nil, bitbucketBody, http.StatusNoContent)
-	testHook(bitbucketHookHandler, "/bitbucket/bogus/"+config.BitbucketWebhookSecret, nil, bytes.ReplaceAll(bitbucketBody, []byte("hooktest"), []byte("bogus")), http.StatusNotFound)
+	testHook(bitbucketHookHandler, "/bitbucket/hooktest/"+repo.WebhookSecret, nil, bitbucketBody, http.StatusNoContent)
+	testHook(bitbucketHookHandler, "/bitbucket/bogus/"+repo.WebhookSecret, nil, bytes.ReplaceAll(bitbucketBody, []byte("hooktest"), []byte("bogus")), http.StatusNotFound)
 	testHook(bitbucketHookHandler, "/bitbucket/hooktest/bogus", nil, bitbucketBody, http.StatusNotFound)
 
 	time.Sleep(200 * time.Millisecond) // todo: properly wait for builds to fail.

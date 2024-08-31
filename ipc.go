@@ -13,7 +13,8 @@ type msgBuild struct {
 	BuildID         int32
 	UID             uint32 // UID to run this build under. Ignored if IsolateBuilds is entirely off. Otherwise it is set to either a unique UID, or a fixed UID per repo, depending on configuration.
 	CheckoutPath    string
-	Env             []string
+	RunPrefix       []string // From settings.
+	Env             []string // Including from settings.Environment
 	ToolchainDir    string
 	HomeDir         string
 	Bubblewrap      bool

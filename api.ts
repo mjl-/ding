@@ -44,12 +44,6 @@ export interface Step {
 	Nsec: number  // Time it took this step to finish, initially 0.
 }
 
-// BuildSettings describes the environment a build script is run in.
-export interface BuildSettings {
-	Run?: string[] | null  // The command to run the build script is prefixed with these commands, e.g. /usr/bin/nice.
-	Environment?: string[] | null  // Additional environment variables available during builds, of the form key=value.
-}
-
 // RepoBuilds is a repository and its recent builds, per branch.
 export interface RepoBuilds {
 	Repo: Repo
@@ -66,9 +60,22 @@ export interface Repo {
 	BuildScript: string  // Shell scripts that compiles the software, runs tests, and creates releasable files.
 	UID?: number | null  // If set, fixed uid to use for builds, sharing a home directory where files can be cached, to speed up builds.
 	HomeDiskUsage: number  // Disk usage of shared home directory after last finished build. Only if UID is set.
+	WebhookSecret: string  // If non-empty, a per-repo secret for incoming webhook calls.
+	AllowGlobalWebhookSecrets: boolean  // If set, global webhook secrets are allowed to start builds. Set initially during migrations. Will be ineffective when global webhooks have been unconfigured.
 	Bubblewrap: boolean  // If true, build is run with bubblewrap (bwrap) to isolate the environment further. Only the system, the build directory, home directory and toolchain directory is available.
 	BubblewrapNoNet: boolean  // If true, along with Bubblewrap, then no network access is possible during the build (though it is during clone).
 	NotifyEmailAddrs?: string[] | null  // If not empty, each address gets notified about build breakage/fixage, overriding the default address configured in the configuration file.
+}
+
+// Settings holds runtime configuration options.
+export interface Settings {
+	ID: number  // singleton with ID 1
+	NotifyEmailAddrs?: string[] | null  // Email address to notify on build breakage/fixage. Can be overridden per repository.
+	GithubWebhookSecret: string  // Secret for webhooks from github. Migrated from config. New repo's get their own unique secret on creation.
+	GiteaWebhookSecret: string
+	BitbucketWebhookSecret: string
+	RunPrefix?: string[] | null  // Commands prefixed to the clone and build commands. E.g. /usr/bin/nice.
+	Environment?: string[] | null  // Additional environment variables to set during clone and build.
 }
 
 // BuildStatus indicates the progress of a build.
@@ -128,16 +135,16 @@ export interface EventOutput {
 	Text: string  // Lines of text written.
 }
 
-export const structTypes: {[typename: string]: boolean} = {"Build":true,"BuildSettings":true,"EventBuild":true,"EventOutput":true,"EventRemoveBuild":true,"EventRemoveRepo":true,"EventRepo":true,"Repo":true,"RepoBuilds":true,"Result":true,"Step":true}
+export const structTypes: {[typename: string]: boolean} = {"Build":true,"EventBuild":true,"EventOutput":true,"EventRemoveBuild":true,"EventRemoveRepo":true,"EventRepo":true,"Repo":true,"RepoBuilds":true,"Result":true,"Settings":true,"Step":true}
 export const stringsTypes: {[typename: string]: boolean} = {"BuildStatus":true,"LogLevel":true,"VCS":true}
 export const intsTypes: {[typename: string]: boolean} = {}
 export const types: TypenameMap = {
 	"Build": {"Name":"Build","Docs":"","Fields":[{"Name":"ID","Docs":"","Typewords":["int32"]},{"Name":"RepoName","Docs":"","Typewords":["string"]},{"Name":"Branch","Docs":"","Typewords":["string"]},{"Name":"CommitHash","Docs":"","Typewords":["string"]},{"Name":"Status","Docs":"","Typewords":["BuildStatus"]},{"Name":"Created","Docs":"","Typewords":["timestamp"]},{"Name":"Start","Docs":"","Typewords":["nullable","timestamp"]},{"Name":"Finish","Docs":"","Typewords":["nullable","timestamp"]},{"Name":"ErrorMessage","Docs":"","Typewords":["string"]},{"Name":"Released","Docs":"","Typewords":["nullable","timestamp"]},{"Name":"BuilddirRemoved","Docs":"","Typewords":["bool"]},{"Name":"Coverage","Docs":"","Typewords":["nullable","float32"]},{"Name":"CoverageReportFile","Docs":"","Typewords":["string"]},{"Name":"Version","Docs":"","Typewords":["string"]},{"Name":"BuildScript","Docs":"","Typewords":["string"]},{"Name":"LowPrio","Docs":"","Typewords":["bool"]},{"Name":"LastLine","Docs":"","Typewords":["string"]},{"Name":"DiskUsage","Docs":"","Typewords":["int64"]},{"Name":"HomeDiskUsageDelta","Docs":"","Typewords":["int64"]},{"Name":"Results","Docs":"","Typewords":["[]","Result"]},{"Name":"Steps","Docs":"","Typewords":["[]","Step"]}]},
 	"Result": {"Name":"Result","Docs":"","Fields":[{"Name":"Command","Docs":"","Typewords":["string"]},{"Name":"Os","Docs":"","Typewords":["string"]},{"Name":"Arch","Docs":"","Typewords":["string"]},{"Name":"Toolchain","Docs":"","Typewords":["string"]},{"Name":"Filename","Docs":"","Typewords":["string"]},{"Name":"Filesize","Docs":"","Typewords":["int64"]}]},
 	"Step": {"Name":"Step","Docs":"","Fields":[{"Name":"Name","Docs":"","Typewords":["string"]},{"Name":"Output","Docs":"","Typewords":["string"]},{"Name":"Nsec","Docs":"","Typewords":["int64"]}]},
-	"BuildSettings": {"Name":"BuildSettings","Docs":"","Fields":[{"Name":"Run","Docs":"","Typewords":["[]","string"]},{"Name":"Environment","Docs":"","Typewords":["[]","string"]}]},
 	"RepoBuilds": {"Name":"RepoBuilds","Docs":"","Fields":[{"Name":"Repo","Docs":"","Typewords":["Repo"]},{"Name":"Builds","Docs":"","Typewords":["[]","Build"]}]},
-	"Repo": {"Name":"Repo","Docs":"","Fields":[{"Name":"Name","Docs":"","Typewords":["string"]},{"Name":"VCS","Docs":"","Typewords":["VCS"]},{"Name":"Origin","Docs":"","Typewords":["string"]},{"Name":"DefaultBranch","Docs":"","Typewords":["string"]},{"Name":"CheckoutPath","Docs":"","Typewords":["string"]},{"Name":"BuildScript","Docs":"","Typewords":["string"]},{"Name":"UID","Docs":"","Typewords":["nullable","uint32"]},{"Name":"HomeDiskUsage","Docs":"","Typewords":["int64"]},{"Name":"Bubblewrap","Docs":"","Typewords":["bool"]},{"Name":"BubblewrapNoNet","Docs":"","Typewords":["bool"]},{"Name":"NotifyEmailAddrs","Docs":"","Typewords":["[]","string"]}]},
+	"Repo": {"Name":"Repo","Docs":"","Fields":[{"Name":"Name","Docs":"","Typewords":["string"]},{"Name":"VCS","Docs":"","Typewords":["VCS"]},{"Name":"Origin","Docs":"","Typewords":["string"]},{"Name":"DefaultBranch","Docs":"","Typewords":["string"]},{"Name":"CheckoutPath","Docs":"","Typewords":["string"]},{"Name":"BuildScript","Docs":"","Typewords":["string"]},{"Name":"UID","Docs":"","Typewords":["nullable","uint32"]},{"Name":"HomeDiskUsage","Docs":"","Typewords":["int64"]},{"Name":"WebhookSecret","Docs":"","Typewords":["string"]},{"Name":"AllowGlobalWebhookSecrets","Docs":"","Typewords":["bool"]},{"Name":"Bubblewrap","Docs":"","Typewords":["bool"]},{"Name":"BubblewrapNoNet","Docs":"","Typewords":["bool"]},{"Name":"NotifyEmailAddrs","Docs":"","Typewords":["[]","string"]}]},
+	"Settings": {"Name":"Settings","Docs":"","Fields":[{"Name":"ID","Docs":"","Typewords":["int32"]},{"Name":"NotifyEmailAddrs","Docs":"","Typewords":["[]","string"]},{"Name":"GithubWebhookSecret","Docs":"","Typewords":["string"]},{"Name":"GiteaWebhookSecret","Docs":"","Typewords":["string"]},{"Name":"BitbucketWebhookSecret","Docs":"","Typewords":["string"]},{"Name":"RunPrefix","Docs":"","Typewords":["[]","string"]},{"Name":"Environment","Docs":"","Typewords":["[]","string"]}]},
 	"BuildStatus": {"Name":"BuildStatus","Docs":"","Values":[{"Name":"StatusNew","Value":"new","Docs":""},{"Name":"StatusClone","Value":"clone","Docs":""},{"Name":"StatusBuild","Value":"build","Docs":""},{"Name":"StatusSuccess","Value":"success","Docs":""},{"Name":"StatusCancelled","Value":"cancelled","Docs":""}]},
 	"VCS": {"Name":"VCS","Docs":"","Values":[{"Name":"VCSGit","Value":"git","Docs":""},{"Name":"VCSMercurial","Value":"mercurial","Docs":""},{"Name":"VCSCommand","Value":"command","Docs":""}]},
 	"LogLevel": {"Name":"LogLevel","Docs":"","Values":[{"Name":"LogDebug","Value":"debug","Docs":""},{"Name":"LogInfo","Value":"info","Docs":""},{"Name":"LogWarn","Value":"warn","Docs":""},{"Name":"LogError","Value":"error","Docs":""}]},
@@ -152,9 +159,9 @@ export const parser = {
 	Build: (v: any) => parse("Build", v) as Build,
 	Result: (v: any) => parse("Result", v) as Result,
 	Step: (v: any) => parse("Step", v) as Step,
-	BuildSettings: (v: any) => parse("BuildSettings", v) as BuildSettings,
 	RepoBuilds: (v: any) => parse("RepoBuilds", v) as RepoBuilds,
 	Repo: (v: any) => parse("Repo", v) as Repo,
+	Settings: (v: any) => parse("Settings", v) as Settings,
 	BuildStatus: (v: any) => parse("BuildStatus", v) as BuildStatus,
 	VCS: (v: any) => parse("VCS", v) as VCS,
 	LogLevel: (v: any) => parse("LogLevel", v) as LogLevel,
@@ -255,15 +262,6 @@ export class Client {
 		const returnTypes: string[][] = []
 		const params: any[] = [password, repoName, buildID]
 		return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params) as void
-	}
-
-	// BuildSettings returns the environment for builds.
-	async BuildSettings(password: string): Promise<BuildSettings> {
-		const fn: string = "BuildSettings"
-		const paramTypes: string[][] = [["string"]]
-		const returnTypes: string[][] = [["BuildSettings"]]
-		const params: any[] = [password]
-		return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params) as BuildSettings
 	}
 
 	// ReleaseCreate release a build.
@@ -450,6 +448,24 @@ export class Client {
 		const paramTypes: string[][] = [["LogLevel"]]
 		const returnTypes: string[][] = []
 		const params: any[] = [level]
+		return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params) as void
+	}
+
+	// Settings returns the runtime settings.
+	async Settings(password: string): Promise<[boolean, boolean, Settings]> {
+		const fn: string = "Settings"
+		const paramTypes: string[][] = [["string"]]
+		const returnTypes: string[][] = [["bool"],["bool"],["Settings"]]
+		const params: any[] = [password]
+		return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params) as [boolean, boolean, Settings]
+	}
+
+	// SettingsSave saves the runtime settings.
+	async SettingsSave(password: string, settings: Settings): Promise<void> {
+		const fn: string = "SettingsSave"
+		const paramTypes: string[][] = [["string"],["Settings"]]
+		const returnTypes: string[][] = []
+		const params: any[] = [password, settings]
 		return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params) as void
 	}
 	// ExampleSSE is a no-op.

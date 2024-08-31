@@ -77,8 +77,10 @@ func servehttp(args []string) {
 
 	dbpath := path.Join(config.DataDir, "ding.db")
 	dbopts := bstore.Options{Timeout: 5 * time.Second}
-	database, err = bstore.Open(context.Background(), dbpath, &dbopts, Repo{}, Build{})
+	database, err = bstore.Open(context.Background(), dbpath, &dbopts, Settings{}, Repo{}, Build{})
 	xcheckf(err, "open database")
+
+	ensureSettings(database)
 
 	var doc sherpadoc.Section
 	ff, err := fsys.Open("web/ding.json")
@@ -196,6 +198,59 @@ func servehttp(args []string) {
 	}()
 
 	serveUnprivileged(dec, enc, unprivConn)
+}
+
+func haveConfigSettings() bool {
+	return config.Notify.Email != "" ||
+		len(config.Run) > 0 ||
+		len(config.Environment) > 0 ||
+		config.GithubWebhookSecret != "" ||
+		config.GiteaWebhookSecret != "" ||
+		config.BitbucketWebhookSecret != ""
+}
+
+func ensureSettings(db *bstore.DB) {
+	settings := Settings{ID: 1}
+	if err := db.Get(context.Background(), &settings); err == bstore.ErrAbsent {
+		// Migrating some options from config file to database.
+		if config.Notify.Email != "" {
+			settings.NotifyEmailAddrs = []string{config.Notify.Email}
+		}
+		settings.RunPrefix = config.Run
+		settings.Environment = config.Environment
+		settings.GithubWebhookSecret = config.GithubWebhookSecret
+		settings.GiteaWebhookSecret = config.GiteaWebhookSecret
+		settings.BitbucketWebhookSecret = config.BitbucketWebhookSecret
+
+		err := db.Write(context.Background(), func(tx *bstore.Tx) error {
+			err := tx.Insert(&settings)
+			xcheckf(err, "insert settings")
+
+			// If webhook secrets were configured, allow them for existing repositories. Once
+			// the admin configures the global webhook secrets, they won't have an effect
+			// anymore.
+			allowGlobal := config.GithubWebhookSecret != "" ||
+				config.GiteaWebhookSecret != "" ||
+				config.BitbucketWebhookSecret != ""
+
+			repos, err := bstore.QueryTx[Repo](tx).List()
+			xcheckf(err, "listing repositories for updating webhook secrets")
+			for _, repo := range repos {
+				repo.AllowGlobalWebhookSecrets = allowGlobal
+				repo.WebhookSecret = genSecret()
+				err := tx.Update(&repo)
+				xcheckf(err, "updating repo for webhook secrets")
+			}
+			return nil
+		})
+		xcheckf(err, "writing to database")
+
+		if haveConfigSettings() {
+			slog.Warn("some settings have been migrated from the static config file to the database, configurable at runtime; remove the following fields from the config file: Notify, Run, Environment, GithubWebhookSecret, GiteaWebhookSecret, BitbucketWebhookSecret")
+		}
+	} else if haveConfigSettings() {
+		slog.Warn("some settings have previously been migrated from the static config file to the database, configurable at runtime; remove the following fields from the config file: Notify, Run, Environment, GithubWebhookSecret, GiteaWebhookSecret, BitbucketWebhookSecret")
+	}
 }
 
 func serveUnprivileged(dec *gob.Decoder, enc *gob.Encoder, unixconn *net.UnixConn) {

@@ -22,9 +22,10 @@ func TestMail(t *testing.T) {
 
 	// And see we get a mail when fixed again.
 	r.Origin = "echo clone..; mkdir -p checkout/$DING_CHECKOUTPATH; echo commit: ..."
+	r.NotifyEmailAddrs = []string{"addr1@ding.example", "addr2@ding.example"}
 	r = api.RepoSave(ctxbg, config.Password, r)
 	b = api.BuildCreate(ctxbg, config.Password, r.Name, "unused", "", false)
 	twaitBuild(t, b, StatusSuccess)
-	tcompare(t, client.recipients, []string{config.Notify.Email})
+	tcompare(t, client.recipients, r.NotifyEmailAddrs)
 	client.recipients = nil
 }

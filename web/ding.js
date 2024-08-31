@@ -257,16 +257,16 @@ var api;
 		LogLevel["LogWarn"] = "warn";
 		LogLevel["LogError"] = "error";
 	})(LogLevel = api.LogLevel || (api.LogLevel = {}));
-	api.structTypes = { "Build": true, "BuildSettings": true, "EventBuild": true, "EventOutput": true, "EventRemoveBuild": true, "EventRemoveRepo": true, "EventRepo": true, "Repo": true, "RepoBuilds": true, "Result": true, "Step": true };
+	api.structTypes = { "Build": true, "EventBuild": true, "EventOutput": true, "EventRemoveBuild": true, "EventRemoveRepo": true, "EventRepo": true, "Repo": true, "RepoBuilds": true, "Result": true, "Settings": true, "Step": true };
 	api.stringsTypes = { "BuildStatus": true, "LogLevel": true, "VCS": true };
 	api.intsTypes = {};
 	api.types = {
 		"Build": { "Name": "Build", "Docs": "", "Fields": [{ "Name": "ID", "Docs": "", "Typewords": ["int32"] }, { "Name": "RepoName", "Docs": "", "Typewords": ["string"] }, { "Name": "Branch", "Docs": "", "Typewords": ["string"] }, { "Name": "CommitHash", "Docs": "", "Typewords": ["string"] }, { "Name": "Status", "Docs": "", "Typewords": ["BuildStatus"] }, { "Name": "Created", "Docs": "", "Typewords": ["timestamp"] }, { "Name": "Start", "Docs": "", "Typewords": ["nullable", "timestamp"] }, { "Name": "Finish", "Docs": "", "Typewords": ["nullable", "timestamp"] }, { "Name": "ErrorMessage", "Docs": "", "Typewords": ["string"] }, { "Name": "Released", "Docs": "", "Typewords": ["nullable", "timestamp"] }, { "Name": "BuilddirRemoved", "Docs": "", "Typewords": ["bool"] }, { "Name": "Coverage", "Docs": "", "Typewords": ["nullable", "float32"] }, { "Name": "CoverageReportFile", "Docs": "", "Typewords": ["string"] }, { "Name": "Version", "Docs": "", "Typewords": ["string"] }, { "Name": "BuildScript", "Docs": "", "Typewords": ["string"] }, { "Name": "LowPrio", "Docs": "", "Typewords": ["bool"] }, { "Name": "LastLine", "Docs": "", "Typewords": ["string"] }, { "Name": "DiskUsage", "Docs": "", "Typewords": ["int64"] }, { "Name": "HomeDiskUsageDelta", "Docs": "", "Typewords": ["int64"] }, { "Name": "Results", "Docs": "", "Typewords": ["[]", "Result"] }, { "Name": "Steps", "Docs": "", "Typewords": ["[]", "Step"] }] },
 		"Result": { "Name": "Result", "Docs": "", "Fields": [{ "Name": "Command", "Docs": "", "Typewords": ["string"] }, { "Name": "Os", "Docs": "", "Typewords": ["string"] }, { "Name": "Arch", "Docs": "", "Typewords": ["string"] }, { "Name": "Toolchain", "Docs": "", "Typewords": ["string"] }, { "Name": "Filename", "Docs": "", "Typewords": ["string"] }, { "Name": "Filesize", "Docs": "", "Typewords": ["int64"] }] },
 		"Step": { "Name": "Step", "Docs": "", "Fields": [{ "Name": "Name", "Docs": "", "Typewords": ["string"] }, { "Name": "Output", "Docs": "", "Typewords": ["string"] }, { "Name": "Nsec", "Docs": "", "Typewords": ["int64"] }] },
-		"BuildSettings": { "Name": "BuildSettings", "Docs": "", "Fields": [{ "Name": "Run", "Docs": "", "Typewords": ["[]", "string"] }, { "Name": "Environment", "Docs": "", "Typewords": ["[]", "string"] }] },
 		"RepoBuilds": { "Name": "RepoBuilds", "Docs": "", "Fields": [{ "Name": "Repo", "Docs": "", "Typewords": ["Repo"] }, { "Name": "Builds", "Docs": "", "Typewords": ["[]", "Build"] }] },
-		"Repo": { "Name": "Repo", "Docs": "", "Fields": [{ "Name": "Name", "Docs": "", "Typewords": ["string"] }, { "Name": "VCS", "Docs": "", "Typewords": ["VCS"] }, { "Name": "Origin", "Docs": "", "Typewords": ["string"] }, { "Name": "DefaultBranch", "Docs": "", "Typewords": ["string"] }, { "Name": "CheckoutPath", "Docs": "", "Typewords": ["string"] }, { "Name": "BuildScript", "Docs": "", "Typewords": ["string"] }, { "Name": "UID", "Docs": "", "Typewords": ["nullable", "uint32"] }, { "Name": "HomeDiskUsage", "Docs": "", "Typewords": ["int64"] }, { "Name": "Bubblewrap", "Docs": "", "Typewords": ["bool"] }, { "Name": "BubblewrapNoNet", "Docs": "", "Typewords": ["bool"] }, { "Name": "NotifyEmailAddrs", "Docs": "", "Typewords": ["[]", "string"] }] },
+		"Repo": { "Name": "Repo", "Docs": "", "Fields": [{ "Name": "Name", "Docs": "", "Typewords": ["string"] }, { "Name": "VCS", "Docs": "", "Typewords": ["VCS"] }, { "Name": "Origin", "Docs": "", "Typewords": ["string"] }, { "Name": "DefaultBranch", "Docs": "", "Typewords": ["string"] }, { "Name": "CheckoutPath", "Docs": "", "Typewords": ["string"] }, { "Name": "BuildScript", "Docs": "", "Typewords": ["string"] }, { "Name": "UID", "Docs": "", "Typewords": ["nullable", "uint32"] }, { "Name": "HomeDiskUsage", "Docs": "", "Typewords": ["int64"] }, { "Name": "WebhookSecret", "Docs": "", "Typewords": ["string"] }, { "Name": "AllowGlobalWebhookSecrets", "Docs": "", "Typewords": ["bool"] }, { "Name": "Bubblewrap", "Docs": "", "Typewords": ["bool"] }, { "Name": "BubblewrapNoNet", "Docs": "", "Typewords": ["bool"] }, { "Name": "NotifyEmailAddrs", "Docs": "", "Typewords": ["[]", "string"] }] },
+		"Settings": { "Name": "Settings", "Docs": "", "Fields": [{ "Name": "ID", "Docs": "", "Typewords": ["int32"] }, { "Name": "NotifyEmailAddrs", "Docs": "", "Typewords": ["[]", "string"] }, { "Name": "GithubWebhookSecret", "Docs": "", "Typewords": ["string"] }, { "Name": "GiteaWebhookSecret", "Docs": "", "Typewords": ["string"] }, { "Name": "BitbucketWebhookSecret", "Docs": "", "Typewords": ["string"] }, { "Name": "RunPrefix", "Docs": "", "Typewords": ["[]", "string"] }, { "Name": "Environment", "Docs": "", "Typewords": ["[]", "string"] }] },
 		"BuildStatus": { "Name": "BuildStatus", "Docs": "", "Values": [{ "Name": "StatusNew", "Value": "new", "Docs": "" }, { "Name": "StatusClone", "Value": "clone", "Docs": "" }, { "Name": "StatusBuild", "Value": "build", "Docs": "" }, { "Name": "StatusSuccess", "Value": "success", "Docs": "" }, { "Name": "StatusCancelled", "Value": "cancelled", "Docs": "" }] },
 		"VCS": { "Name": "VCS", "Docs": "", "Values": [{ "Name": "VCSGit", "Value": "git", "Docs": "" }, { "Name": "VCSMercurial", "Value": "mercurial", "Docs": "" }, { "Name": "VCSCommand", "Value": "command", "Docs": "" }] },
 		"LogLevel": { "Name": "LogLevel", "Docs": "", "Values": [{ "Name": "LogDebug", "Value": "debug", "Docs": "" }, { "Name": "LogInfo", "Value": "info", "Docs": "" }, { "Name": "LogWarn", "Value": "warn", "Docs": "" }, { "Name": "LogError", "Value": "error", "Docs": "" }] },
@@ -280,9 +280,9 @@ var api;
 		Build: (v) => api.parse("Build", v),
 		Result: (v) => api.parse("Result", v),
 		Step: (v) => api.parse("Step", v),
-		BuildSettings: (v) => api.parse("BuildSettings", v),
 		RepoBuilds: (v) => api.parse("RepoBuilds", v),
 		Repo: (v) => api.parse("Repo", v),
+		Settings: (v) => api.parse("Settings", v),
 		BuildStatus: (v) => api.parse("BuildStatus", v),
 		VCS: (v) => api.parse("VCS", v),
 		LogLevel: (v) => api.parse("LogLevel", v),
@@ -372,14 +372,6 @@ var api;
 			const paramTypes = [["string"], ["string"], ["int32"]];
 			const returnTypes = [];
 			const params = [password, repoName, buildID];
-			return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params);
-		}
-		// BuildSettings returns the environment for builds.
-		async BuildSettings(password) {
-			const fn = "BuildSettings";
-			const paramTypes = [["string"]];
-			const returnTypes = [["BuildSettings"]];
-			const params = [password];
 			return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params);
 		}
 		// ReleaseCreate release a build.
@@ -548,6 +540,22 @@ var api;
 			const paramTypes = [["LogLevel"]];
 			const returnTypes = [];
 			const params = [level];
+			return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params);
+		}
+		// Settings returns the runtime settings.
+		async Settings(password) {
+			const fn = "Settings";
+			const paramTypes = [["string"]];
+			const returnTypes = [["bool"], ["bool"], ["Settings"]];
+			const params = [password];
+			return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params);
+		}
+		// SettingsSave saves the runtime settings.
+		async SettingsSave(password, settings) {
+			const fn = "SettingsSave";
+			const paramTypes = [["string"], ["Settings"]];
+			const returnTypes = [];
+			const params = [password, settings];
 			return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params);
 		}
 		// ExampleSSE is a no-op.
@@ -1251,6 +1259,8 @@ const popupRepoAdd = async () => {
 			CheckoutPath: name.value,
 			Bubblewrap: bubblewrap.checked,
 			BubblewrapNoNet: bubblewrapNoNet.checked,
+			WebhookSecret: '',
+			AllowGlobalWebhookSecrets: false,
 			BuildScript: '',
 			HomeDiskUsage: 0,
 		};
@@ -1282,7 +1292,7 @@ const pageHome = async () => {
 	const atexit = page.newAtexit();
 	const render = () => {
 		atexit.run();
-		dom._kids(pageElem, dom.div(style({ marginBottom: '1ex' }), dom.a(attr.href('#toolchains'), 'Toolchains'), ' '), dom.div(style({ marginBottom: '1ex', display: 'flex', justifyContent: 'space-between' }), dom.div(dom.clickbutton('Add repo', attr.title('Add new repository, to build.'), function click() {
+		dom._kids(pageElem, dom.div(style({ marginBottom: '1ex' }), dom.a(attr.href('#gotoolchains'), 'Go Toolchains'), ' ', dom.a(attr.href('#settings'), 'Settings'), ' '), dom.div(style({ marginBottom: '1ex', display: 'flex', justifyContent: 'space-between' }), dom.div(dom.clickbutton('Add repo', attr.title('Add new repository, to build.'), function click() {
 			popupRepoAdd();
 		}), ' ', dom.clickbutton('Clear homedirs', attr.title('Remove home directories for all repositories that reuse home directories across builds. Cache in such directories can grow over time, consuming quite some disk space.'), async function click(e) {
 			if (!confirm('Are you sure?')) {
@@ -1339,7 +1349,7 @@ const pageHome = async () => {
 	});
 	return page;
 };
-const pageToolchains = async () => {
+const pageGoToolchains = async () => {
 	const page = new Page();
 	const [available0, [installed0, active0]] = await authed(() => Promise.all([
 		client.GoToolchainsListReleased(password),
@@ -1348,8 +1358,8 @@ const pageToolchains = async () => {
 	let available = available0 || [];
 	let installed = installed0 || [];
 	let active = active0 || [];
-	dom._kids(crumbElem, link('#', 'Home'), ' / ', 'Toolchains');
-	document.title = 'Ding - Toolchains';
+	dom._kids(crumbElem, link('#', 'Home'), ' / ', 'Go Toolchains');
+	document.title = 'Ding - Go Toolchains';
 	const render = () => {
 		const groups = [];
 		for (const s of available) {
@@ -1397,6 +1407,31 @@ const pageToolchains = async () => {
 	render();
 	return page;
 };
+const pageSettings = async () => {
+	const page = new Page();
+	const [isolationEnabled, mailEnabled, settings] = await authed(() => client.Settings(password));
+	let notifyEmailAddrs;
+	let runPrefix;
+	let environment;
+	let githubSecret;
+	let giteaSecret;
+	let bitbucketSecret;
+	let fieldset;
+	dom._kids(crumbElem, link('#', 'Home'), ' / ', 'Settings');
+	document.title = 'Ding - Settings';
+	dom._kids(pageElem, isolationEnabled ? dom.p('Each repository and potentially build is isolated to run under a unique uid.') : dom.p('NOTE: Repositories and builds are NOT isolated to run under a unique uid. You may want to enable isolated builds in the configuration file (requires restart).'), mailEnabled ? [] : dom.p('NOTE: No SMTP server is configured for outgoing emails, no email will be sent for broken/fixed builds.'), dom.form(async function submit(e) {
+		e.preventDefault();
+		e.stopPropagation();
+		settings.NotifyEmailAddrs = notifyEmailAddrs.value.split(',').map(s => s.trim()).filter(s => !!s);
+		settings.RunPrefix = runPrefix.value.split(' ').map(s => s.trim()).filter(s => !!s);
+		settings.Environment = environment.value.split('\n').map(s => s.trim()).filter(s => !!s);
+		settings.GithubWebhookSecret = githubSecret.value;
+		settings.GiteaWebhookSecret = giteaSecret.value;
+		settings.BitbucketWebhookSecret = bitbucketSecret.value;
+		await authed(() => client.SettingsSave(password, settings), fieldset);
+	}, fieldset = dom.fieldset(dom.div(style({ display: 'grid', columnGap: '1em', rowGap: '.5ex', gridTemplateColumns: 'min-content 1fr', alignItems: 'top', maxWidth: '50em' }), dom.div('Notify email addresses', style({ whiteSpace: 'nowrap' }), attr.title('Comma-separated list of email address that will receive notifications when a build breaks or is fixed and a repository does not have its own addresses to notify configured.')), notifyEmailAddrs = dom.input(attr.value((settings.NotifyEmailAddrs || []).join(', ')), attr.placeholder('user@example.org, other@example.org')), dom.div('Clone and build command prefix', style({ whiteSpace: 'nowrap' }), attr.title('Can be used to run at lower priority and with timeout, e.g. "nice ionice -c 3 timeout 300s"')), runPrefix = dom.input(attr.value((settings.RunPrefix || []).join(' '))), dom.div('Additional environment variables', style({ whiteSpace: 'nowrap' }), attr.title('Of the form key=value, one per line.')), environment = dom.textarea(attr.placeholder('key=value\nkey=value\n...'), attr.value((settings.Environment || []).map(s => s + '\n').join('')), attr.rows('' + Math.max(8, (settings.Environment || []).length + 1))), dom.div(style({ gridColumn: '1 / 3' }), 'Global webhook secrets', dom.p('For new repositories, unique webhooks are assigned to each repository. While global secrets are still configured, they will be accepted to start builds on all older repositories.')), dom.div('Github webhook secret', style({ whiteSpace: 'nowrap' })), githubSecret = dom.input(attr.value(settings.GithubWebhookSecret), attr.type('password')), dom.div('Gitea webhook secret', style({ whiteSpace: 'nowrap' })), giteaSecret = dom.input(attr.value(settings.GiteaWebhookSecret), attr.type('password')), dom.div('Bitbucket webhook secret', style({ whiteSpace: 'nowrap' })), bitbucketSecret = dom.input(attr.value(settings.BitbucketWebhookSecret), attr.type('password'))), dom.br(), dom.submitbutton('Save'))));
+	return page;
+};
 const pageDocs = async () => {
 	const page = new Page();
 	document.title = 'Ding - Docs';
@@ -1438,10 +1473,10 @@ echo release: app $GOOS $GOARCH $goversion app-$version-$GOOS-$GOARCH`), dom.br(
 };
 const pageRepo = async (repoName) => {
 	const page = new Page();
-	let [repo, builds0, buildSettings] = await authed(() => Promise.all([
+	let [repo, builds0, [, mailEnabled, settings]] = await authed(() => Promise.all([
 		client.Repo(password, repoName),
 		client.Builds(password, repoName),
-		client.BuildSettings(password),
+		client.Settings(password),
 	]));
 	let builds = builds0 || [];
 	const buildsElem = dom.div();
@@ -1555,11 +1590,13 @@ const pageRepo = async (repoName) => {
 				Bubblewrap: bubblewrap.checked,
 				BubblewrapNoNet: bubblewrapNoNet.checked,
 				NotifyEmailAddrs: notifyEmailAddrs.value ? notifyEmailAddrs.value.split(',').map(s => s.trim()) : [],
+				WebhookSecret: '',
+				AllowGlobalWebhookSecrets: false,
 				BuildScript: buildScript.value,
 				HomeDiskUsage: 0,
 			};
 			repo = await authed(() => client.RepoSave(password, nr), fieldset);
-		}, fieldset = dom.fieldset(dom.div(style({ display: 'grid', columnGap: '1em', rowGap: '.5ex', gridTemplateColumns: 'min-content 1fr', alignItems: 'top' }), 'Name', name = dom.input(attr.disabled(''), attr.value(repo.Name)), 'VCS', vcs = dom.select(dom.option('git', repo.VCS == 'git' ? attr.selected('') : []), dom.option('mercurial', repo.VCS == 'mercurial' ? attr.selected('') : []), dom.option('command', repo.VCS == 'command' ? attr.selected('') : []), vcsChanged), 'Origin', originBox = dom.div(originInput = origin = dom.input(attr.value(repo.Origin), attr.required(''), attr.placeholder('https://... or ssh://... or user@host:path.git'), style({ width: '100%' }))), dom.div('Default branch', style({ whiteSpace: 'nowrap' })), defaultBranch = dom.input(attr.value(repo.DefaultBranch), attr.placeholder('main, master, default')), dom.div('Checkout path', style({ whiteSpace: 'nowrap' })), checkoutPath = dom.input(attr.value(repo.CheckoutPath), attr.required(''), attr.title('Name of the directory to checkout the repository. Go builds may use this name for the binary it creates.')), dom.div('Notify email addresses', style({ whiteSpace: 'nowrap' })), notifyEmailAddrs = dom.input(attr.value((repo.NotifyEmailAddrs || []).join(', ')), attr.title('Comma-separated list of email address that will receive notifications when a build breaks or is fixed. If empty, the email address configured in the configuration file receives a notification, if any.')), dom.div(), dom.label(reuseUID = dom.input(attr.type('checkbox'), repo.UID !== null ? attr.checked('') : []), ' Reuse $HOME and UID for builds for this repo', attr.title('By reusing $HOME and running builds for this repository under the same UID, build caches can be used. This typically leads to faster builds but reduces isolation of builds.')), dom.div(), dom.label(bubblewrap = dom.input(attr.type('checkbox'), repo.Bubblewrap ? attr.checked('') : []), ' Run build script in bubblewrap, with limited system access', attr.title('Only available on Linux, with bubblewrap (bwrap) installed. Commands are run in a new mount namespace with access to system directories like /bin /lib /usr, and to the ding build, home and toolchain directories.')), dom.div(), dom.label(bubblewrapNoNet = dom.input(attr.type('checkbox'), repo.BubblewrapNoNet ? attr.checked('') : []), ' Prevent network access from build script. Only active if bubblewrap is active.', attr.title('Hide network interfaces from the build script. Only a loopback device is available.'))), dom.div(dom.label(dom.div('Build script', style({ marginBottom: '.25ex' })), buildScript = dom.textarea(repo.BuildScript, attr.required(''), attr.rows('24'), style({ width: '100%' })))), dom.br(), dom.div(dom.submitbutton('Save'))))), dom.br(), dom.div(docsBuildScript()), dom.h1('Build settings'), (buildSettings.Run || []).length > 0 ? dom.p('Build commands are prefixed with: ', dom.tt((buildSettings.Run || []).join(' '))) : dom.p('Build commands are not run within other commands.'), dom.div('Additional environments available during builds:'), (buildSettings.Environment || []).length === 0 ? dom.p('None') : dom.ul((buildSettings.Environment || []).map(s => dom.li(dom.tt(s)))))),
+		}, fieldset = dom.fieldset(dom.div(style({ display: 'grid', columnGap: '1em', rowGap: '.5ex', gridTemplateColumns: 'min-content 1fr', alignItems: 'top' }), 'Name', name = dom.input(attr.disabled(''), attr.value(repo.Name)), 'VCS', vcs = dom.select(dom.option('git', repo.VCS == 'git' ? attr.selected('') : []), dom.option('mercurial', repo.VCS == 'mercurial' ? attr.selected('') : []), dom.option('command', repo.VCS == 'command' ? attr.selected('') : []), vcsChanged), 'Origin', originBox = dom.div(originInput = origin = dom.input(attr.value(repo.Origin), attr.required(''), attr.placeholder('https://... or ssh://... or user@host:path.git'), style({ width: '100%' }))), dom.div('Default branch', style({ whiteSpace: 'nowrap' })), defaultBranch = dom.input(attr.value(repo.DefaultBranch), attr.placeholder('main, master, default')), dom.div('Checkout path', style({ whiteSpace: 'nowrap' })), checkoutPath = dom.input(attr.value(repo.CheckoutPath), attr.required(''), attr.title('Name of the directory to checkout the repository. Go builds may use this name for the binary it creates.')), dom.div('Notify email addresses', style({ whiteSpace: 'nowrap' }), mailEnabled ? [] : [' *', attr.title('No SMTP server is configured for outgoing emails.')]), notifyEmailAddrs = dom.input(attr.value((repo.NotifyEmailAddrs || []).join(', ')), attr.title('Comma-separated list of email address that will receive notifications when a build breaks or is fixed. If empty, the email address configured in the configuration file receives a notification, if any.'), attr.placeholder((settings.NotifyEmailAddrs || []).join(', ') || 'user@example.org, other@example.org')), dom.div(), dom.label(reuseUID = dom.input(attr.type('checkbox'), repo.UID !== null ? attr.checked('') : []), ' Reuse $HOME and UID for builds for this repo', attr.title('By reusing $HOME and running builds for this repository under the same UID, build caches can be used. This typically leads to faster builds but reduces isolation of builds.')), dom.div(), dom.label(bubblewrap = dom.input(attr.type('checkbox'), repo.Bubblewrap ? attr.checked('') : []), ' Run build script in bubblewrap, with limited system access', attr.title('Only available on Linux, with bubblewrap (bwrap) installed. Commands are run in a new mount namespace with access to system directories like /bin /lib /usr, and to the ding build, home and toolchain directories.')), dom.div(), dom.label(bubblewrapNoNet = dom.input(attr.type('checkbox'), repo.BubblewrapNoNet ? attr.checked('') : []), ' Prevent network access from build script. Only active if bubblewrap is active.', attr.title('Hide network interfaces from the build script. Only a loopback device is available.'))), dom.div(dom.label(dom.div('Build script', style({ marginBottom: '.25ex' })), buildScript = dom.textarea(repo.BuildScript, attr.required(''), attr.rows('24'), style({ width: '100%' })))), dom.br(), dom.div(dom.submitbutton('Save'))))), dom.br(), dom.h1('Webhooks'), dom.p('Configure the following webhook URLs to trigger builds:'), dom.ul(dom.li(dom.tt('http[s]://[webhooklistener]/github/' + repo.Name), ', with secret: ', dom.tt(repo.WebhookSecret)), dom.li(dom.tt('http[s]://[webhooklistener]/gitea/' + repo.Name), ', with secret: ', dom.tt(repo.WebhookSecret)), dom.li(dom.tt('http[s]://[webhooklistener]/bitbucket/' + repo.Name + '/' + repo.WebhookSecret))), repo.AllowGlobalWebhookSecrets && (settings.GithubWebhookSecret || settings.GiteaWebhookSecret || settings.BitbucketWebhookSecret) ? dom.p('Warning: Globally configured webhook secrets are active and also accepted for this repository.') : dom.p('No other (globally configured) secrets are accepted for this repository.'), dom.div(docsBuildScript()), dom.h1('Build settings'), (settings.RunPrefix || []).length > 0 ? dom.p('Build commands are prefixed with: ', dom.tt((settings.RunPrefix || []).join(' '))) : dom.p('Build commands are not run within other commands.'), dom.div('Additional environments available during builds:'), (settings.Environment || []).length === 0 ? dom.p('None') : dom.ul((settings.Environment || []).map(s => dom.li(dom.tt(s)))))),
 	];
 	const elem = render();
 	vcsChanged();
@@ -1690,8 +1727,11 @@ const hashchange = async (e) => {
 		if (t.length === 1 && t[0] === '') {
 			p = await pageHome();
 		}
-		else if (t.length === 1 && t[0] === 'toolchains') {
-			p = await pageToolchains();
+		else if (t.length === 1 && t[0] === 'gotoolchains') {
+			p = await pageGoToolchains();
+		}
+		else if (t.length === 1 && t[0] === 'settings') {
+			p = await pageSettings();
 		}
 		else if (t.length === 1 && t[0] === 'docs') {
 			p = await pageDocs();

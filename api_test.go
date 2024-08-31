@@ -34,6 +34,8 @@ func TestAPI(t *testing.T) {
 	tneederr(t, "user:badAuth", func() { api.Repo(ctxbg, "badpass", "repoName") })
 	tneederr(t, "user:badAuth", func() { api.RepoRemove(ctxbg, "badpass", "repoName") })
 	tneederr(t, "user:badAuth", func() { api.RepoSave(ctxbg, "badpass", Repo{}) })
+	tneederr(t, "user:badAuth", func() { api.Settings(ctxbg, "badpass") })
+	tneederr(t, "user:badAuth", func() { api.SettingsSave(ctxbg, "badpass", Settings{}) })
 
 	// todo: test more api failures (bad parameters).
 
@@ -53,6 +55,7 @@ echo coverage-report: coverage.txt
 	// CreateRepo
 	r := Repo{Name: "t0", VCS: VCSGit, Origin: "http://localhost", DefaultBranch: "main", CheckoutPath: "t0", BuildScript: buildScript}
 	nr := api.RepoCreate(ctxbg, config.Password, r)
+	nr.WebhookSecret = ""
 	tcompare(t, nr, r)
 	r = nr
 
@@ -182,6 +185,9 @@ echo coverage-report: coverage.txt
 
 	api.RepoClearHomedir(ctxbg, config.Password, r.Name)
 	api.ClearRepoHomedirs(ctxbg, config.Password)
+
+	_, _, settings := api.Settings(ctxbg, config.Password)
+	api.SettingsSave(ctxbg, config.Password, settings)
 }
 
 func TestToolchains(t *testing.T) {

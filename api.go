@@ -3,10 +3,12 @@ package main
 import (
 	"compress/gzip"
 	"context"
+	cryptorand "crypto/rand"
 	"fmt"
 	"io"
 	"log/slog"
 	"maps"
+	mathrand "math/rand/v2"
 	"os"
 	"path"
 	"runtime"
@@ -159,12 +161,6 @@ func (Ding) BuildCancel(ctx context.Context, password, repoName string, buildID 
 type BuildSettings struct {
 	Run         []string // The command to run the build script is prefixed with these commands, e.g. /usr/bin/nice.
 	Environment []string // Additional environment variables available during builds, of the form key=value.
-}
-
-// BuildSettings returns the environment for builds.
-func (Ding) BuildSettings(ctx context.Context, password string) BuildSettings {
-	_checkPassword(password)
-	return BuildSettings{config.Run, config.Environment}
 }
 
 // ReleaseCreate release a build.
@@ -341,6 +337,26 @@ func _assignRepoUID(tx *bstore.Tx) (uid uint32) {
 	return
 }
 
+var secretRand = newChaCha8Rand()
+
+func newChaCha8Rand() *mathrand.Rand {
+	var seed [32]byte
+	_, err := cryptorand.Read(seed[:])
+	if err != nil {
+		panic(err)
+	}
+	return mathrand.New(mathrand.NewChaCha8(seed))
+}
+
+func genSecret() string {
+	var r string
+	const chars = "abcdefghijklmnopqrstuwvxyzABCDEFGHIJKLMNOPQRSTUWVXYZ0123456789"
+	for i := 0; i < 12; i++ {
+		r += string(chars[secretRand.IntN(len(chars))])
+	}
+	return r
+}
+
 // RepoCreate creates a new repository.
 // If repo.UID is not null, a unique uid is assigned.
 func (Ding) RepoCreate(ctx context.Context, password string, repo Repo) (r Repo) {
@@ -356,6 +372,7 @@ func (Ding) RepoCreate(ctx context.Context, password string, repo Repo) (r Repo)
 
 		repo.UID = uid
 		repo.HomeDiskUsage = 0
+		repo.WebhookSecret = genSecret()
 		err := tx.Insert(&repo)
 		_checkf(err, "inserting repository in database")
 		r = repo
@@ -720,4 +737,24 @@ func (Ding) LogLevelSet(ctx context.Context, level LogLevel) {
 	err := requestPrivileged(msg{LogLevelSet: &msgLogLevelSet{LogLevel: nlevel}})
 	_checkf(err, "setting log level")
 	loglevel.Set(nlevel)
+}
+
+// Settings returns the runtime settings.
+func (Ding) Settings(ctx context.Context, password string) (isolationEnabled bool, mailEnabled bool, settings Settings) {
+	_checkPassword(password)
+
+	settings.ID = 1
+	err := database.Get(ctx, &settings)
+	_checkf(err, "get settings")
+	isolationEnabled = config.IsolateBuilds.Enabled
+	mailEnabled = config.Mail.Enabled
+	return
+}
+
+// SettingsSave saves the runtime settings.
+func (Ding) SettingsSave(ctx context.Context, password string, settings Settings) {
+	_checkPassword(password)
+	err := database.Update(ctx, &settings)
+	_checkf(err, "update settings")
+	return
 }

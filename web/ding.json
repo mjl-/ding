@@ -129,26 +129,6 @@
 			"Returns": []
 		},
 		{
-			"Name": "BuildSettings",
-			"Docs": "BuildSettings returns the environment for builds.",
-			"Params": [
-				{
-					"Name": "password",
-					"Typewords": [
-						"string"
-					]
-				}
-			],
-			"Returns": [
-				{
-					"Name": "r0",
-					"Typewords": [
-						"BuildSettings"
-					]
-				}
-			]
-		},
-		{
 			"Name": "ReleaseCreate",
 			"Docs": "ReleaseCreate release a build.",
 			"Params": [
@@ -583,6 +563,57 @@
 				}
 			],
 			"Returns": []
+		},
+		{
+			"Name": "Settings",
+			"Docs": "Settings returns the runtime settings.",
+			"Params": [
+				{
+					"Name": "password",
+					"Typewords": [
+						"string"
+					]
+				}
+			],
+			"Returns": [
+				{
+					"Name": "isolationEnabled",
+					"Typewords": [
+						"bool"
+					]
+				},
+				{
+					"Name": "mailEnabled",
+					"Typewords": [
+						"bool"
+					]
+				},
+				{
+					"Name": "settings",
+					"Typewords": [
+						"Settings"
+					]
+				}
+			]
+		},
+		{
+			"Name": "SettingsSave",
+			"Docs": "SettingsSave saves the runtime settings.",
+			"Params": [
+				{
+					"Name": "password",
+					"Typewords": [
+						"string"
+					]
+				},
+				{
+					"Name": "settings",
+					"Typewords": [
+						"Settings"
+					]
+				}
+			],
+			"Returns": []
 		}
 	],
 	"Sections": [
@@ -965,28 +996,6 @@
 			]
 		},
 		{
-			"Name": "BuildSettings",
-			"Docs": "BuildSettings describes the environment a build script is run in.",
-			"Fields": [
-				{
-					"Name": "Run",
-					"Docs": "The command to run the build script is prefixed with these commands, e.g. /usr/bin/nice.",
-					"Typewords": [
-						"[]",
-						"string"
-					]
-				},
-				{
-					"Name": "Environment",
-					"Docs": "Additional environment variables available during builds, of the form key=value.",
-					"Typewords": [
-						"[]",
-						"string"
-					]
-				}
-			]
-		},
-		{
 			"Name": "RepoBuilds",
 			"Docs": "RepoBuilds is a repository and its recent builds, per branch.",
 			"Fields": [
@@ -1069,6 +1078,20 @@
 					]
 				},
 				{
+					"Name": "WebhookSecret",
+					"Docs": "If non-empty, a per-repo secret for incoming webhook calls.",
+					"Typewords": [
+						"string"
+					]
+				},
+				{
+					"Name": "AllowGlobalWebhookSecrets",
+					"Docs": "If set, global webhook secrets are allowed to start builds. Set initially during migrations. Will be ineffective when global webhooks have been unconfigured.",
+					"Typewords": [
+						"bool"
+					]
+				},
+				{
 					"Name": "Bubblewrap",
 					"Docs": "If true, build is run with bubblewrap (bwrap) to isolate the environment further. Only the system, the build directory, home directory and toolchain directory is available.",
 					"Typewords": [
@@ -1085,6 +1108,64 @@
 				{
 					"Name": "NotifyEmailAddrs",
 					"Docs": "If not empty, each address gets notified about build breakage/fixage, overriding the default address configured in the configuration file.",
+					"Typewords": [
+						"[]",
+						"string"
+					]
+				}
+			]
+		},
+		{
+			"Name": "Settings",
+			"Docs": "Settings holds runtime configuration options.",
+			"Fields": [
+				{
+					"Name": "ID",
+					"Docs": "singleton with ID 1",
+					"Typewords": [
+						"int32"
+					]
+				},
+				{
+					"Name": "NotifyEmailAddrs",
+					"Docs": "Email address to notify on build breakage/fixage. Can be overridden per repository.",
+					"Typewords": [
+						"[]",
+						"string"
+					]
+				},
+				{
+					"Name": "GithubWebhookSecret",
+					"Docs": "Secret for webhooks from github. Migrated from config. New repo's get their own unique secret on creation.",
+					"Typewords": [
+						"string"
+					]
+				},
+				{
+					"Name": "GiteaWebhookSecret",
+					"Docs": "",
+					"Typewords": [
+						"string"
+					]
+				},
+				{
+					"Name": "BitbucketWebhookSecret",
+					"Docs": "",
+					"Typewords": [
+						"string"
+					]
+				},
+				{
+					"Name": "RunPrefix",
+					"Docs": "Commands prefixed to the clone and build commands. E.g. /usr/bin/nice.",
+					"Typewords": [
+						"[]",
+						"string"
+					]
+				},
+				{
+					"Name": "Environment",
+					"Docs": "Additional environment variables to set during clone and build.",
 					"Typewords": [
 						"[]",
 						"string"

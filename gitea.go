@@ -20,19 +20,22 @@ type giteaEvent struct {
 }
 
 func giteaHookHandler(w http.ResponseWriter, r *http.Request) {
-	if config.GiteaWebhookSecret == "" {
-		http.NotFound(w, r)
-		return
-	}
-
-	if !strings.HasPrefix(r.URL.Path, "/gitea/") {
-		http.NotFound(w, r)
-		return
-	}
 	repoName := r.URL.Path[len("/gitea/"):]
+	if repoName == "" {
+		http.NotFound(w, r)
+		return
+	}
 
 	repo := Repo{Name: repoName}
-	if err := database.Get(r.Context(), &repo); err == bstore.ErrAbsent {
+	settings := Settings{ID: 1}
+	err := database.Read(r.Context(), func(tx *bstore.Tx) error {
+		err := tx.Get(&repo)
+		if err != nil {
+			return err
+		}
+		return tx.Get(&settings)
+	})
+	if err == bstore.ErrAbsent {
 		http.NotFound(w, r)
 		return
 	} else if err != nil {
@@ -40,15 +43,16 @@ func giteaHookHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error", http.StatusInternalServerError)
 		return
 	}
-	if !(repo.VCS == VCSGit || repo.VCS == VCSCommand) {
-		slog.Debug("gitea webhook: push event for a non-git repository")
-		http.Error(w, "misconfigured repositories", http.StatusInternalServerError)
+	authHdr := strings.TrimSpace(r.Header.Get("Authorization"))
+	authOK := authHdr == "Bearer "+repo.WebhookSecret || repo.AllowGlobalWebhookSecrets && settings.GiteaWebhookSecret != "" && authHdr == "Bearer "+settings.GiteaWebhookSecret
+	if !authOK {
+		http.Error(w, "invalid/missing authorization header", http.StatusBadRequest)
 		return
 	}
 
-	authHdr := strings.TrimSpace(r.Header.Get("Authorization"))
-	if authHdr != "Bearer "+config.GiteaWebhookSecret {
-		http.Error(w, "invalid/missing authorization header", http.StatusBadRequest)
+	if !(repo.VCS == VCSGit || repo.VCS == VCSCommand) {
+		slog.Debug("gitea webhook: push event for a non-git repository")
+		http.Error(w, "misconfigured repositories", http.StatusInternalServerError)
 		return
 	}
 

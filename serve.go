@@ -363,7 +363,7 @@ func doMsgBuild(msg *msgBuild, enc *gob.Encoder, unixconn *net.UnixConn) error {
 			argv = append(argv, "--bind", msg.ToolchainDir, msg.ToolchainDir)
 		}
 	}
-	argv = append(argv, config.Run...)
+	argv = append(argv, msg.RunPrefix...)
 	argv = append(argv, buildDir+"/scripts/build.sh")
 	cmd := exec.CommandContext(buildCommand.ctx, argv[0], argv[1:]...)
 	cmd.Dir = workDir

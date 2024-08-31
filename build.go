@@ -182,6 +182,10 @@ func _doBuild0(ctx context.Context, repo Repo, build Build, buildDir string) {
 		return
 	}
 
+	settings := Settings{ID: 1}
+	err = database.Get(ctx, &settings)
+	_checkf(err, "get settings")
+
 	var homeDir string
 	if repo.UID != nil {
 		homeDir = fmt.Sprintf("%s/home/%s", dingDataDir, repo.Name)
@@ -266,10 +270,10 @@ func _doBuild0(ctx context.Context, repo Repo, build Build, buildDir string) {
 			} else {
 				errmsg = fmt.Sprintf("%v", r)
 			}
-			_sendMailFailing(repo, build, errmsg)
+			_sendMailFailing(settings, repo, build, errmsg)
 		}
 		if r == nil && !(prevStatus == "" || prevStatus == StatusSuccess) {
-			_sendMailFixed(repo, build)
+			_sendMailFixed(settings, repo, build)
 		}
 
 		if r != nil {
@@ -325,11 +329,11 @@ func _doBuild0(ctx context.Context, repo Repo, build Build, buildDir string) {
 			env = append(env, "DING_TOOLCHAINDIR="+toolchainDir)
 		}
 	}
-	env = append(env, config.Environment...)
+	env = append(env, settings.Environment...)
 
 	runPrefix := func(args ...string) []string {
-		if len(config.Run) > 0 {
-			args = append(config.Run, args...)
+		if len(settings.RunPrefix) > 0 {
+			args = append(settings.RunPrefix, args...)
 		}
 		return args
 	}
@@ -341,7 +345,7 @@ func _doBuild0(ctx context.Context, repo Repo, build Build, buildDir string) {
 		// git source repo's. We have to clone as the user running ding. Otherwise, git
 		// clone won't work due to ssh refusing to run as a user without a username ("No
 		// user exists for uid ...")
-		err = run(buildCmd.ctx, build.ID, env, "clone", buildDir, buildDir, runPrefix("git", "clone", "--recursive", "--no-hardlinks", "--branch", build.Branch, repo.Origin, "checkout/"+repo.CheckoutPath)...)
+		err = run(buildCmd.ctx, build.ID, settings.RunPrefix, env, "clone", buildDir, buildDir, runPrefix("git", "clone", "--recursive", "--no-hardlinks", "--branch", build.Branch, repo.Origin, "checkout/"+repo.CheckoutPath)...)
 		_checkUserf(err, "cloning git repository")
 	case VCSMercurial:
 		cmd := []string{"hg", "clone", "--branch", build.Branch}
@@ -349,10 +353,10 @@ func _doBuild0(ctx context.Context, repo Repo, build Build, buildDir string) {
 			cmd = append(cmd, "--rev", build.CommitHash, "--updaterev", build.CommitHash)
 		}
 		cmd = append(cmd, repo.Origin, "checkout/"+repo.CheckoutPath)
-		err = run(buildCmd.ctx, build.ID, env, "clone", buildDir, buildDir, runPrefix(cmd...)...)
+		err = run(buildCmd.ctx, build.ID, settings.RunPrefix, env, "clone", buildDir, buildDir, runPrefix(cmd...)...)
 		_checkUserf(err, "cloning mercurial repository")
 	case VCSCommand:
-		err = run(buildCmd.ctx, build.ID, env, "clone", buildDir, buildDir, runPrefix("sh", "-c", repo.Origin)...)
+		err = run(buildCmd.ctx, build.ID, settings.RunPrefix, env, "clone", buildDir, buildDir, runPrefix("sh", "-c", repo.Origin)...)
 		_checkUserf(err, "cloning repository from command")
 	default:
 		_serverError("unexpected VCS " + string(repo.VCS))
@@ -403,7 +407,7 @@ func _doBuild0(ctx context.Context, repo Repo, build Build, buildDir string) {
 	}
 
 	if repo.VCS == VCSGit {
-		err = run(buildCmd.ctx, build.ID, env, "clone", buildDir, checkoutDir, runPrefix("git", "checkout", "--detach", build.CommitHash)...)
+		err = run(buildCmd.ctx, build.ID, settings.RunPrefix, env, "clone", buildDir, checkoutDir, runPrefix("git", "checkout", "--detach", build.CommitHash)...)
 		_checkUserf(err, "checkout revision")
 	}
 
@@ -424,7 +428,7 @@ func _doBuild0(ctx context.Context, repo Repo, build Build, buildDir string) {
 
 	_updateStatus(StatusBuild, false)
 	req := request{
-		msg{Build: &msgBuild{repo.Name, build.ID, uid, repo.CheckoutPath, env, toolchainDir, homeDir, repo.Bubblewrap, repo.BubblewrapNoNet}},
+		msg{Build: &msgBuild{repo.Name, build.ID, uid, repo.CheckoutPath, settings.RunPrefix, env, toolchainDir, homeDir, repo.Bubblewrap, repo.BubblewrapNoNet}},
 		nil,
 		make(chan buildResult),
 	}
@@ -635,7 +639,7 @@ func setupCmd(cmdCtx context.Context, buildID int32, env []string, step, buildDi
 	return stdoutr, stderrr, c, nil
 }
 
-func run(cmdCtx context.Context, buildID int32, env []string, step, buildDir, workDir string, args ...string) error {
+func run(cmdCtx context.Context, buildID int32, runPrefix []string, env []string, step, buildDir, workDir string, args ...string) error {
 	cmdstdout, cmdstderr, wait, err := setupCmd(cmdCtx, buildID, env, step, buildDir, workDir, args...)
 	if err != nil {
 		return fmt.Errorf("setting up command: %s", err)

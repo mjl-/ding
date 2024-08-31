@@ -39,11 +39,11 @@ install-js:
 
 # note: running as root (with umask 0022) tests the privsep paths
 test:
-	CGO_ENABLED=0 go test -coverprofile cover.out
+	CGO_ENABLED=0 go test -shuffle=on -coverprofile cover.out
 	go tool cover -html=cover.out -o cover.html
 
 test-race:
-	CGO_ENABLED=1 go test -race -coverprofile cover.out
+	CGO_ENABLED=1 go test -shuffle=on -race -coverprofile cover.out
 	go tool cover -html=cover.out -o cover.html
 
 test-gotoolchains:

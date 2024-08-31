@@ -4,6 +4,17 @@ import (
 	"time"
 )
 
+// Settings holds runtime configuration options.
+type Settings struct {
+	ID                     int32    // singleton with ID 1
+	NotifyEmailAddrs       []string // Email address to notify on build breakage/fixage. Can be overridden per repository.
+	GithubWebhookSecret    string   // Secret for webhooks from github. Migrated from config. New repo's get their own unique secret on creation.
+	GiteaWebhookSecret     string
+	BitbucketWebhookSecret string
+	RunPrefix              []string // Commands prefixed to the clone and build commands. E.g. /usr/bin/nice.
+	Environment            []string // Additional environment variables to set during clone and build.
+}
+
 // BuildStatus indicates the progress of a build.
 type BuildStatus string
 
@@ -31,14 +42,16 @@ const (
 
 // Repo is a repository as stored in the database.
 type Repo struct {
-	Name          string  // Short name for repo, typically last element of repo URL/path.
-	VCS           VCS     `bstore:"nonzero"`
-	Origin        string  `bstore:"nonzero"` // git/mercurial "URL" (as understood by the respective commands), often SSH or HTTPS. if `vcs` is `command`, this is executed using sh.
-	DefaultBranch string  // Name of default branch, e.g. "main" or "master" for git, or "default" for mercurial, empty for command.
-	CheckoutPath  string  `bstore:"nonzero"` // Path to place the checkout in.
-	BuildScript   string  // Shell scripts that compiles the software, runs tests, and creates releasable files.
-	UID           *uint32 // If set, fixed uid to use for builds, sharing a home directory where files can be cached, to speed up builds.
-	HomeDiskUsage int64   // Disk usage of shared home directory after last finished build. Only if UID is set.
+	Name                      string  // Short name for repo, typically last element of repo URL/path.
+	VCS                       VCS     `bstore:"nonzero"`
+	Origin                    string  `bstore:"nonzero"` // git/mercurial "URL" (as understood by the respective commands), often SSH or HTTPS. if `vcs` is `command`, this is executed using sh.
+	DefaultBranch             string  // Name of default branch, e.g. "main" or "master" for git, or "default" for mercurial, empty for command.
+	CheckoutPath              string  `bstore:"nonzero"` // Path to place the checkout in.
+	BuildScript               string  // Shell scripts that compiles the software, runs tests, and creates releasable files.
+	UID                       *uint32 // If set, fixed uid to use for builds, sharing a home directory where files can be cached, to speed up builds.
+	HomeDiskUsage             int64   // Disk usage of shared home directory after last finished build. Only if UID is set.
+	WebhookSecret             string  // If non-empty, a per-repo secret for incoming webhook calls.
+	AllowGlobalWebhookSecrets bool    // If set, global webhook secrets are allowed to start builds. Set initially during migrations. Will be ineffective when global webhooks have been unconfigured.
 
 	// If true, build is run with bubblewrap (bwrap) to isolate the environment
 	// further. Only the system, the build directory, home directory and toolchain

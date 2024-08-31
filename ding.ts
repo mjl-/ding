@@ -402,6 +402,8 @@ const popupRepoAdd = async () => {
 					CheckoutPath: name.value,
 					Bubblewrap: bubblewrap.checked,
 					BubblewrapNoNet: bubblewrapNoNet.checked,
+					WebhookSecret: '',
+					AllowGlobalWebhookSecrets: false,
 					BuildScript: '',
 					HomeDiskUsage: 0,
 				}
@@ -487,7 +489,8 @@ const pageHome = async (): Promise<Page> => {
 		dom._kids(pageElem,
 			dom.div(
 				style({marginBottom: '1ex'}),
-				dom.a(attr.href('#toolchains'), 'Toolchains'), ' ',
+				dom.a(attr.href('#gotoolchains'), 'Go Toolchains'), ' ',
+				dom.a(attr.href('#settings'), 'Settings'), ' ',
 			),
 			dom.div(
 				style({marginBottom: '1ex', display: 'flex', justifyContent: 'space-between'}),
@@ -600,7 +603,7 @@ const pageHome = async (): Promise<Page> => {
 	return page
 }
 
-const pageToolchains = async (): Promise<Page> => {
+const pageGoToolchains = async (): Promise<Page> => {
 	const page = new Page()
 	const [available0, [installed0, active0]] = await authed(() =>
 		Promise.all([
@@ -612,8 +615,8 @@ const pageToolchains = async (): Promise<Page> => {
 	let installed = installed0 || []
 	let active = active0 || []
 
-	dom._kids(crumbElem, link('#', 'Home'), ' / ', 'Toolchains')
-	document.title = 'Ding - Toolchains'
+	dom._kids(crumbElem, link('#', 'Home'), ' / ', 'Go Toolchains')
+	document.title = 'Ding - Go Toolchains'
 
 	const render = () => {
 		const groups: string[][] = []
@@ -717,6 +720,65 @@ const pageToolchains = async (): Promise<Page> => {
 		)
 	}
 	render()
+	return page
+}
+
+const pageSettings = async (): Promise<Page> => {
+	const page = new Page()
+	const [isolationEnabled, mailEnabled, settings] = await authed(() => client.Settings(password))
+
+	let notifyEmailAddrs: HTMLInputElement
+	let runPrefix: HTMLInputElement
+	let environment: HTMLTextAreaElement
+	let githubSecret: HTMLInputElement
+	let giteaSecret: HTMLInputElement
+	let bitbucketSecret: HTMLInputElement
+	let fieldset: HTMLFieldSetElement
+
+	dom._kids(crumbElem, link('#', 'Home'), ' / ', 'Settings')
+	document.title = 'Ding - Settings'
+	dom._kids(pageElem,
+		isolationEnabled ? dom.p('Each repository and potentially build is isolated to run under a unique uid.') : dom.p('NOTE: Repositories and builds are NOT isolated to run under a unique uid. You may want to enable isolated builds in the configuration file (requires restart).'),
+		mailEnabled ? [] : dom.p('NOTE: No SMTP server is configured for outgoing emails, no email will be sent for broken/fixed builds.'),
+		dom.form(
+			async function submit(e: SubmitEvent) {
+				e.preventDefault()
+				e.stopPropagation()
+				settings.NotifyEmailAddrs = notifyEmailAddrs.value.split(',').map(s => s.trim()).filter(s => !!s)
+				settings.RunPrefix = runPrefix.value.split(' ').map(s => s.trim()).filter(s => !!s)
+				settings.Environment = environment.value.split('\n').map(s => s.trim()).filter(s => !!s)
+				settings.GithubWebhookSecret = githubSecret.value
+				settings.GiteaWebhookSecret = giteaSecret.value
+				settings.BitbucketWebhookSecret = bitbucketSecret.value
+				await authed(() => client.SettingsSave(password, settings), fieldset)
+			},
+			fieldset=dom.fieldset(
+				dom.div(
+					style({display: 'grid', columnGap: '1em', rowGap: '.5ex', gridTemplateColumns: 'min-content 1fr', alignItems: 'top', maxWidth: '50em'}),
+					dom.div('Notify email addresses', style({whiteSpace: 'nowrap'}), attr.title('Comma-separated list of email address that will receive notifications when a build breaks or is fixed and a repository does not have its own addresses to notify configured.')),
+					notifyEmailAddrs=dom.input(attr.value((settings.NotifyEmailAddrs || []).join(', ')), attr.placeholder('user@example.org, other@example.org')),
+					dom.div('Clone and build command prefix', style({whiteSpace: 'nowrap'}), attr.title('Can be used to run at lower priority and with timeout, e.g. "nice ionice -c 3 timeout 300s"')),
+					runPrefix=dom.input(attr.value((settings.RunPrefix || []).join(' '))),
+					dom.div('Additional environment variables', style({whiteSpace: 'nowrap'}), attr.title('Of the form key=value, one per line.')),
+					environment=dom.textarea(attr.placeholder('key=value\nkey=value\n...'), attr.value((settings.Environment || []).map(s => s+'\n').join('')), attr.rows(''+Math.max(8, (settings.Environment || []).length+1))),
+					dom.div(
+						style({gridColumn: '1 / 3'}),
+						'Global webhook secrets',
+						dom.p('For new repositories, unique webhooks are assigned to each repository. While global secrets are still configured, they will be accepted to start builds on all older repositories.'),
+					),
+					dom.div('Github webhook secret', style({whiteSpace: 'nowrap'})),
+					githubSecret=dom.input(attr.value(settings.GithubWebhookSecret), attr.type('password')),
+					dom.div('Gitea webhook secret', style({whiteSpace: 'nowrap'})),
+					giteaSecret=dom.input(attr.value(settings.GiteaWebhookSecret), attr.type('password')),
+					dom.div('Bitbucket webhook secret', style({whiteSpace: 'nowrap'})),
+					bitbucketSecret=dom.input(attr.value(settings.BitbucketWebhookSecret), attr.type('password')),
+				),
+
+				dom.br(),
+				dom.submitbutton('Save'),
+			),
+		),
+	)
 	return page
 }
 
@@ -839,11 +901,11 @@ echo release: app $GOOS $GOARCH $goversion app-$version-$GOOS-$GOARCH`
 
 const pageRepo = async (repoName: string): Promise<Page> => {
 	const page = new Page()
-	let [repo, builds0, buildSettings] = await authed(() =>
+	let [repo, builds0, [, mailEnabled, settings]] = await authed(() =>
 		Promise.all([
 			client.Repo(password, repoName),
 			client.Builds(password, repoName),
-			client.BuildSettings(password),
+			client.Settings(password),
 		])
 	)
 	let builds = builds0 || []
@@ -1027,7 +1089,7 @@ const pageRepo = async (repoName: string): Promise<Page> => {
 					dom.h1('Repository settings'),
 					dom.form(
 						async function submit(e: SubmitEvent) {
-							e.stopPropagation()	
+							e.stopPropagation()
 							e.preventDefault()
 							const nr: api.Repo = {
 								Name: name.value,
@@ -1039,6 +1101,8 @@ const pageRepo = async (repoName: string): Promise<Page> => {
 								Bubblewrap: bubblewrap.checked,
 								BubblewrapNoNet: bubblewrapNoNet.checked,
 								NotifyEmailAddrs: notifyEmailAddrs.value ? notifyEmailAddrs.value.split(',').map(s => s.trim()) : [],
+								WebhookSecret: '',
+								AllowGlobalWebhookSecrets: false,
 								BuildScript: buildScript.value,
 								HomeDiskUsage: 0,
 							}
@@ -1062,8 +1126,8 @@ const pageRepo = async (repoName: string): Promise<Page> => {
 								defaultBranch=dom.input(attr.value(repo.DefaultBranch), attr.placeholder('main, master, default')),
 								dom.div('Checkout path', style({whiteSpace: 'nowrap'})),
 								checkoutPath=dom.input(attr.value(repo.CheckoutPath), attr.required(''), attr.title('Name of the directory to checkout the repository. Go builds may use this name for the binary it creates.')),
-								dom.div('Notify email addresses', style({whiteSpace: 'nowrap'})),
-								notifyEmailAddrs=dom.input(attr.value((repo.NotifyEmailAddrs || []).join(', ')), attr.title('Comma-separated list of email address that will receive notifications when a build breaks or is fixed. If empty, the email address configured in the configuration file receives a notification, if any.')),
+								dom.div('Notify email addresses', style({whiteSpace: 'nowrap'}), mailEnabled ? [] : [' *', attr.title('No SMTP server is configured for outgoing emails.')]),
+								notifyEmailAddrs=dom.input(attr.value((repo.NotifyEmailAddrs || []).join(', ')), attr.title('Comma-separated list of email address that will receive notifications when a build breaks or is fixed. If empty, the email address configured in the configuration file receives a notification, if any.'), attr.placeholder((settings.NotifyEmailAddrs || []).join(', ') || 'user@example.org, other@example.org')),
 								dom.div(),
 								dom.label(
 									reuseUID=dom.input(attr.type('checkbox'), repo.UID !== null ? attr.checked('') : []),
@@ -1097,13 +1161,21 @@ const pageRepo = async (repoName: string): Promise<Page> => {
 					),
 				),
 				dom.br(),
+				dom.h1('Webhooks'),
+				dom.p('Configure the following webhook URLs to trigger builds:'),
+				dom.ul(
+					dom.li(dom.tt('http[s]://[webhooklistener]/github/'+repo.Name), ', with secret: ', dom.tt(repo.WebhookSecret)),
+					dom.li(dom.tt('http[s]://[webhooklistener]/gitea/'+repo.Name), ', with secret: ', dom.tt(repo.WebhookSecret)),
+					dom.li(dom.tt('http[s]://[webhooklistener]/bitbucket/'+repo.Name+'/'+repo.WebhookSecret)),
+				),
+				repo.AllowGlobalWebhookSecrets && (settings.GithubWebhookSecret || settings.GiteaWebhookSecret || settings.BitbucketWebhookSecret) ? dom.p('Warning: Globally configured webhook secrets are active and also accepted for this repository.') : dom.p('No other (globally configured) secrets are accepted for this repository.'),
 				dom.div(
 					docsBuildScript()
 				),
 				dom.h1('Build settings'),
-				(buildSettings.Run || []).length > 0 ? dom.p('Build commands are prefixed with: ', dom.tt((buildSettings.Run || []).join(' '))) : dom.p('Build commands are not run within other commands.'),
+				(settings.RunPrefix || []).length > 0 ? dom.p('Build commands are prefixed with: ', dom.tt((settings.RunPrefix || []).join(' '))) : dom.p('Build commands are not run within other commands.'),
 				dom.div('Additional environments available during builds:'),
-				(buildSettings.Environment || []).length === 0 ? dom.p('None') : dom.ul((buildSettings.Environment || []).map(s => dom.li(dom.tt(s)))),
+				(settings.Environment || []).length === 0 ? dom.p('None') : dom.ul((settings.Environment || []).map(s => dom.li(dom.tt(s)))),
 			),
 		),
 	]
@@ -1337,8 +1409,10 @@ const hashchange = async (e?: HashChangeEvent) => {
 		let p: Page
 		if (t.length === 1 && t[0] === '') {
 			p = await pageHome()
-		} else if (t.length === 1 && t[0] === 'toolchains') {
-			p = await pageToolchains()
+		} else if (t.length === 1 && t[0] === 'gotoolchains') {
+			p = await pageGoToolchains()
+		} else if (t.length === 1 && t[0] === 'settings') {
+			p = await pageSettings()
 		} else if (t.length === 1 && t[0] === 'docs') {
 			p = await pageDocs()
 		} else if (t.length === 2 && t[0] === 'repo') {

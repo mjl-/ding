@@ -23,29 +23,27 @@ type githubEvent struct {
 }
 
 func githubHookHandler(w http.ResponseWriter, r *http.Request) {
-	if config.GithubWebhookSecret == "" {
-		http.NotFound(w, r)
-		return
-	}
-
-	if !strings.HasPrefix(r.URL.Path, "/github/") {
-		http.NotFound(w, r)
-		return
-	}
 	repoName := r.URL.Path[len("/github/"):]
+	if repoName == "" {
+		http.NotFound(w, r)
+		return
+	}
 
 	repo := Repo{Name: repoName}
-	if err := database.Get(r.Context(), &repo); err == bstore.ErrAbsent {
+	settings := Settings{ID: 1}
+	err := database.Read(r.Context(), func(tx *bstore.Tx) error {
+		err := tx.Get(&repo)
+		if err != nil {
+			return err
+		}
+		return tx.Get(&settings)
+	})
+	if err == bstore.ErrAbsent {
 		http.NotFound(w, r)
 		return
 	} else if err != nil {
 		slog.Error("github webhook: reading repo from database", "err", err)
 		http.Error(w, "error", http.StatusInternalServerError)
-		return
-	}
-	if !(repo.VCS == VCSGit || repo.VCS == VCSCommand) {
-		slog.Debug("github webhook: push event for a non-git repository")
-		http.Error(w, "misconfigured repositories", http.StatusInternalServerError)
 		return
 	}
 
@@ -65,14 +63,25 @@ func githubHookHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error reading request", http.StatusInternalServerError)
 		return
 	}
-	mac := hmac.New(sha1.New, []byte(config.GithubWebhookSecret))
-	mac.Write(buf)
-	exp := mac.Sum(nil)
-	if !hmac.Equal(exp, sig) {
+
+	sigOK := func(secret string) bool {
+		exp := hmacsha1(secret, buf)
+		return hmac.Equal(exp, sig)
+	}
+
+	authOK := sigOK(repo.WebhookSecret) || repo.AllowGlobalWebhookSecrets && settings.GithubWebhookSecret != "" && sigOK(settings.GithubWebhookSecret)
+	if !authOK {
 		slog.Info("github webhook: bad signature, refusing message")
 		http.Error(w, "invalid signature", http.StatusBadRequest)
 		return
 	}
+
+	if !(repo.VCS == VCSGit || repo.VCS == VCSCommand) {
+		slog.Debug("github webhook: push event for a non-git repository")
+		http.Error(w, "misconfigured repositories", http.StatusInternalServerError)
+		return
+	}
+
 	var event githubEvent
 	err = json.Unmarshal(buf, &event)
 	if err != nil {
@@ -98,4 +107,10 @@ func githubHookHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func hmacsha1(key string, data []byte) []byte {
+	hm := hmac.New(sha1.New, []byte(key))
+	hm.Write(data)
+	return hm.Sum(nil)
 }

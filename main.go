@@ -46,28 +46,19 @@ func init() {
 }
 
 var config struct {
-	ShowSherpaErrors      bool     `sconf-doc:"If set, returns the full error message for sherpa calls failing with a server error. Otherwise, only returns generic error message."`
-	PrintSherpaErrorStack bool     `sconf-doc:"If set, prints error stack for sherpa server errors."`
-	Password              string   `sconf-doc:"For login to the web interface. Ding does not have users."`
-	DataDir               string   `sconf-doc:"Directory where all data is stored for builds, releases, home directories. In case of isolate builds, this must have a umask 027 and owned by the ding uid/gid. Can be an absolute path, or a path relative to the ding working directory."`
-	GoToolchainDir        string   `sconf:"optional" sconf-doc:"Directory containing Go toolchains, for easy installation of new Go versions. Go toolchains are assumed to be in directories named after their version, e.g. go1.13.8. All names starting with 'go' are assumed to be Go toolchains. Active versions are marked by a symlink named go or go-prev to one of the versioned directories. Ding needs write access to this directory to download new toolchains. If configured, this directory is available during a build as DING_TOOLCHAINDIR."`
-	Environment           []string `sconf:"optional" sconf-doc:"List of environment variables in form KEY=VALUE."`
-	Notify                struct {
-		Name  string `sconf-doc:"Name to use along Email address."`
-		Email string `sconf:"optional" sconf-doc:"Address to send build failure notifications to, if Mail.Enabled is set."`
-	} `sconf:"optional" sconf-doc:"Default target to notify, unless overridden per repository."`
-	BaseURL                string   `sconf-doc:"URL to point to from notifications about failed builds."`
-	GithubWebhookSecret    string   `sconf:"optional" sconf-doc:"For github webhook push events, to create a build; configure the same secret in the github repository settings."`
-	GiteaWebhookSecret     string   `sconf:"optional" sconf-doc:"For gitea webhooks for builds (like github). With 'Authorization: Bearer <secret>' header for authorization."`
-	BitbucketWebhookSecret string   `sconf:"optional" sconf-doc:"Will be part of the URL bitbucket sends its webhook request to, e.g. http://.../bitbucket/<reponame>/<bitbucket-webhook-secret>."`
-	Run                    []string `sconf:"optional" sconf-doc:"List of command and arguments to prepend to the command executed, e.g. nice or timeout."`
-	IsolateBuilds          struct {
+	ShowSherpaErrors      bool   `sconf-doc:"If set, returns the full error message for sherpa calls failing with a server error. Otherwise, only returns generic error message."`
+	PrintSherpaErrorStack bool   `sconf-doc:"If set, prints error stack for sherpa server errors."`
+	Password              string `sconf-doc:"For login to the web interface. Ding does not have users."`
+	DataDir               string `sconf-doc:"Directory where all data is stored for builds, releases, home directories. In case of isolate builds, this must have a umask 027 and owned by the ding uid/gid. Can be an absolute path, or a path relative to the ding working directory."`
+	GoToolchainDir        string `sconf:"optional" sconf-doc:"Directory containing Go toolchains, for easy installation of new Go versions. Go toolchains are assumed to be in directories named after their version, e.g. go1.13.8. All names starting with 'go' are assumed to be Go toolchains. Active versions are marked by a symlink named go or go-prev to one of the versioned directories. Ding needs write access to this directory to download new toolchains. If configured, this directory is available during a build as DING_TOOLCHAINDIR."`
+	BaseURL               string `sconf-doc:"URL to point to from notifications about failed builds."`
+	IsolateBuilds         struct {
 		Enabled  bool   `sconf-doc:"If false, we run all build commands as the user running ding and the settings below do not apply.  If true, we run builds with unique UIDs."`
 		UIDStart uint32 `sconf-doc:"We'll use UIDStart + buildID as the unix UID to run the commands under."`
 		UIDEnd   uint32 `sconf-doc:"If we reach this UID, we wrap around to UIDStart again."`
 		DingUID  uint32 `sconf-doc:"UID ding runs as, used to chown files back before deleting."`
 		DingGID  uint32 `sconf-doc:"GID ding runs as, used to run build commands under."`
-	}
+	} `sconf:"Builds can be isolated by running each under a unique UID, ensuring they cannot (accidentally) interfere with each others files."`
 	Mail struct {
 		Enabled      bool `sconf-doc:"If true, emails can be sent for failed builds. If false, the options below do not apply."`
 		SMTPTLS      bool
@@ -79,7 +70,16 @@ var config struct {
 		FromEmail    string
 		ReplyToName  string
 		ReplyToEmail string
-	}
+	} `sconf:"For sending notifications when builds start failing and succeed again."`
+	Notify struct {
+		Name  string `sconf-doc:"Name to use along Email address."`
+		Email string `sconf:"optional" sconf-doc:"Address to send build failure notifications to, if Mail.Enabled is set."`
+	} `sconf:"optional" sconf-doc:"Deprecated: Now configurable at runtime. Default target to notify, unless overridden per repository."`
+	Run                    []string `sconf:"optional" sconf-doc:"Deprecated: Now configurable at runtime. List of command and arguments to prepend to the command executed, e.g. nice or timeout."`
+	Environment            []string `sconf:"optional" sconf-doc:"Deprecated: Now configurable at runtime. List of environment variables in form KEY=VALUE."`
+	GithubWebhookSecret    string   `sconf:"optional" sconf-doc:"Deprecated: Now configurable at runtime. For github webhook push events, to create a build; configure the same secret in the github repository settings."`
+	GiteaWebhookSecret     string   `sconf:"optional" sconf-doc:"Deprecated: Now configurable at runtime. For gitea webhooks for builds (like github). With 'Authorization: Bearer <secret>' header for authorization."`
+	BitbucketWebhookSecret string   `sconf:"optional" sconf-doc:"Deprecated: Now configurable at runtime. Will be part of the URL bitbucket sends its webhook request to, e.g. http://.../bitbucket/<reponame>/<bitbucket-webhook-secret>."`
 }
 
 func init() {

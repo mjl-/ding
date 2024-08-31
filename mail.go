@@ -4,18 +4,15 @@ import (
 	"fmt"
 )
 
-func repoRecipients(r Repo) []mailAddr {
-	if len(r.NotifyEmailAddrs) == 0 {
-		return []mailAddr{{Name: config.Notify.Name, Address: config.Notify.Email}}
+func repoRecipients(settings Settings, r Repo) []string {
+	addrs := r.NotifyEmailAddrs
+	if len(addrs) == 0 {
+		addrs = settings.NotifyEmailAddrs
 	}
-	rcpts := make([]mailAddr, len(r.NotifyEmailAddrs))
-	for i, addr := range r.NotifyEmailAddrs {
-		rcpts[i] = mailAddr{Address: addr}
-	}
-	return rcpts
+	return addrs
 }
 
-func _sendMailFailing(repo Repo, build Build, errmsg string) {
+func _sendMailFailing(settings Settings, repo Repo, build Build, errmsg string) {
 	link := fmt.Sprintf("%s/#/repo/%s/build/%d/", config.BaseURL, repo.Name, build.ID)
 	subject := fmt.Sprintf("ding: failure: repo %s branch %s failing", repo.Name, build.Branch)
 	textMsg := fmt.Sprintf(`Hi!
@@ -35,10 +32,12 @@ Cheers,
 Ding
 `, build.Branch, repo.Name, link, build.LastLine, errmsg)
 
-	_sendmail(repoRecipients(repo), subject, textMsg)
+	if addrs := repoRecipients(settings, repo); len(addrs) > 0 {
+		_sendmail(addrs, subject, textMsg)
+	}
 }
 
-func _sendMailFixed(repo Repo, build Build) {
+func _sendMailFixed(settings Settings, repo Repo, build Build) {
 	link := fmt.Sprintf("%s/#/repo/%s/build/%d/", config.BaseURL, repo.Name, build.ID)
 	subject := fmt.Sprintf("ding: resolved: repo %s branch %s is building again", repo.Name, build.Branch)
 	textMsg := fmt.Sprintf(`Hi!
@@ -53,5 +52,7 @@ Cheers,
 Ding
 `, build.Branch, repo.Name, link)
 
-	_sendmail(repoRecipients(repo), subject, textMsg)
+	if addrs := repoRecipients(settings, repo); len(addrs) > 0 {
+		_sendmail(addrs, subject, textMsg)
+	}
 }

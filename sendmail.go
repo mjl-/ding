@@ -49,19 +49,7 @@ func dialSMTPClient() smtpClient {
 	return c
 }
 
-type mailAddr struct {
-	Name    string
-	Address string
-}
-
-func (a mailAddr) MessageString() string {
-	if a.Name != "" {
-		return fmt.Sprintf("%s <%s>", a.Name, a.Address)
-	}
-	return fmt.Sprintf("<%s>", a.Address)
-}
-
-func _sendmail(to []mailAddr, subject, textMsg string) {
+func _sendmail(to []string, subject, textMsg string) {
 	c := newSMTPClient()
 	defer func() {
 		if c != nil {
@@ -82,7 +70,7 @@ func _sendmail(to []mailAddr, subject, textMsg string) {
 
 	_checkf(c.Mail(config.Mail.FromEmail), "setting from address")
 	for _, rcpt := range to {
-		_checkf(c.Rcpt(rcpt.Address), "setting recipient address")
+		_checkf(c.Rcpt(rcpt), "setting recipient address")
 	}
 
 	data, err := c.Data()
@@ -98,7 +86,7 @@ func _sendmail(to []mailAddr, subject, textMsg string) {
 		if i > 0 {
 			tohdr += ", "
 		}
-		tohdr += rcpt.MessageString()
+		tohdr += fmt.Sprintf("<%s>", rcpt)
 	}
 	msg += fmt.Sprintf(`From: %s <%s>
 To: %s

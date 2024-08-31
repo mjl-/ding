@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/gob"
 	"fmt"
+	"log/slog"
 	"os"
 	"reflect"
 	"strings"
@@ -76,8 +77,10 @@ func TestMain(m *testing.M) {
 	config.Mail.SMTPTLS = true
 	config.Mail.SMTPUsername = "test"
 	config.Mail.SMTPPassword = "test"
-	config.Notify.Email = "ding@example.org"
 	config.GoToolchainDir = "testdata/tmp/gotoolchains"
+	config.Notify.Email = "ding@ding.example"
+
+	loglevel.Set(slog.LevelDebug)
 
 	config.IsolateBuilds.Enabled = os.Getuid() == 0
 	if config.IsolateBuilds.Enabled {
@@ -122,7 +125,8 @@ func testEnv(t *testing.T) {
 	}
 	os.MkdirAll(config.DataDir, 0700)
 	dbpath := fmt.Sprintf("%s/test.%s.db", config.DataDir, strings.ToLower(t.Name()))
-	db, err := bstore.Open(context.Background(), dbpath, &bstore.Options{Timeout: 5 * time.Second}, Repo{}, Build{})
+	db, err := bstore.Open(context.Background(), dbpath, &bstore.Options{Timeout: 5 * time.Second}, Settings{}, Repo{}, Build{})
 	tcheck(t, err, "db open")
+	ensureSettings(db)
 	database = db
 }

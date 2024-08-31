@@ -31,27 +31,13 @@ type bitbucketEvent struct {
 }
 
 func bitbucketHookHandler(w http.ResponseWriter, r *http.Request) {
-	if config.BitbucketWebhookSecret == "" {
-		http.NotFound(w, r)
-		return
-	}
-
-	if !strings.HasPrefix(r.URL.Path, "/bitbucket/") {
-		http.NotFound(w, r)
-		return
-	}
 	t := strings.Split(r.URL.Path[len("/bitbucket/"):], "/")
-	if len(t) != 2 {
+	if len(t) != 2 || t[0] == "" || t[1] == "" {
 		http.NotFound(w, r)
 		return
 	}
 	repoName := t[0]
 	key := t[1]
-	if key != config.BitbucketWebhookSecret {
-		slog.Info("bitbucket webhook: invalid secret in request", "repo", repoName)
-		http.NotFound(w, r)
-		return
-	}
 
 	var event bitbucketEvent
 	err := json.NewDecoder(r.Body).Decode(&event)
@@ -62,7 +48,15 @@ func bitbucketHookHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	repo := Repo{Name: repoName}
-	if err := database.Get(r.Context(), &repo); err == bstore.ErrAbsent {
+	settings := Settings{ID: 1}
+	err = database.Read(r.Context(), func(tx *bstore.Tx) error {
+		err := tx.Get(&repo)
+		if err != nil {
+			return err
+		}
+		return tx.Get(&settings)
+	})
+	if err == bstore.ErrAbsent {
 		http.NotFound(w, r)
 		return
 	} else if err != nil {
@@ -70,6 +64,14 @@ func bitbucketHookHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error", http.StatusInternalServerError)
 		return
 	}
+
+	authOK := key == repo.WebhookSecret || repo.AllowGlobalWebhookSecrets && settings.BitbucketWebhookSecret != "" && key == settings.BitbucketWebhookSecret
+	if !authOK {
+		slog.Info("bitbucket webhook: invalid secret in request", "repo", repoName)
+		http.NotFound(w, r)
+		return
+	}
+
 	if event.Repository.SCM == "hg" && !(repo.VCS == VCSMercurial || repo.VCS == VCSCommand) {
 		slog.Info("bitbucket webhook: misconfigured repository type, got mercurial", "expect", repo.VCS)
 		http.Error(w, "misconfigured webhook", http.StatusInternalServerError)
