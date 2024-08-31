@@ -20,8 +20,16 @@ import (
 	"github.com/mjl-/sconf"
 )
 
-//go:embed ding.html ding.js ding.json INSTALL.txt favicon.ico LICENSE licenses/*
+//go:embed INSTALL.txt web/* LICENSE licenses/*
 var embedFS embed.FS
+
+var fsys fs.FS = embedFS
+
+func init() {
+	if _, err := os.Stat("web"); err == nil {
+		fsys = os.DirFS(".")
+	}
+}
 
 var (
 	database *bstore.DB
@@ -166,16 +174,17 @@ func main() {
 }
 
 func printFile(name string) {
-	f, err := openEmbed(name)
+	f, err := fsys.Open(name)
 	xcheckf(err, "opening file "+name)
 	_, err = io.Copy(os.Stdout, f)
 	xcheckf(err, "copy")
-	xcheckf(f.Close(), "close")
+	err = f.Close()
+	xcheckf(err, "close")
 }
 
 func printLicenses() {
 	copyFile := func(p string) {
-		f, err := embedFS.Open(p)
+		f, err := fsys.Open(p)
 		xcheckf(err, "open license file")
 		_, err = io.Copy(os.Stdout, f)
 		xcheckf(err, "copy license file")
@@ -186,7 +195,7 @@ func printLicenses() {
 	fmt.Printf("# github.com/mjl-/ding/LICENSE\n\n")
 	copyFile("LICENSE")
 
-	err := fs.WalkDir(embedFS, "licenses", func(path string, d fs.DirEntry, err error) error {
+	err := fs.WalkDir(fsys, "licenses", func(path string, d fs.DirEntry, err error) error {
 		if !d.Type().IsRegular() {
 			return nil
 		}

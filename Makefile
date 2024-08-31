@@ -11,10 +11,10 @@ run-root: build
 build: node_modules/.bin/tsc
 	go build
 	go vet
-	go run vendor/github.com/mjl-/sherpadoc/cmd/sherpadoc/*.go -adjust-function-names none Ding >ding.json
-	./gents.sh ding.json api.ts
+	go run vendor/github.com/mjl-/sherpadoc/cmd/sherpadoc/*.go -adjust-function-names none Ding >web/ding.json
+	./gents.sh web/ding.json api.ts
 	./genlicense.sh
-	./tsc.sh ding.js dom.ts api.ts ding.ts
+	./tsc.sh web/ding.js dom.ts api.ts ding.ts
 	go build # build with generated files
 
 check:
@@ -24,10 +24,10 @@ check:
 	golint
 
 tswatch:
-	bash -c 'while true; do inotifywait -q -e close_write *.ts; make ding.js; done'
+	bash -c 'while true; do inotifywait -q -e close_write *.ts; make web/ding.js; done'
 
-ding.js: node_modules/.bin/tsc dom.ts api.ts ding.ts
-	./tsc.sh ding.js dom.ts api.ts ding.ts
+web/ding.js: node_modules/.bin/tsc dom.ts api.ts ding.ts
+	./tsc.sh web/ding.js dom.ts api.ts ding.ts
 
 node_modules/.bin/tsc:
 	-mkdir -p node_modules/.bin

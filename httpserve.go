@@ -8,7 +8,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/fs"
 	"log/slog"
 	"net"
 	"net/http"
@@ -82,7 +81,7 @@ func servehttp(args []string) {
 	xcheckf(err, "open database")
 
 	var doc sherpadoc.Section
-	ff, err := openEmbed("ding.json")
+	ff, err := fsys.Open("web/ding.json")
 	xcheckf(err, "opening sherpa docs")
 	err = json.NewDecoder(ff).Decode(&doc)
 	xcheckf(err, "parsing sherpa docs")
@@ -315,61 +314,10 @@ func startJobManager() {
 	}()
 }
 
-type readSeekStatCloser interface {
-	Stat() (fs.FileInfo, error)
-	io.ReadSeekCloser
-}
-
-func openEmbed(path string) (readSeekStatCloser, error) {
-	f, err := os.Open(path)
-	if err == nil {
-		return f, nil
-	}
-	ef, err := embedFS.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	r, ok := ef.(readSeekStatCloser)
-	if !ok {
-		r.Close()
-		return nil, fmt.Errorf("embedded file not a readseekcloser")
-	}
-	return r, nil
-}
-
 func serveAsset(w http.ResponseWriter, r *http.Request) {
-	var path string
-	switch r.URL.Path {
-	case "/":
-		path = "ding.html"
-	case "/ding.js", "/favicon.ico":
-		path = r.URL.Path[1:]
-	default:
-		http.NotFound(w, r)
-		return
-	}
-
-	f, err := openEmbed(path)
-	if err != nil {
-		http.Error(w, "500 - internal server error - "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer f.Close()
-	info, err := f.Stat()
-	if err != nil {
-		slog.Error("serving asset", "path", r.URL.Path, "err", err)
-		http.Error(w, "500 - internal server error - "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	_, haveCacheBuster := r.URL.Query()["v"]
-	cache := "no-cache, max-age=0"
-	if haveCacheBuster {
-		cache = fmt.Sprintf("public, max-age=%d", 31*24*3600)
-	}
-	w.Header().Set("Cache-Control", cache)
-
-	http.ServeContent(w, r, r.URL.Path, info.ModTime(), f)
+	path := path.Join("web", r.URL.Path[1:])
+	w.Header().Set("Cache-Control", "no-cache, max-age=0")
+	http.ServeFileFS(w, r, fsys, path)
 }
 
 func hasBadElems(elems []string) bool {
