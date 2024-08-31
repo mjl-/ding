@@ -867,6 +867,7 @@ echo release: $name $goos $goarch $goversion $name-$version-$goos-$goarch
 `),
 		dom.br(),
 		dom.p('You can include a script like the above in a repository, and call that.'),
+		dom.p('Run a command like ', dom.tt('ding build -bwrap -toolchaindir $HOME/sdk tmp/buildtest ./build.sh'), ' locally to test build scripts. It sets up similar environment variables as during a normal build, and creates target directories. Then it clones the git or hg repository in the working directory to the temporary destination (first parameter) and builds using build.sh, isolated with bwrap. The resulting output is parsed and a summary printed. If that works, the script is likely to work with a regular build in ding too.'),
 
 		dom.br(),
 		dom.h2('Environment variables'),

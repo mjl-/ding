@@ -25,6 +25,12 @@ automatically cleaned up.
 Command "ding kick" can be used in a git hook to signal that a build should
 start. Gitea, github and bitbucket webhooks are also supported.
 
+Command "ding build" can be used locally to run a build script similar to how
+it would run on the build server. This allows testing build scripts without
+pushing any commits. It clones the git or hg repository in the current working
+directory, sets up environment variables and destination build directories, and
+calls the provided build script. Optionally isolated using bubblewrap (bwrap).
+
 See INSTALL.txt for installation instructions.
 
 

@@ -312,6 +312,33 @@ func doMsgCancelCommand(msg *msgCancelCommand, enc *gob.Encoder) error {
 	return nil
 }
 
+func bwrapCmd(nonet bool, homeDir, buildDir, toolchainDir string) []string {
+	argv := []string{"bwrap"}
+	if nonet {
+		argv = append(argv, "--unshare-all")
+	} else {
+		argv = append(argv, "--unshare-user-try", "--unshare-ipc", "--unshare-pid", "--unshare-uts", "--unshare-cgroup-try")
+	}
+	argv = append(argv,
+		"--hostname", "ding",
+		"--dev", "/dev",
+		"--tmpfs", "/tmp",
+		"--proc", "/proc",
+		"--ro-bind", "/etc", "/etc",
+		"--ro-bind", "/bin", "/bin",
+		"--ro-bind", "/usr", "/usr",
+		"--ro-bind", "/lib", "/lib",
+		"--ro-bind", "/lib32", "/lib32",
+		"--ro-bind", "/lib64", "/lib64",
+		"--bind", homeDir, homeDir,
+		"--bind", buildDir, buildDir,
+	)
+	if toolchainDir != "" {
+		argv = append(argv, "--bind", toolchainDir, toolchainDir)
+	}
+	return argv
+}
+
 func doMsgBuild(msg *msgBuild, enc *gob.Encoder, unixconn *net.UnixConn) error {
 	buildCommand := buildIDCommandRegister(msg.BuildID)
 	needCancel := true
@@ -339,29 +366,7 @@ func doMsgBuild(msg *msgBuild, enc *gob.Encoder, unixconn *net.UnixConn) error {
 
 	argv := []string{}
 	if msg.Bubblewrap {
-		argv = []string{"bwrap"}
-		if msg.BubblewrapNoNet {
-			argv = append(argv, "--unshare-all")
-		} else {
-			argv = append(argv, "--unshare-user-try", "--unshare-ipc", "--unshare-pid", "--unshare-uts", "--unshare-cgroup-try")
-		}
-		argv = append(argv,
-			"--hostname", "ding",
-			"--dev", "/dev",
-			"--tmpfs", "/tmp",
-			"--proc", "/proc",
-			"--ro-bind", "/etc", "/etc",
-			"--ro-bind", "/bin", "/bin",
-			"--ro-bind", "/usr", "/usr",
-			"--ro-bind", "/lib", "/lib",
-			"--ro-bind", "/lib32", "/lib32",
-			"--ro-bind", "/lib64", "/lib64",
-			"--bind", msg.HomeDir, msg.HomeDir,
-			"--bind", buildDir, buildDir,
-		)
-		if msg.ToolchainDir != "" {
-			argv = append(argv, "--bind", msg.ToolchainDir, msg.ToolchainDir)
-		}
+		argv = bwrapCmd(msg.BubblewrapNoNet, msg.HomeDir, buildDir, msg.ToolchainDir)
 	}
 	argv = append(argv, msg.RunPrefix...)
 	argv = append(argv, buildDir+"/scripts/build.sh")

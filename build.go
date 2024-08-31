@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/gob"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -303,6 +304,7 @@ func _doBuild0(ctx context.Context, repo Repo, build Build, buildDir string) {
 		})
 	}
 
+	// Also see cmdbuild.go.
 	env := []string{
 		"HOME=" + homeDir,
 		"DING_BUILDDIR=" + buildDir,
@@ -454,10 +456,17 @@ func _doBuild0(ctx context.Context, repo Repo, build Build, buildDir string) {
 	err = track(build.ID, "build", buildDir, result.stdout, result.stderr, wait)
 	_checkUserf(err, "build.sh")
 
-	_dbwrite(ctx, func(tx *bstore.Tx) {
-		outputDir := buildDir + "/output"
-		version, results, coverage, coverageReportFile := parseResults(repo, build, checkoutDir, outputDir+"/build.stdout")
+	outputFile, err := os.Open(buildDir + "/output/build.stdout")
+	_checkUserf(err, "opening build output")
+	defer func() {
+		_checkUserf(outputFile.Close(), "closing build output")
+	}()
 
+	dldir := path.Clean(fmt.Sprintf("%s/build/%s/%d/dl", dingDataDir, repo.Name, build.ID))
+	version, results, coverage, coverageReportFile, err := parseResults(checkoutDir, dldir, outputFile)
+	_checkUserf(err, "parse results from output")
+
+	_dbwrite(ctx, func(tx *bstore.Tx) {
 		b = Build{ID: build.ID}
 		err := tx.Get(&b)
 		_checkf(err, "get build to add results")
@@ -507,13 +516,8 @@ func _cleanupBuilds(ctx context.Context, repoName, branch string) {
 	}
 }
 
-func parseResults(repo Repo, build Build, checkoutDir, outputPath string) (version string, results []Result, coverage *float32, coverageReportFile string) {
-	f, err := os.Open(outputPath)
-	_checkUserf(err, "opening build output")
-	defer func() {
-		_checkUserf(f.Close(), "closing build output")
-	}()
-	scanner := bufio.NewScanner(f)
+func parseResults(checkoutDir, dldir string, r io.Reader) (version string, results []Result, coverage *float32, coverageReportFile string, rerr error) {
+	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		line := scanner.Text()
 		t := strings.Split(line, " ")
@@ -521,58 +525,66 @@ func parseResults(repo Repo, build Build, checkoutDir, outputPath string) (versi
 		case "release:":
 			//  "release:" command version os arch toolchain path
 			if len(t) != 6 {
-				_userError("invalid \"release:\"-line, should have 6 words: " + line)
+				rerr = errors.New("invalid \"release:\"-line, should have 6 words: " + line)
+				return
 			}
 			result := Result{t[1], t[2], t[3], t[4], path.Clean(t[5]), 0}
 			if !path.IsAbs(result.Filename) {
 				result.Filename = path.Join(checkoutDir, result.Filename)
 			}
 			if !strings.HasPrefix(result.Filename, path.Clean(checkoutDir)+"/") {
-				_userError("result file must be in checkout directory")
+				rerr = errors.New("result file must be in checkout directory")
+				return
 			}
 			info, err := os.Stat(result.Filename)
-			_checkUserf(err, "testing whether released file exists")
+			if err != nil {
+				rerr = errors.New("testing whether released file exists")
+				return
+			}
 			result.Filename = result.Filename[len(checkoutDir+"/"):]
 			result.Filesize = info.Size()
 			results = append(results, result)
 		case "version:":
 			if len(t) != 2 {
-				_userError("invalid \"version:\"-line, should have 1 parameter: " + line)
+				rerr = errors.New("invalid \"version:\"-line, should have 1 parameter: " + line)
+				return
 			}
 			version = t[1]
 		case "coverage:":
 			// "coverage:" 75.0
 			if len(t) != 2 {
-				_userError("invalid \"coverage:\"-line, should have 1 parameter: " + line)
+				rerr = errors.New("invalid \"coverage:\"-line, should have 1 parameter: " + line)
+				return
 			}
-			var fl float64
-			fl, err = strconv.ParseFloat(t[1], 32)
+			fl, err := strconv.ParseFloat(t[1], 32)
 			if err != nil {
-				_userError(fmt.Sprintf("invalid \"coverage:\"-line (%q), parsing float: %s", line, err))
+				rerr = fmt.Errorf("invalid \"coverage:\"-line (%q), parsing float: %s", line, err)
+				return
 			}
 			coverage = new(float32)
 			*coverage = float32(fl)
 		case "coverage-report:":
 			// "coverage-report:" coverage.html
 			if len(t) != 2 {
-				_userError("invalid \"coverage-report:\"-line, should have 1 parameter: " + line)
+				rerr = errors.New("invalid \"coverage-report:\"-line, should have 1 parameter: " + line)
+				return
 			}
 			p := path.Clean(t[1])
-			dldir := path.Clean(fmt.Sprintf("%s/build/%s/%d/dl", dingDataDir, repo.Name, build.ID))
 			if !path.IsAbs(p) {
 				p = path.Join(dldir, p)
 			}
 			if !strings.HasPrefix(p, dldir+"/") {
-				_userError("coverage file must be within $DING_DOWNLOADDIR")
+				rerr = errors.New("coverage file must be within $DING_DOWNLOADDIR")
+				return
 			}
 			_, err := os.Stat(p)
 			if err != nil {
-				_userError(fmt.Sprintf("bad file in \"coverage-report:\"-line (%q): %s", line, err))
+				rerr = fmt.Errorf("bad file in \"coverage-report:\"-line (%q): %s", line, err)
+				return
 			}
 		}
 	}
-	err = scanner.Err()
-	_checkUserf(err, "reading build output")
+	rerr = scanner.Err()
 	return
 }
 

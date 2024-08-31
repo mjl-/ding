@@ -120,7 +120,7 @@ var loglevel slog.LevelVar
 func main() {
 	flag.TextVar(&loglevel, "loglevel", &loglevel, "log level: debug, info, warn, error")
 	flag.Usage = func() {
-		log.Fatalf("usage: ding [-loglevel level] { config | testconfig | help | kick | serve | version | license }")
+		log.Fatalf("usage: ding [-loglevel level] { config | testconfig | help | kick | serve | build | version | license }")
 		flag.PrintDefaults()
 		os.Exit(2)
 	}
@@ -162,6 +162,8 @@ func main() {
 	case "serve-http":
 		// Undocumented, for unpriviliged http process.
 		servehttp(args)
+	case "build":
+		cmdBuild(args)
 	case "kick":
 		kick(args)
 	case "version":
