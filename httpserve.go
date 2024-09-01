@@ -175,7 +175,7 @@ func servehttp(args []string) {
 	// If enabled, we check once per day whether new go toolchains have been released, and install them if so.
 	go func() {
 		// Don't check immediately. So we don't hit this during development all the time.
-		for time.Sleep(time.Hour); ; time.Sleep(24*time.Hour) {
+		for time.Sleep(time.Hour); ; time.Sleep(24 * time.Hour) {
 			settings := Settings{ID: 1}
 			if err := database.Get(context.Background(), &settings); err != nil {
 				slog.Error("get settings for deciding whether to automatically update go toolchains", "err", err)

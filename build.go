@@ -483,36 +483,42 @@ func _doBuild0(ctx context.Context, repo Repo, build Build, buildDir string) {
 }
 
 func _cleanupBuilds(ctx context.Context, repoName, branch string) {
+	var repo Repo
 	var builds []Build
 	_dbread(ctx, func(tx *bstore.Tx) {
-		repo := _repo(tx, repoName)
+		repo = _repo(tx, repoName)
+
 		var err error
-		builds, err = bstore.QueryTx[Build](tx).FilterNonzero(Build{RepoName: repo.Name, Branch: branch}).SortDesc("ID").List()
+		builds, err = bstore.QueryTx[Build](tx).FilterNonzero(Build{RepoName: repo.Name}).SortDesc("ID").List()
 		_checkf(err, "listing builds")
 	})
-	now := time.Now()
-	for index, b := range builds {
-		if index == 0 || b.Finish == nil {
+	branchBuilds := map[string]int{} // Number of builds for branch.
+	for _, b := range builds {
+		if b.Finish == nil {
 			continue
 		}
-		if index >= 10 || now.Sub(*b.Finish) > 14*24*3600*time.Second {
-			var remove bool
-			_dbwrite(ctx, func(tx *bstore.Tx) {
-				if b.Released == nil {
-					_removeBuild(tx, repoName, b.ID)
-					remove = true
-				} else if !b.BuilddirRemoved {
+		// For release builds, we cleanup the builddir after 60 days.
+		if b.Released != nil {
+			if !b.BuilddirRemoved && time.Since(*b.Finish) > 60*24*time.Hour {
+				_dbwrite(ctx, func(tx *bstore.Tx) {
 					_removeBuildDir(b)
 					_, bb := _build(tx, b.RepoName, b.ID)
 					bb.BuilddirRemoved = true
 					err := tx.Update(&bb)
 					_checkf(err, "marking build directory as removed")
-				}
-			})
-			if remove {
-				events <- EventRemoveBuild{repoName, b.ID}
+				})
 			}
+			// For other builds, we keep max 10 of the latest builds per branch, but only if
+			// not older than 30 days, although we keep at least 1 for the default branch of
+			// the repo.
+		} else if branchBuilds[b.Branch] >= 10 || time.Since(*b.Finish) > 30*24*time.Hour && (repo.DefaultBranch != b.Branch || branchBuilds[b.Branch] > 0) {
+			_dbwrite(ctx, func(tx *bstore.Tx) {
+				_removeBuild(tx, repoName, b.ID)
+			})
+			events <- EventRemoveBuild{repoName, b.ID}
+			continue
 		}
+		branchBuilds[b.Branch]++
 	}
 }
 
