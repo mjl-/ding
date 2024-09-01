@@ -123,7 +123,7 @@ func cmdBuild(args []string) {
 	workDir = buildDir
 	var historySize int64
 	if clonecmd != "" {
-		run(false, clonecmd)
+		run(false, "sh", "-c", clonecmd)
 	} else if _, err := os.Stat(path.Join(srcdir, ".git")); err == nil {
 		run(false, "git", "clone", "--recursive", "--no-hardlinks", srcdir, checkoutDir)
 		historySize = buildDiskUsage(path.Join(srcdir, ".git"))
