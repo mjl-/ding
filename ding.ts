@@ -800,6 +800,10 @@ const pageSettings = async (): Promise<Page> => {
 				settings.BitbucketWebhookSecret = bitbucketSecret.value
 				await authed(() => client.SettingsSave(password, settings), fieldset)
 			},
+			// autocomplete=off seems to be ignored by firefox, which also isn't smart enough
+			// to realize it doesn't make sense to store a password when there are 3 present in
+			// a form...
+			attr.autocomplete('off'),
 			fieldset=dom.fieldset(
 				dom.div(
 					style({display: 'grid', columnGap: '1em', rowGap: '.5ex', gridTemplateColumns: 'min-content 1fr', alignItems: 'top', maxWidth: '50em'}),
@@ -808,7 +812,7 @@ const pageSettings = async (): Promise<Page> => {
 					dom.div('Clone and build command prefix', style({whiteSpace: 'nowrap'}), attr.title('Can be used to run at lower priority and with timeout, e.g. "nice ionice -c 3 timeout 300s"')),
 					runPrefix=dom.input(attr.value((settings.RunPrefix || []).join(' '))),
 					dom.div('Additional environment variables', style({whiteSpace: 'nowrap'}), attr.title('Of the form key=value, one per line.')),
-					environment=dom.textarea(attr.placeholder('key=value\nkey=value\n...'), attr.value((settings.Environment || []).map(s => s+'\n').join('')), attr.rows(''+Math.max(8, (settings.Environment || []).length+1))),
+					environment=dom.textarea((settings.Environment || []).map(s => s+'\n').join(''), attr.placeholder('key=value\nkey=value\n...'), attr.rows(''+Math.max(8, (settings.Environment || []).length+1))),
 					dom.div(),
 					dom.label(
 						automaticGoToolchains=dom.input(attr.type('checkbox'), settings.AutomaticGoToolchains ? attr.checked('') : []),
@@ -817,15 +821,15 @@ const pageSettings = async (): Promise<Page> => {
 					),
 					dom.div(
 						style({gridColumn: '1 / 3'}),
-						'Global webhook secrets',
+						'Global webhook secrets (deprecated)',
 						dom.p('For new repositories, unique webhooks are assigned to each repository. While global secrets are still configured, they will be accepted to start builds on all older repositories.'),
 					),
 					dom.div('Github webhook secret', style({whiteSpace: 'nowrap'})),
-					githubSecret=dom.input(attr.value(settings.GithubWebhookSecret), attr.type('password')),
+					githubSecret=dom.input(attr.value(settings.GithubWebhookSecret), attr.type('password'), attr.autocomplete('off')),
 					dom.div('Gitea webhook secret', style({whiteSpace: 'nowrap'})),
-					giteaSecret=dom.input(attr.value(settings.GiteaWebhookSecret), attr.type('password')),
+					giteaSecret=dom.input(attr.value(settings.GiteaWebhookSecret), attr.type('password'), attr.autocomplete('off')),
 					dom.div('Bitbucket webhook secret', style({whiteSpace: 'nowrap'})),
-					bitbucketSecret=dom.input(attr.value(settings.BitbucketWebhookSecret), attr.type('password')),
+					bitbucketSecret=dom.input(attr.value(settings.BitbucketWebhookSecret), attr.type('password'), attr.autocomplete('off')),
 				),
 
 				dom.br(),
