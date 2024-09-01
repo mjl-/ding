@@ -20,7 +20,7 @@ import (
 	"github.com/mjl-/sconf"
 )
 
-//go:embed INSTALL.txt web/* LICENSE licenses/*
+//go:embed INSTALL.txt web/* LICENSE licenses/* ding.service
 var embedFS embed.FS
 
 var fsys fs.FS = embedFS
@@ -33,6 +33,7 @@ func init() {
 
 var (
 	database *bstore.DB
+	dbtypes  = []any{Settings{}, Repo{}, Build{}}
 
 	version = "dev"
 )
@@ -45,7 +46,7 @@ func init() {
 	}
 }
 
-var config struct {
+type Config struct {
 	ShowSherpaErrors      bool   `sconf-doc:"If set, returns the full error message for sherpa calls failing with a server error. Otherwise, only returns generic error message."`
 	PrintSherpaErrorStack bool   `sconf-doc:"If set, prints error stack for sherpa server errors."`
 	Password              string `sconf-doc:"For login to the web interface. Ding does not have users."`
@@ -81,6 +82,8 @@ var config struct {
 	GiteaWebhookSecret     string   `sconf:"optional" sconf-doc:"Deprecated: Now configurable at runtime. For gitea webhooks for builds (like github). With 'Authorization: Bearer <secret>' header for authorization."`
 	BitbucketWebhookSecret string   `sconf:"optional" sconf-doc:"Deprecated: Now configurable at runtime. Will be part of the URL bitbucket sends its webhook request to, e.g. http://.../bitbucket/<reponame>/<bitbucket-webhook-secret>."`
 }
+
+var config Config
 
 func init() {
 	config.DataDir = "data"
@@ -120,7 +123,7 @@ var loglevel slog.LevelVar
 func main() {
 	flag.TextVar(&loglevel, "loglevel", &loglevel, "log level: debug, info, warn, error")
 	flag.Usage = func() {
-		log.Fatalf("usage: ding [-loglevel level] { config | testconfig | help | kick | serve | build | version | license }")
+		log.Fatalf("usage: ding [-loglevel level] { config | testconfig | help | kick | serve | quickstart | build | version | license }")
 		flag.PrintDefaults()
 		os.Exit(2)
 	}
@@ -162,6 +165,8 @@ func main() {
 	case "serve-http":
 		// Undocumented, for unpriviliged http process.
 		servehttp(args)
+	case "quickstart":
+		quickstart(args)
 	case "build":
 		cmdBuild(args)
 	case "kick":

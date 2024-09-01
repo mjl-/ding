@@ -125,7 +125,7 @@ func testEnv(t *testing.T) {
 	}
 	os.MkdirAll(config.DataDir, 0700)
 	dbpath := fmt.Sprintf("%s/test.%s.db", config.DataDir, strings.ToLower(t.Name()))
-	db, err := bstore.Open(context.Background(), dbpath, &bstore.Options{Timeout: 5 * time.Second}, Settings{}, Repo{}, Build{})
+	db, err := bstore.Open(context.Background(), dbpath, &bstore.Options{Timeout: 5 * time.Second}, dbtypes...)
 	tcheck(t, err, "db open")
 	ensureSettings(db)
 	database = db

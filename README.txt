@@ -31,7 +31,8 @@ pushing any commits. It clones the git or hg repository in the current working
 directory, sets up environment variables and destination build directories, and
 calls the provided build script. Optionally isolated using bubblewrap (bwrap).
 
-See INSTALL.txt for installation instructions.
+Run "ding quickstart" to generate a config file, and a systemd service file
+when on linux.  See INSTALL.txt for manual installation instructions.
 
 
 # Requirements
@@ -146,7 +147,6 @@ Now run: "make build test"
 
 - when doing a concurrent build, check how much memory is available, and how much the build likely needs (based on previous build, need to start keeping track of rusage), and delay execution if there isn't enough memory.
 - authentication on downloadable files? currently very useful to just wget a built binary (with internal endpoints).
-- add a quickstart. make it easier to setup, and easier to get a first successful build.
 - on reconnect after sse failure, make sure our state is up to date again. it isn't now.
 
 - parse & process the output of a build as it comes in, instead of when the build is done. allows making result-files earlier in the process, eg before slow tests are run.

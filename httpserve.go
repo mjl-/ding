@@ -77,7 +77,7 @@ func servehttp(args []string) {
 
 	dbpath := path.Join(config.DataDir, "ding.db")
 	dbopts := bstore.Options{Timeout: 5 * time.Second}
-	database, err = bstore.Open(context.Background(), dbpath, &dbopts, Settings{}, Repo{}, Build{})
+	database, err = bstore.Open(context.Background(), dbpath, &dbopts, dbtypes...)
 	xcheckf(err, "open database")
 
 	ensureSettings(database)

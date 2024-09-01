@@ -1,5 +1,8 @@
 # Installing
 
+You can easily get started by running "ding quickstart", as root. See
+instructions below for manual configuration.
+
 Make a new config file. Get an example:
 
 	ding config >ding.conf

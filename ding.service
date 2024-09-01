@@ -1,0 +1,18 @@
+[Unit]
+Description=ding
+After=network.target
+
+[Service]
+UMask=0027
+Restart=always
+RestartSec=1s
+LimitNOFILE=16384
+SyslogIdentifier=ding
+SyslogFacility=local0
+User=root
+Group=root
+WorkingDirectory=/home/service/ding
+ExecStart=/home/service/ding/ding serve -listen 127.0.0.1:6084 -listenwebhook 127.0.0.1:6085 -listenadmin 127.0.0.1:6086 ding.conf
+
+[Install]
+WantedBy=multi-user.target
