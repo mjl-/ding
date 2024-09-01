@@ -98,8 +98,19 @@ func (Ding) CreateBuild(ctx context.Context, password, repoName, branch, commit 
 func (Ding) BuildsCreateLowPrio(ctx context.Context, password string) {
 	_checkPassword(password)
 
-	repos, err := bstore.QueryDB[Repo](ctx, database).List()
-	_checkf(err, "fetching repo names from database")
+	err := scheduleLowPrioBuilds(ctx, false)
+	_checkf(err, "scheduling low prio builds")
+}
+
+func scheduleLowPrioBuilds(ctx context.Context, automaticOnly bool) error {
+	q := bstore.QueryDB[Repo](ctx, database)
+	if automaticOnly {
+		q = q.FilterNonzero(Repo{BuildOnUpdatedToolchain: true})
+	}
+	repos, err := q.List()
+	if err != nil {
+		return fmt.Errorf("fetching repo names from database: %v", err)
+	}
 
 	lowPrio := true
 	commit := ""
@@ -107,7 +118,10 @@ func (Ding) BuildsCreateLowPrio(ctx context.Context, password string) {
 	builds := make([]Build, len(repos))
 	buildDirs := make([]string, len(repos))
 	for i, repo := range repos {
-		_, build, buildDir := _prepareBuild(ctx, repo.Name, repo.DefaultBranch, commit, lowPrio)
+		_, build, buildDir, err := prepareBuild(ctx, repo.Name, repo.DefaultBranch, commit, lowPrio)
+		if err != nil {
+			return fmt.Errorf("preparing build: %v", err)
+		}
 		builds[i] = build
 		buildDirs[i] = buildDir
 	}
@@ -124,6 +138,7 @@ func (Ding) BuildsCreateLowPrio(ctx context.Context, password string) {
 			_doBuild(context.Background(), repo, build, buildDir)
 		}()
 	}
+	return nil
 }
 
 // BuildCancel cancels a currently running build.
@@ -408,6 +423,7 @@ func (Ding) RepoSave(ctx context.Context, password string, repo Repo) (r Repo) {
 		r.NotifyEmailAddrs = repo.NotifyEmailAddrs
 		r.Bubblewrap = repo.Bubblewrap
 		r.BubblewrapNoNet = repo.BubblewrapNoNet
+		r.BuildOnUpdatedToolchain = repo.BuildOnUpdatedToolchain
 		err := tx.Update(&r)
 		_checkf(err, "updating repo in database")
 		r = _repo(tx, repo.Name)
@@ -542,37 +558,34 @@ func (Ding) BuildCleanupBuilddir(ctx context.Context, password, repoName string,
 	return
 }
 
+// GoToolchains lists the active current, previous and next versions of the Go
+// toolchain, as symlinked in $DING_TOOLCHAINDIR.
+type GoToolchains struct {
+	Go     string
+	GoPrev string
+	GoNext string
+}
+
 // GoToolchainsListInstalled returns the installed Go toolchains (eg "go1.13.8",
 // "go1.14") in GoToolchainDir, and current "active" versions with a shortname, eg
-// "go" as "go1.14" and "go-prev" as "go1.13.8".
-func (Ding) GoToolchainsListInstalled(ctx context.Context, password string) (installed []string, active map[string]string) {
+// "go" as "go1.14", "go-prev" as "go1.13.8" and "go-next" as "go1.23rc1".
+func (Ding) GoToolchainsListInstalled(ctx context.Context, password string) (installed []string, active GoToolchains) {
 	_checkPassword(password)
 
 	_checkGoToolchainDir()
 
 	files, err := os.ReadDir(config.GoToolchainDir)
 	_checkf(err, "listing files in go toolchain dir")
-
-	active = map[string]string{}
 	for _, f := range files {
-		if !strings.HasPrefix(f.Name(), "go") {
-			continue
-		}
-		if f.IsDir() {
+		if f.IsDir() && strings.HasPrefix(f.Name(), "go") {
 			installed = append(installed, f.Name())
-			continue
-		}
-		if f.Type()&os.ModeSymlink != 0 {
-			switch f.Name() {
-			case "go", "go-prev":
-			default:
-				continue
-			}
-			goversion, err := os.Readlink(path.Join(config.GoToolchainDir, f.Name()))
-			_checkf(err, "reading go symlink for active go toolchain")
-			active[f.Name()] = goversion
 		}
 	}
+
+	active.Go, _ = os.Readlink(path.Join(config.GoToolchainDir, "go"))
+	active.GoPrev, _ = os.Readlink(path.Join(config.GoToolchainDir, "go-prev"))
+	active.GoNext, _ = os.Readlink(path.Join(config.GoToolchainDir, "go-next"))
+
 	return
 }
 
@@ -605,7 +618,7 @@ func (Ding) GoToolchainsListReleased(ctx context.Context, password string) (rele
 
 // GoToolchainInstall downloads, verifies and extracts the release Go toolchain
 // represented by goversion (eg "go1.13.8", "go1.14") into the GoToolchainDir, and
-// optionally "activates" the version under shortname ("go", "go-prev", ""; empty
+// optionally "activates" the version under shortname ("go", "go-prev", "go-next", ""; empty
 // string does nothing).
 func (Ding) GoToolchainInstall(ctx context.Context, password, goversion, shortname string) {
 	_checkPassword(password)
@@ -616,7 +629,7 @@ func (Ding) GoToolchainInstall(ctx context.Context, password, goversion, shortna
 	}
 
 	switch shortname {
-	case "go", "go-prev", "":
+	case "go", "go-prev", "go-next", "":
 	default:
 		_userError("invalid shortname")
 	}
@@ -640,8 +653,8 @@ func (Ding) GoToolchainInstall(ctx context.Context, password, goversion, shortna
 	_checkf(err, "install go toolchain")
 }
 
-// GoToolchainRemove removes a toolchain from go toolchain dir.
-// It does not remove a shortname symlink to this toolchain if it exists.
+// GoToolchainRemove removes a toolchain from the go toolchain dir.
+// It also removes shortname symlinks to this toolchain if they exists.
 func (Ding) GoToolchainRemove(ctx context.Context, password, goversion string) {
 	_checkPassword(password)
 
@@ -656,7 +669,7 @@ func (Ding) GoToolchainRemove(ctx context.Context, password, goversion string) {
 }
 
 // GoToolchainActivate activates goversion (eg "go1.13.8", "go1.14") under the name
-// shortname ("go" or "go-prev"), by creating a symlink in the GoToolchainDir.
+// shortname ("go", "go-prev" or "go-next"), by creating a symlink in the GoToolchainDir.
 func (Ding) GoToolchainActivate(ctx context.Context, password, goversion, shortname string) {
 	_checkPassword(password)
 
@@ -666,13 +679,34 @@ func (Ding) GoToolchainActivate(ctx context.Context, password, goversion, shortn
 	}
 
 	switch shortname {
-	case "go", "go-prev":
+	case "go", "go-prev", "go-next":
 		msg := msg{ActivateGoToolchain: &msgActivateGoToolchain{goversion, shortname}}
 		err := requestPrivileged(msg)
 		_checkf(err, "removing go toolchain")
 	default:
 		_userError("invalid shortname")
 	}
+}
+
+// GoToolchainAutomatic looks up the latest released Go toolchains, and installs
+// the current and previous releases, and the next (release candidate) if present.
+// Then it starts low-prio builds for all repositories that have opted in to
+// automatic building on new Go toolchains.
+func (Ding) GoToolchainAutomatic(ctx context.Context, password string) (updated bool) {
+	_checkPassword(password)
+
+	msg := msg{AutomaticGoToolchain: &msgAutomaticGoToolchain{}}
+	err := requestPrivileged(msg)
+	if err != nil && err.Error() == "updated" {
+		updated = true
+		err = nil
+	}
+	_checkf(err, "updating automatic go toolchains")
+	if updated {
+		err := scheduleLowPrioBuilds(ctx, true)
+		_checkf(err, "scheduling low prio builds after updated toolchains")
+	}
+	return
 }
 
 func _checkGoToolchainDir() {
@@ -756,5 +790,4 @@ func (Ding) SettingsSave(ctx context.Context, password string, settings Settings
 	_checkPassword(password)
 	err := database.Update(ctx, &settings)
 	_checkf(err, "update settings")
-	return
 }

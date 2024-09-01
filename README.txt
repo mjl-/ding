@@ -76,6 +76,7 @@ config should be removed.
   extremely fast, and builds can't interfere with each other.
 - (Web) API for all functionality (what the html5/js frontend is using).
 - Runs on most unix systems (Linux, BSD's).
+- Automatically install Go toolchains when released, and kicking off builds.
 
 
 # Non-features

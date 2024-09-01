@@ -257,7 +257,7 @@ var api;
 		LogLevel["LogWarn"] = "warn";
 		LogLevel["LogError"] = "error";
 	})(LogLevel = api.LogLevel || (api.LogLevel = {}));
-	api.structTypes = { "Build": true, "EventBuild": true, "EventOutput": true, "EventRemoveBuild": true, "EventRemoveRepo": true, "EventRepo": true, "Repo": true, "RepoBuilds": true, "Result": true, "Settings": true, "Step": true };
+	api.structTypes = { "Build": true, "EventBuild": true, "EventOutput": true, "EventRemoveBuild": true, "EventRemoveRepo": true, "EventRepo": true, "GoToolchains": true, "Repo": true, "RepoBuilds": true, "Result": true, "Settings": true, "Step": true };
 	api.stringsTypes = { "BuildStatus": true, "LogLevel": true, "VCS": true };
 	api.intsTypes = {};
 	api.types = {
@@ -265,8 +265,9 @@ var api;
 		"Result": { "Name": "Result", "Docs": "", "Fields": [{ "Name": "Command", "Docs": "", "Typewords": ["string"] }, { "Name": "Os", "Docs": "", "Typewords": ["string"] }, { "Name": "Arch", "Docs": "", "Typewords": ["string"] }, { "Name": "Toolchain", "Docs": "", "Typewords": ["string"] }, { "Name": "Filename", "Docs": "", "Typewords": ["string"] }, { "Name": "Filesize", "Docs": "", "Typewords": ["int64"] }] },
 		"Step": { "Name": "Step", "Docs": "", "Fields": [{ "Name": "Name", "Docs": "", "Typewords": ["string"] }, { "Name": "Output", "Docs": "", "Typewords": ["string"] }, { "Name": "Nsec", "Docs": "", "Typewords": ["int64"] }] },
 		"RepoBuilds": { "Name": "RepoBuilds", "Docs": "", "Fields": [{ "Name": "Repo", "Docs": "", "Typewords": ["Repo"] }, { "Name": "Builds", "Docs": "", "Typewords": ["[]", "Build"] }] },
-		"Repo": { "Name": "Repo", "Docs": "", "Fields": [{ "Name": "Name", "Docs": "", "Typewords": ["string"] }, { "Name": "VCS", "Docs": "", "Typewords": ["VCS"] }, { "Name": "Origin", "Docs": "", "Typewords": ["string"] }, { "Name": "DefaultBranch", "Docs": "", "Typewords": ["string"] }, { "Name": "CheckoutPath", "Docs": "", "Typewords": ["string"] }, { "Name": "BuildScript", "Docs": "", "Typewords": ["string"] }, { "Name": "UID", "Docs": "", "Typewords": ["nullable", "uint32"] }, { "Name": "HomeDiskUsage", "Docs": "", "Typewords": ["int64"] }, { "Name": "WebhookSecret", "Docs": "", "Typewords": ["string"] }, { "Name": "AllowGlobalWebhookSecrets", "Docs": "", "Typewords": ["bool"] }, { "Name": "Bubblewrap", "Docs": "", "Typewords": ["bool"] }, { "Name": "BubblewrapNoNet", "Docs": "", "Typewords": ["bool"] }, { "Name": "NotifyEmailAddrs", "Docs": "", "Typewords": ["[]", "string"] }] },
-		"Settings": { "Name": "Settings", "Docs": "", "Fields": [{ "Name": "ID", "Docs": "", "Typewords": ["int32"] }, { "Name": "NotifyEmailAddrs", "Docs": "", "Typewords": ["[]", "string"] }, { "Name": "GithubWebhookSecret", "Docs": "", "Typewords": ["string"] }, { "Name": "GiteaWebhookSecret", "Docs": "", "Typewords": ["string"] }, { "Name": "BitbucketWebhookSecret", "Docs": "", "Typewords": ["string"] }, { "Name": "RunPrefix", "Docs": "", "Typewords": ["[]", "string"] }, { "Name": "Environment", "Docs": "", "Typewords": ["[]", "string"] }] },
+		"Repo": { "Name": "Repo", "Docs": "", "Fields": [{ "Name": "Name", "Docs": "", "Typewords": ["string"] }, { "Name": "VCS", "Docs": "", "Typewords": ["VCS"] }, { "Name": "Origin", "Docs": "", "Typewords": ["string"] }, { "Name": "DefaultBranch", "Docs": "", "Typewords": ["string"] }, { "Name": "CheckoutPath", "Docs": "", "Typewords": ["string"] }, { "Name": "BuildScript", "Docs": "", "Typewords": ["string"] }, { "Name": "UID", "Docs": "", "Typewords": ["nullable", "uint32"] }, { "Name": "HomeDiskUsage", "Docs": "", "Typewords": ["int64"] }, { "Name": "WebhookSecret", "Docs": "", "Typewords": ["string"] }, { "Name": "AllowGlobalWebhookSecrets", "Docs": "", "Typewords": ["bool"] }, { "Name": "Bubblewrap", "Docs": "", "Typewords": ["bool"] }, { "Name": "BubblewrapNoNet", "Docs": "", "Typewords": ["bool"] }, { "Name": "NotifyEmailAddrs", "Docs": "", "Typewords": ["[]", "string"] }, { "Name": "BuildOnUpdatedToolchain", "Docs": "", "Typewords": ["bool"] }] },
+		"GoToolchains": { "Name": "GoToolchains", "Docs": "", "Fields": [{ "Name": "Go", "Docs": "", "Typewords": ["string"] }, { "Name": "GoPrev", "Docs": "", "Typewords": ["string"] }, { "Name": "GoNext", "Docs": "", "Typewords": ["string"] }] },
+		"Settings": { "Name": "Settings", "Docs": "", "Fields": [{ "Name": "ID", "Docs": "", "Typewords": ["int32"] }, { "Name": "NotifyEmailAddrs", "Docs": "", "Typewords": ["[]", "string"] }, { "Name": "GithubWebhookSecret", "Docs": "", "Typewords": ["string"] }, { "Name": "GiteaWebhookSecret", "Docs": "", "Typewords": ["string"] }, { "Name": "BitbucketWebhookSecret", "Docs": "", "Typewords": ["string"] }, { "Name": "RunPrefix", "Docs": "", "Typewords": ["[]", "string"] }, { "Name": "Environment", "Docs": "", "Typewords": ["[]", "string"] }, { "Name": "AutomaticGoToolchains", "Docs": "", "Typewords": ["bool"] }] },
 		"BuildStatus": { "Name": "BuildStatus", "Docs": "", "Values": [{ "Name": "StatusNew", "Value": "new", "Docs": "" }, { "Name": "StatusClone", "Value": "clone", "Docs": "" }, { "Name": "StatusBuild", "Value": "build", "Docs": "" }, { "Name": "StatusSuccess", "Value": "success", "Docs": "" }, { "Name": "StatusCancelled", "Value": "cancelled", "Docs": "" }] },
 		"VCS": { "Name": "VCS", "Docs": "", "Values": [{ "Name": "VCSGit", "Value": "git", "Docs": "" }, { "Name": "VCSMercurial", "Value": "mercurial", "Docs": "" }, { "Name": "VCSCommand", "Value": "command", "Docs": "" }] },
 		"LogLevel": { "Name": "LogLevel", "Docs": "", "Values": [{ "Name": "LogDebug", "Value": "debug", "Docs": "" }, { "Name": "LogInfo", "Value": "info", "Docs": "" }, { "Name": "LogWarn", "Value": "warn", "Docs": "" }, { "Name": "LogError", "Value": "error", "Docs": "" }] },
@@ -282,6 +283,7 @@ var api;
 		Step: (v) => api.parse("Step", v),
 		RepoBuilds: (v) => api.parse("RepoBuilds", v),
 		Repo: (v) => api.parse("Repo", v),
+		GoToolchains: (v) => api.parse("GoToolchains", v),
 		Settings: (v) => api.parse("Settings", v),
 		BuildStatus: (v) => api.parse("BuildStatus", v),
 		VCS: (v) => api.parse("VCS", v),
@@ -480,11 +482,11 @@ var api;
 		}
 		// GoToolchainsListInstalled returns the installed Go toolchains (eg "go1.13.8",
 		// "go1.14") in GoToolchainDir, and current "active" versions with a shortname, eg
-		// "go" as "go1.14" and "go-prev" as "go1.13.8".
+		// "go" as "go1.14", "go-prev" as "go1.13.8" and "go-next" as "go1.23rc1".
 		async GoToolchainsListInstalled(password) {
 			const fn = "GoToolchainsListInstalled";
 			const paramTypes = [["string"]];
-			const returnTypes = [["[]", "string"], ["{}", "string"]];
+			const returnTypes = [["[]", "string"], ["GoToolchains"]];
 			const params = [password];
 			return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params);
 		}
@@ -499,7 +501,7 @@ var api;
 		}
 		// GoToolchainInstall downloads, verifies and extracts the release Go toolchain
 		// represented by goversion (eg "go1.13.8", "go1.14") into the GoToolchainDir, and
-		// optionally "activates" the version under shortname ("go", "go-prev", ""; empty
+		// optionally "activates" the version under shortname ("go", "go-prev", "go-next", ""; empty
 		// string does nothing).
 		async GoToolchainInstall(password, goversion, shortname) {
 			const fn = "GoToolchainInstall";
@@ -508,8 +510,8 @@ var api;
 			const params = [password, goversion, shortname];
 			return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params);
 		}
-		// GoToolchainRemove removes a toolchain from go toolchain dir.
-		// It does not remove a shortname symlink to this toolchain if it exists.
+		// GoToolchainRemove removes a toolchain from the go toolchain dir.
+		// It also removes shortname symlinks to this toolchain if they exists.
 		async GoToolchainRemove(password, goversion) {
 			const fn = "GoToolchainRemove";
 			const paramTypes = [["string"], ["string"]];
@@ -518,12 +520,23 @@ var api;
 			return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params);
 		}
 		// GoToolchainActivate activates goversion (eg "go1.13.8", "go1.14") under the name
-		// shortname ("go" or "go-prev"), by creating a symlink in the GoToolchainDir.
+		// shortname ("go", "go-prev" or "go-next"), by creating a symlink in the GoToolchainDir.
 		async GoToolchainActivate(password, goversion, shortname) {
 			const fn = "GoToolchainActivate";
 			const paramTypes = [["string"], ["string"], ["string"]];
 			const returnTypes = [];
 			const params = [password, goversion, shortname];
+			return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params);
+		}
+		// GoToolchainAutomatic looks up the latest released Go toolchains, and installs
+		// the current and previous releases, and the next (release candidate) if present.
+		// Then it starts low-prio builds for all repositories that have opted in to
+		// automatic building on new Go toolchains.
+		async GoToolchainAutomatic(password) {
+			const fn = "GoToolchainAutomatic";
+			const paramTypes = [["string"]];
+			const returnTypes = [["bool"]];
+			const params = [password];
 			return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params);
 		}
 		// LogLevel returns the current log level.
@@ -1219,6 +1232,7 @@ const popupRepoAdd = async () => {
 	let reuseUID;
 	let bubblewrap;
 	let bubblewrapNoNet;
+	let buildOnUpdatedToolchain;
 	let fieldset;
 	let branchChanged = false;
 	let nameChanged = false;
@@ -1259,6 +1273,7 @@ const popupRepoAdd = async () => {
 			CheckoutPath: name.value,
 			Bubblewrap: bubblewrap.checked,
 			BubblewrapNoNet: bubblewrapNoNet.checked,
+			BuildOnUpdatedToolchain: buildOnUpdatedToolchain.checked,
 			WebhookSecret: '',
 			AllowGlobalWebhookSecrets: false,
 			BuildScript: '',
@@ -1275,7 +1290,7 @@ const popupRepoAdd = async () => {
 		let s = t[t.length - 1] || t[t.length - 2] || '';
 		s = s.replace(/\.git$/, '');
 		name.value = s;
-	})), 'Name', name = dom.input(attr.required(''), function change() { nameChanged = true; }), dom.div('Default branch', style({ whiteSpace: 'nowrap' })), defaultBranch = dom.input(attr.value('main'), attr.placeholder('main, master, default'), function change() { branchChanged = true; }), dom.div(), dom.label(reuseUID = dom.input(attr.type('checkbox'), attr.checked('')), ' Reuse $HOME and UID for builds for this repo', attr.title('By reusing $HOME and running builds for this repository under the same UID, build caches can be used. This typically leads to faster builds but reduces isolation of builds.')), dom.div(), dom.label(bubblewrap = dom.input(attr.type('checkbox'), attr.checked('')), ' Run build script in bubblewrap, with limited system access', attr.title('Only available on Linux, with bubblewrap (bwrap) installed. Commands are run in a new mount namespace with access to system directories like /bin /lib /usr, and to the ding build, home and toolchain directories.')), dom.div(), dom.label(bubblewrapNoNet = dom.input(attr.type('checkbox'), attr.checked('')), ' Prevent network access from build script. Only active if bubblewrap is active.', attr.title('Hide network interfaces from the build script. Only a loopback device is available.'))), dom.br(), dom.p('The build script can be configured after creating.'), dom.div(style({ textAlign: 'right' }), dom.submitbutton('Add')))));
+	})), 'Name', name = dom.input(attr.required(''), function change() { nameChanged = true; }), dom.div('Default branch', style({ whiteSpace: 'nowrap' })), defaultBranch = dom.input(attr.value('main'), attr.placeholder('main, master, default'), function change() { branchChanged = true; }), dom.div(), dom.label(reuseUID = dom.input(attr.type('checkbox'), attr.checked('')), ' Reuse $HOME and UID for builds for this repo', attr.title('By reusing $HOME and running builds for this repository under the same UID, build caches can be used. This typically leads to faster builds but reduces isolation of builds.')), dom.div(), dom.label(bubblewrap = dom.input(attr.type('checkbox'), attr.checked('')), ' Run build script in bubblewrap, with limited system access', attr.title('Only available on Linux, with bubblewrap (bwrap) installed. Commands are run in a new mount namespace with access to system directories like /bin /lib /usr, and to the ding build, home and toolchain directories.')), dom.div(), dom.label(bubblewrapNoNet = dom.input(attr.type('checkbox'), attr.checked('')), ' Prevent network access from build script. Only active if bubblewrap is active.', attr.title('Hide network interfaces from the build script. Only a loopback device is available.')), dom.div(), dom.label(buildOnUpdatedToolchain = dom.input(attr.type('checkbox'), attr.checked('')), ' Schedule a low-priority build when new toolchains are automatically installed.')), dom.br(), dom.p('The build script can be configured after creating.'), dom.div(style({ textAlign: 'right' }), dom.submitbutton('Add')))));
 	originInput.focus();
 };
 const pageHome = async () => {
@@ -1379,19 +1394,36 @@ const pageGoToolchains = async () => {
 		}
 		let gocur;
 		let goprev;
-		dom._kids(pageElem, dom.p('Go toolchains can easily be installed in the toolchains directory set in the configuration file. Build scripts can add $toolchaindir/<goversion>/bin to their $PATH.'), dom.h1('Current and previous Go toolchains'), dom.p('The "current" Go toolchain is available through $toolchaindir/go/bin, and the "previous" Go toolchain through $toolchaindir/go-prev/bin.'), dom.table(dom.tr(dom.td('Current'), dom.td(dom.form(async function submit(e) {
+		let gonext;
+		dom._kids(pageElem, dom.p('Go toolchains can easily be installed in the toolchains directory set in the configuration file. Build scripts can add $DING_TOOLCHAINDIR/<goversion>/bin to their $PATH.'), dom.h1('Current and previous Go toolchains'), dom.p('The current/previous/next (release candidate) Go toolchains are available through $DING_TOOLCHAINDIR/{go,go-prev,go-next}/bin.'), dom.table(dom.tr(dom.td('Current'), dom.td(dom.form(async function submit(e) {
 			e.stopPropagation();
 			e.preventDefault();
 			await authed(() => client.GoToolchainActivate(password, gocur.value, 'go'));
-			active['go'] = gocur.value;
+			active.Go = gocur.value;
 			render();
-		}, dom.fieldset(gocur = dom.select(dom.option('(none)', attr.value('')), installed.map(s => dom.option(s, active['go'] === s ? attr.selected('') : []))), ' ', dom.submitbutton('Set', attr.title('Set Go toolchain as "go"')))))), dom.tr(dom.td('Previous'), dom.td(dom.form(async function submit(e) {
+		}, dom.fieldset(gocur = dom.select(dom.option('(none)', attr.value('')), installed.map(s => dom.option(s, active.Go === s ? attr.selected('') : []))), ' ', dom.submitbutton('Set', attr.title('Set Go toolchain as "go"')))))), dom.tr(dom.td('Previous'), dom.td(dom.form(async function submit(e) {
 			e.stopPropagation();
 			e.preventDefault();
 			await authed(() => client.GoToolchainActivate(password, goprev.value, 'go-prev'));
-			active['go-prev'] = goprev.value;
+			active.GoPrev = goprev.value;
 			render();
-		}, dom.fieldset(goprev = dom.select(dom.option('(none)', attr.value('')), installed.map(s => dom.option(s, active['go-prev'] === s ? attr.selected('') : []))), ' ', dom.submitbutton('Set', attr.title('Set Go toolchain as "go-prev"'))))))), dom.br(), dom.h1('Released and installed toolchains'), dom.div(dom.ul(style({ lineHeight: '1.75' }), groups.map(g => dom.li(g.map(s => [
+		}, dom.fieldset(goprev = dom.select(dom.option('(none)', attr.value('')), installed.map(s => dom.option(s, active.GoPrev === s ? attr.selected('') : []))), ' ', dom.submitbutton('Set', attr.title('Set Go toolchain as "go-prev"')))))), dom.tr(dom.td('Next'), dom.td(dom.form(async function submit(e) {
+			e.stopPropagation();
+			e.preventDefault();
+			await authed(() => client.GoToolchainActivate(password, gonext.value, 'go-next'));
+			active.GoNext = gonext.value;
+			render();
+		}, dom.fieldset(gonext = dom.select(dom.option('(none)', attr.value('')), installed.map(s => dom.option(s, active.GoNext === s ? attr.selected('') : []))), ' ', dom.submitbutton('Set', attr.title('Set Go toolchain as "go-next"'))))))), dom.br(), dom.div(dom.clickbutton('Automatically update toolchains', attr.title('If new toolchains are installed, low prio builds are automatically scheduled for repositories that have opted in.'), async function click(e) {
+			await authed(() => client.GoToolchainAutomatic(password), e.target);
+			const [available0, [installed0, active0]] = await authed(() => Promise.all([
+				client.GoToolchainsListReleased(password),
+				client.GoToolchainsListInstalled(password),
+			]));
+			available = available0 || [];
+			installed = installed0 || [];
+			active = active0 || [];
+			render();
+		})), dom.br(), dom.h1('Released and installed toolchains'), dom.div(dom.ul(style({ lineHeight: '1.75' }), groups.map(g => dom.li(g.map(s => [
 			installed.includes(s) ? dom.span(s, ' ', dom.clickbutton('-', attr.title('Remove toolchain'), async function click(e) {
 				await authed(() => client.GoToolchainRemove(password, s), e.target);
 				installed = installed.filter(i => i !== s);
@@ -1413,6 +1445,7 @@ const pageSettings = async () => {
 	let notifyEmailAddrs;
 	let runPrefix;
 	let environment;
+	let automaticGoToolchains;
 	let githubSecret;
 	let giteaSecret;
 	let bitbucketSecret;
@@ -1425,11 +1458,12 @@ const pageSettings = async () => {
 		settings.NotifyEmailAddrs = notifyEmailAddrs.value.split(',').map(s => s.trim()).filter(s => !!s);
 		settings.RunPrefix = runPrefix.value.split(' ').map(s => s.trim()).filter(s => !!s);
 		settings.Environment = environment.value.split('\n').map(s => s.trim()).filter(s => !!s);
+		settings.AutomaticGoToolchains = automaticGoToolchains.checked;
 		settings.GithubWebhookSecret = githubSecret.value;
 		settings.GiteaWebhookSecret = giteaSecret.value;
 		settings.BitbucketWebhookSecret = bitbucketSecret.value;
 		await authed(() => client.SettingsSave(password, settings), fieldset);
-	}, fieldset = dom.fieldset(dom.div(style({ display: 'grid', columnGap: '1em', rowGap: '.5ex', gridTemplateColumns: 'min-content 1fr', alignItems: 'top', maxWidth: '50em' }), dom.div('Notify email addresses', style({ whiteSpace: 'nowrap' }), attr.title('Comma-separated list of email address that will receive notifications when a build breaks or is fixed and a repository does not have its own addresses to notify configured.')), notifyEmailAddrs = dom.input(attr.value((settings.NotifyEmailAddrs || []).join(', ')), attr.placeholder('user@example.org, other@example.org')), dom.div('Clone and build command prefix', style({ whiteSpace: 'nowrap' }), attr.title('Can be used to run at lower priority and with timeout, e.g. "nice ionice -c 3 timeout 300s"')), runPrefix = dom.input(attr.value((settings.RunPrefix || []).join(' '))), dom.div('Additional environment variables', style({ whiteSpace: 'nowrap' }), attr.title('Of the form key=value, one per line.')), environment = dom.textarea(attr.placeholder('key=value\nkey=value\n...'), attr.value((settings.Environment || []).map(s => s + '\n').join('')), attr.rows('' + Math.max(8, (settings.Environment || []).length + 1))), dom.div(style({ gridColumn: '1 / 3' }), 'Global webhook secrets', dom.p('For new repositories, unique webhooks are assigned to each repository. While global secrets are still configured, they will be accepted to start builds on all older repositories.')), dom.div('Github webhook secret', style({ whiteSpace: 'nowrap' })), githubSecret = dom.input(attr.value(settings.GithubWebhookSecret), attr.type('password')), dom.div('Gitea webhook secret', style({ whiteSpace: 'nowrap' })), giteaSecret = dom.input(attr.value(settings.GiteaWebhookSecret), attr.type('password')), dom.div('Bitbucket webhook secret', style({ whiteSpace: 'nowrap' })), bitbucketSecret = dom.input(attr.value(settings.BitbucketWebhookSecret), attr.type('password'))), dom.br(), dom.submitbutton('Save'))));
+	}, fieldset = dom.fieldset(dom.div(style({ display: 'grid', columnGap: '1em', rowGap: '.5ex', gridTemplateColumns: 'min-content 1fr', alignItems: 'top', maxWidth: '50em' }), dom.div('Notify email addresses', style({ whiteSpace: 'nowrap' }), attr.title('Comma-separated list of email address that will receive notifications when a build breaks or is fixed and a repository does not have its own addresses to notify configured.')), notifyEmailAddrs = dom.input(attr.value((settings.NotifyEmailAddrs || []).join(', ')), attr.placeholder('user@example.org, other@example.org')), dom.div('Clone and build command prefix', style({ whiteSpace: 'nowrap' }), attr.title('Can be used to run at lower priority and with timeout, e.g. "nice ionice -c 3 timeout 300s"')), runPrefix = dom.input(attr.value((settings.RunPrefix || []).join(' '))), dom.div('Additional environment variables', style({ whiteSpace: 'nowrap' }), attr.title('Of the form key=value, one per line.')), environment = dom.textarea(attr.placeholder('key=value\nkey=value\n...'), attr.value((settings.Environment || []).map(s => s + '\n').join('')), attr.rows('' + Math.max(8, (settings.Environment || []).length + 1))), dom.div(), dom.label(automaticGoToolchains = dom.input(attr.type('checkbox'), settings.AutomaticGoToolchains ? attr.checked('') : []), ' Automatic Go toolchain management', attr.title('Check once per day if new Go toolchains have been released, and automatically install them and update the go/go-prev/go-next symlinks, and schedule low priority builds for repositories that have opted in.')), dom.div(style({ gridColumn: '1 / 3' }), 'Global webhook secrets', dom.p('For new repositories, unique webhooks are assigned to each repository. While global secrets are still configured, they will be accepted to start builds on all older repositories.')), dom.div('Github webhook secret', style({ whiteSpace: 'nowrap' })), githubSecret = dom.input(attr.value(settings.GithubWebhookSecret), attr.type('password')), dom.div('Gitea webhook secret', style({ whiteSpace: 'nowrap' })), giteaSecret = dom.input(attr.value(settings.GiteaWebhookSecret), attr.type('password')), dom.div('Bitbucket webhook secret', style({ whiteSpace: 'nowrap' })), bitbucketSecret = dom.input(attr.value(settings.BitbucketWebhookSecret), attr.type('password'))), dom.br(), dom.submitbutton('Save'))));
 	return page;
 };
 const pageDocs = async () => {
@@ -1539,6 +1573,7 @@ const pageRepo = async (repoName) => {
 	let reuseUID;
 	let bubblewrap;
 	let bubblewrapNoNet;
+	let buildOnUpdatedToolchain;
 	let notifyEmailAddrs;
 	let buildScript;
 	let fieldset;
@@ -1597,6 +1632,7 @@ const pageRepo = async (repoName) => {
 				UID: !reuseUID.checked ? null : (repo.UID || 1),
 				Bubblewrap: bubblewrap.checked,
 				BubblewrapNoNet: bubblewrapNoNet.checked,
+				BuildOnUpdatedToolchain: buildOnUpdatedToolchain.checked,
 				NotifyEmailAddrs: notifyEmailAddrs.value ? notifyEmailAddrs.value.split(',').map(s => s.trim()) : [],
 				WebhookSecret: '',
 				AllowGlobalWebhookSecrets: false,
@@ -1604,7 +1640,7 @@ const pageRepo = async (repoName) => {
 				HomeDiskUsage: 0,
 			};
 			repo = await authed(() => client.RepoSave(password, nr), fieldset);
-		}, fieldset = dom.fieldset(dom.div(style({ display: 'grid', columnGap: '1em', rowGap: '.5ex', gridTemplateColumns: 'min-content 1fr', alignItems: 'top' }), 'Name', name = dom.input(attr.disabled(''), attr.value(repo.Name)), 'VCS', vcs = dom.select(dom.option('git', repo.VCS == 'git' ? attr.selected('') : []), dom.option('mercurial', repo.VCS == 'mercurial' ? attr.selected('') : []), dom.option('command', repo.VCS == 'command' ? attr.selected('') : []), vcsChanged), 'Origin', originBox = dom.div(originInput = origin = dom.input(attr.value(repo.Origin), attr.required(''), attr.placeholder('https://... or ssh://... or user@host:path.git'), style({ width: '100%' }))), dom.div('Default branch', style({ whiteSpace: 'nowrap' })), defaultBranch = dom.input(attr.value(repo.DefaultBranch), attr.placeholder('main, master, default')), dom.div('Checkout path', style({ whiteSpace: 'nowrap' })), checkoutPath = dom.input(attr.value(repo.CheckoutPath), attr.required(''), attr.title('Name of the directory to checkout the repository. Go builds may use this name for the binary it creates.')), dom.div('Notify email addresses', style({ whiteSpace: 'nowrap' }), mailEnabled ? [] : [' *', attr.title('No SMTP server is configured for outgoing emails.')]), notifyEmailAddrs = dom.input(attr.value((repo.NotifyEmailAddrs || []).join(', ')), attr.title('Comma-separated list of email address that will receive notifications when a build breaks or is fixed. If empty, the email address configured in the configuration file receives a notification, if any.'), attr.placeholder((settings.NotifyEmailAddrs || []).join(', ') || 'user@example.org, other@example.org')), dom.div(), dom.label(reuseUID = dom.input(attr.type('checkbox'), repo.UID !== null ? attr.checked('') : []), ' Reuse $HOME and UID for builds for this repo', attr.title('By reusing $HOME and running builds for this repository under the same UID, build caches can be used. This typically leads to faster builds but reduces isolation of builds.')), dom.div(), dom.label(bubblewrap = dom.input(attr.type('checkbox'), repo.Bubblewrap ? attr.checked('') : []), ' Run build script in bubblewrap, with limited system access', attr.title('Only available on Linux, with bubblewrap (bwrap) installed. Commands are run in a new mount namespace with access to system directories like /bin /lib /usr, and to the ding build, home and toolchain directories.')), dom.div(), dom.label(bubblewrapNoNet = dom.input(attr.type('checkbox'), repo.BubblewrapNoNet ? attr.checked('') : []), ' Prevent network access from build script. Only active if bubblewrap is active.', attr.title('Hide network interfaces from the build script. Only a loopback device is available.'))), dom.div(dom.label(dom.div('Build script', style({ marginBottom: '.25ex' })), buildScript = dom.textarea(repo.BuildScript, attr.required(''), attr.rows('24'), style({ width: '100%' })))), dom.br(), dom.div(dom.submitbutton('Save'))))), dom.br(), dom.h1('Webhooks'), dom.p('Configure the following webhook URLs to trigger builds:'), dom.ul(dom.li(dom.tt('http[s]://[webhooklistener]/github/' + repo.Name), ', with secret: ', dom.tt(repo.WebhookSecret)), dom.li(dom.tt('http[s]://[webhooklistener]/gitea/' + repo.Name), ', with secret: ', dom.tt(repo.WebhookSecret)), dom.li(dom.tt('http[s]://[webhooklistener]/bitbucket/' + repo.Name + '/' + repo.WebhookSecret))), repo.AllowGlobalWebhookSecrets && (settings.GithubWebhookSecret || settings.GiteaWebhookSecret || settings.BitbucketWebhookSecret) ? dom.p('Warning: Globally configured webhook secrets are active and also accepted for this repository.') : dom.p('No other (globally configured) secrets are accepted for this repository.'), dom.div(docsBuildScript()), dom.h1('Build settings'), (settings.RunPrefix || []).length > 0 ? dom.p('Build commands are prefixed with: ', dom.tt((settings.RunPrefix || []).join(' '))) : dom.p('Build commands are not run within other commands.'), dom.div('Additional environments available during builds:'), (settings.Environment || []).length === 0 ? dom.p('None') : dom.ul((settings.Environment || []).map(s => dom.li(dom.tt(s)))))),
+		}, fieldset = dom.fieldset(dom.div(style({ display: 'grid', columnGap: '1em', rowGap: '.5ex', gridTemplateColumns: 'min-content 1fr', alignItems: 'top' }), 'Name', name = dom.input(attr.disabled(''), attr.value(repo.Name)), 'VCS', vcs = dom.select(dom.option('git', repo.VCS == 'git' ? attr.selected('') : []), dom.option('mercurial', repo.VCS == 'mercurial' ? attr.selected('') : []), dom.option('command', repo.VCS == 'command' ? attr.selected('') : []), vcsChanged), 'Origin', originBox = dom.div(originInput = origin = dom.input(attr.value(repo.Origin), attr.required(''), attr.placeholder('https://... or ssh://... or user@host:path.git'), style({ width: '100%' }))), dom.div('Default branch', style({ whiteSpace: 'nowrap' })), defaultBranch = dom.input(attr.value(repo.DefaultBranch), attr.placeholder('main, master, default')), dom.div('Checkout path', style({ whiteSpace: 'nowrap' })), checkoutPath = dom.input(attr.value(repo.CheckoutPath), attr.required(''), attr.title('Name of the directory to checkout the repository. Go builds may use this name for the binary it creates.')), dom.div('Notify email addresses', style({ whiteSpace: 'nowrap' }), mailEnabled ? [] : [' *', attr.title('No SMTP server is configured for outgoing emails.')]), notifyEmailAddrs = dom.input(attr.value((repo.NotifyEmailAddrs || []).join(', ')), attr.title('Comma-separated list of email address that will receive notifications when a build breaks or is fixed. If empty, the email address configured in the configuration file receives a notification, if any.'), attr.placeholder((settings.NotifyEmailAddrs || []).join(', ') || 'user@example.org, other@example.org')), dom.div(), dom.label(reuseUID = dom.input(attr.type('checkbox'), repo.UID !== null ? attr.checked('') : []), ' Reuse $HOME and UID for builds for this repo', attr.title('By reusing $HOME and running builds for this repository under the same UID, build caches can be used. This typically leads to faster builds but reduces isolation of builds.')), dom.div(), dom.label(bubblewrap = dom.input(attr.type('checkbox'), repo.Bubblewrap ? attr.checked('') : []), ' Run build script in bubblewrap, with limited system access', attr.title('Only available on Linux, with bubblewrap (bwrap) installed. Commands are run in a new mount namespace with access to system directories like /bin /lib /usr, and to the ding build, home and toolchain directories.')), dom.div(), dom.label(bubblewrapNoNet = dom.input(attr.type('checkbox'), repo.BubblewrapNoNet ? attr.checked('') : []), ' Prevent network access from build script. Only active if bubblewrap is active.', attr.title('Hide network interfaces from the build script. Only a loopback device is available.')), dom.div(), dom.label(buildOnUpdatedToolchain = dom.input(attr.type('checkbox'), repo.BuildOnUpdatedToolchain ? attr.checked('') : []), ' Schedule a low-priority build when new toolchains are automatically installed.')), dom.div(dom.label(dom.div('Build script', style({ marginBottom: '.25ex' })), buildScript = dom.textarea(repo.BuildScript, attr.required(''), attr.rows('24'), style({ width: '100%' })))), dom.br(), dom.div(dom.submitbutton('Save'))))), dom.br(), dom.h1('Webhooks'), dom.p('Configure the following webhook URLs to trigger builds:'), dom.ul(dom.li(dom.tt('http[s]://[webhooklistener]/github/' + repo.Name), ', with secret: ', dom.tt(repo.WebhookSecret)), dom.li(dom.tt('http[s]://[webhooklistener]/gitea/' + repo.Name), ', with secret: ', dom.tt(repo.WebhookSecret)), dom.li(dom.tt('http[s]://[webhooklistener]/bitbucket/' + repo.Name + '/' + repo.WebhookSecret))), repo.AllowGlobalWebhookSecrets && (settings.GithubWebhookSecret || settings.GiteaWebhookSecret || settings.BitbucketWebhookSecret) ? dom.p('Warning: Globally configured webhook secrets are active and also accepted for this repository.') : dom.p('No other (globally configured) secrets are accepted for this repository.'), dom.div(docsBuildScript()), dom.h1('Build settings'), (settings.RunPrefix || []).length > 0 ? dom.p('Build commands are prefixed with: ', dom.tt((settings.RunPrefix || []).join(' '))) : dom.p('Build commands are not run within other commands.'), dom.div('Additional environments available during builds:'), (settings.Environment || []).length === 0 ? dom.p('None') : dom.ul((settings.Environment || []).map(s => dom.li(dom.tt(s)))))),
 	];
 	const elem = render();
 	vcsChanged();

@@ -172,6 +172,13 @@ func servePrivileged(dec *gob.Decoder, enc *gob.Encoder, unixconn *net.UnixConn)
 			err = removeGoToolchain(msg.RemoveGoToolchain.Goversion)
 		case msg.ActivateGoToolchain != nil:
 			err = activateGoToolchain(msg.ActivateGoToolchain.Goversion, msg.ActivateGoToolchain.Shortname)
+		case msg.AutomaticGoToolchain != nil:
+			// todo: replace horrible hack of setting a specific value as error to communicate we've updated the toolchains...
+			var updated bool
+			updated, err = automaticGoToolchain()
+			if err == nil && updated {
+				err = errors.New("updated")
+			}
 		case msg.LogLevelSet != nil:
 			olevel := loglevel.Level()
 			loglevel.Set(msg.LogLevelSet.LogLevel)

@@ -201,7 +201,7 @@ func TestToolchains(t *testing.T) {
 
 	installed, active := api.GoToolchainsListInstalled(ctxbg, config.Password)
 	tcompare(t, len(installed), 0)
-	tcompare(t, len(active), 0)
+	tcompare(t, active, GoToolchains{})
 
 	released := api.GoToolchainsListReleased(ctxbg, config.Password) // todo: set a timeout
 	tcompare(t, len(released) > 0, true)

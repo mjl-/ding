@@ -172,6 +172,40 @@ func servehttp(args []string) {
 		}()
 	}
 
+	// If enabled, we check once per day whether new go toolchains have been released, and install them if so.
+	go func() {
+		// Don't check immediately. So we don't hit this during development all the time.
+		for time.Sleep(time.Hour); ; time.Sleep(24*time.Hour) {
+			settings := Settings{ID: 1}
+			if err := database.Get(context.Background(), &settings); err != nil {
+				slog.Error("get settings for deciding whether to automatically update go toolchains", "err", err)
+				continue
+			}
+			if !settings.AutomaticGoToolchains {
+				continue
+			}
+
+			m := msg{AutomaticGoToolchain: &msgAutomaticGoToolchain{}}
+			err := requestPrivileged(m)
+			// Horrible hack, we're passing "updated" as "error" when the toolchains have been updated. todo: change ipc mechanism to properly pass data.
+			var updated bool
+			if err != nil && err.Error() == "updated" {
+				updated = true
+				err = nil
+			}
+			if err != nil {
+				slog.Error("attempting automatic go toolchain update", "err", err)
+				continue
+			} else if !updated {
+				continue
+			}
+
+			if err := scheduleLowPrioBuilds(context.Background(), true); err != nil {
+				slog.Error("scheduling low prio builds after automatic toolchain update", "err", err)
+			}
+		}
+	}()
+
 	slog.Info("starting ding", "version", version, "addr", *listenAddress, "webhookaddr", *listenWebhookAddress, "adminaddr", *listenAdminAddress)
 	if *listenWebhookAddress != "" {
 		webhookMux := http.NewServeMux()

@@ -65,6 +65,15 @@ export interface Repo {
 	Bubblewrap: boolean  // If true, build is run with bubblewrap (bwrap) to isolate the environment further. Only the system, the build directory, home directory and toolchain directory is available.
 	BubblewrapNoNet: boolean  // If true, along with Bubblewrap, then no network access is possible during the build (though it is during clone).
 	NotifyEmailAddrs?: string[] | null  // If not empty, each address gets notified about build breakage/fixage, overriding the default address configured in the configuration file.
+	BuildOnUpdatedToolchain: boolean  // If set, automatically installed Go toolchains will trigger a low priority build for this repository.
+}
+
+// GoToolchains lists the active current, previous and next versions of the Go
+// toolchain, as symlinked in $DING_TOOLCHAINDIR.
+export interface GoToolchains {
+	Go: string
+	GoPrev: string
+	GoNext: string
 }
 
 // Settings holds runtime configuration options.
@@ -76,6 +85,7 @@ export interface Settings {
 	BitbucketWebhookSecret: string
 	RunPrefix?: string[] | null  // Commands prefixed to the clone and build commands. E.g. /usr/bin/nice.
 	Environment?: string[] | null  // Additional environment variables to set during clone and build.
+	AutomaticGoToolchains: boolean  // If set, new "go", "go-prev" and "go-next" (if present, for release candidates) are automatically downloaded and installed (symlinked as active).
 }
 
 // BuildStatus indicates the progress of a build.
@@ -135,7 +145,7 @@ export interface EventOutput {
 	Text: string  // Lines of text written.
 }
 
-export const structTypes: {[typename: string]: boolean} = {"Build":true,"EventBuild":true,"EventOutput":true,"EventRemoveBuild":true,"EventRemoveRepo":true,"EventRepo":true,"Repo":true,"RepoBuilds":true,"Result":true,"Settings":true,"Step":true}
+export const structTypes: {[typename: string]: boolean} = {"Build":true,"EventBuild":true,"EventOutput":true,"EventRemoveBuild":true,"EventRemoveRepo":true,"EventRepo":true,"GoToolchains":true,"Repo":true,"RepoBuilds":true,"Result":true,"Settings":true,"Step":true}
 export const stringsTypes: {[typename: string]: boolean} = {"BuildStatus":true,"LogLevel":true,"VCS":true}
 export const intsTypes: {[typename: string]: boolean} = {}
 export const types: TypenameMap = {
@@ -143,8 +153,9 @@ export const types: TypenameMap = {
 	"Result": {"Name":"Result","Docs":"","Fields":[{"Name":"Command","Docs":"","Typewords":["string"]},{"Name":"Os","Docs":"","Typewords":["string"]},{"Name":"Arch","Docs":"","Typewords":["string"]},{"Name":"Toolchain","Docs":"","Typewords":["string"]},{"Name":"Filename","Docs":"","Typewords":["string"]},{"Name":"Filesize","Docs":"","Typewords":["int64"]}]},
 	"Step": {"Name":"Step","Docs":"","Fields":[{"Name":"Name","Docs":"","Typewords":["string"]},{"Name":"Output","Docs":"","Typewords":["string"]},{"Name":"Nsec","Docs":"","Typewords":["int64"]}]},
 	"RepoBuilds": {"Name":"RepoBuilds","Docs":"","Fields":[{"Name":"Repo","Docs":"","Typewords":["Repo"]},{"Name":"Builds","Docs":"","Typewords":["[]","Build"]}]},
-	"Repo": {"Name":"Repo","Docs":"","Fields":[{"Name":"Name","Docs":"","Typewords":["string"]},{"Name":"VCS","Docs":"","Typewords":["VCS"]},{"Name":"Origin","Docs":"","Typewords":["string"]},{"Name":"DefaultBranch","Docs":"","Typewords":["string"]},{"Name":"CheckoutPath","Docs":"","Typewords":["string"]},{"Name":"BuildScript","Docs":"","Typewords":["string"]},{"Name":"UID","Docs":"","Typewords":["nullable","uint32"]},{"Name":"HomeDiskUsage","Docs":"","Typewords":["int64"]},{"Name":"WebhookSecret","Docs":"","Typewords":["string"]},{"Name":"AllowGlobalWebhookSecrets","Docs":"","Typewords":["bool"]},{"Name":"Bubblewrap","Docs":"","Typewords":["bool"]},{"Name":"BubblewrapNoNet","Docs":"","Typewords":["bool"]},{"Name":"NotifyEmailAddrs","Docs":"","Typewords":["[]","string"]}]},
-	"Settings": {"Name":"Settings","Docs":"","Fields":[{"Name":"ID","Docs":"","Typewords":["int32"]},{"Name":"NotifyEmailAddrs","Docs":"","Typewords":["[]","string"]},{"Name":"GithubWebhookSecret","Docs":"","Typewords":["string"]},{"Name":"GiteaWebhookSecret","Docs":"","Typewords":["string"]},{"Name":"BitbucketWebhookSecret","Docs":"","Typewords":["string"]},{"Name":"RunPrefix","Docs":"","Typewords":["[]","string"]},{"Name":"Environment","Docs":"","Typewords":["[]","string"]}]},
+	"Repo": {"Name":"Repo","Docs":"","Fields":[{"Name":"Name","Docs":"","Typewords":["string"]},{"Name":"VCS","Docs":"","Typewords":["VCS"]},{"Name":"Origin","Docs":"","Typewords":["string"]},{"Name":"DefaultBranch","Docs":"","Typewords":["string"]},{"Name":"CheckoutPath","Docs":"","Typewords":["string"]},{"Name":"BuildScript","Docs":"","Typewords":["string"]},{"Name":"UID","Docs":"","Typewords":["nullable","uint32"]},{"Name":"HomeDiskUsage","Docs":"","Typewords":["int64"]},{"Name":"WebhookSecret","Docs":"","Typewords":["string"]},{"Name":"AllowGlobalWebhookSecrets","Docs":"","Typewords":["bool"]},{"Name":"Bubblewrap","Docs":"","Typewords":["bool"]},{"Name":"BubblewrapNoNet","Docs":"","Typewords":["bool"]},{"Name":"NotifyEmailAddrs","Docs":"","Typewords":["[]","string"]},{"Name":"BuildOnUpdatedToolchain","Docs":"","Typewords":["bool"]}]},
+	"GoToolchains": {"Name":"GoToolchains","Docs":"","Fields":[{"Name":"Go","Docs":"","Typewords":["string"]},{"Name":"GoPrev","Docs":"","Typewords":["string"]},{"Name":"GoNext","Docs":"","Typewords":["string"]}]},
+	"Settings": {"Name":"Settings","Docs":"","Fields":[{"Name":"ID","Docs":"","Typewords":["int32"]},{"Name":"NotifyEmailAddrs","Docs":"","Typewords":["[]","string"]},{"Name":"GithubWebhookSecret","Docs":"","Typewords":["string"]},{"Name":"GiteaWebhookSecret","Docs":"","Typewords":["string"]},{"Name":"BitbucketWebhookSecret","Docs":"","Typewords":["string"]},{"Name":"RunPrefix","Docs":"","Typewords":["[]","string"]},{"Name":"Environment","Docs":"","Typewords":["[]","string"]},{"Name":"AutomaticGoToolchains","Docs":"","Typewords":["bool"]}]},
 	"BuildStatus": {"Name":"BuildStatus","Docs":"","Values":[{"Name":"StatusNew","Value":"new","Docs":""},{"Name":"StatusClone","Value":"clone","Docs":""},{"Name":"StatusBuild","Value":"build","Docs":""},{"Name":"StatusSuccess","Value":"success","Docs":""},{"Name":"StatusCancelled","Value":"cancelled","Docs":""}]},
 	"VCS": {"Name":"VCS","Docs":"","Values":[{"Name":"VCSGit","Value":"git","Docs":""},{"Name":"VCSMercurial","Value":"mercurial","Docs":""},{"Name":"VCSCommand","Value":"command","Docs":""}]},
 	"LogLevel": {"Name":"LogLevel","Docs":"","Values":[{"Name":"LogDebug","Value":"debug","Docs":""},{"Name":"LogInfo","Value":"info","Docs":""},{"Name":"LogWarn","Value":"warn","Docs":""},{"Name":"LogError","Value":"error","Docs":""}]},
@@ -161,6 +172,7 @@ export const parser = {
 	Step: (v: any) => parse("Step", v) as Step,
 	RepoBuilds: (v: any) => parse("RepoBuilds", v) as RepoBuilds,
 	Repo: (v: any) => parse("Repo", v) as Repo,
+	GoToolchains: (v: any) => parse("GoToolchains", v) as GoToolchains,
 	Settings: (v: any) => parse("Settings", v) as Settings,
 	BuildStatus: (v: any) => parse("BuildStatus", v) as BuildStatus,
 	VCS: (v: any) => parse("VCS", v) as VCS,
@@ -382,13 +394,13 @@ export class Client {
 
 	// GoToolchainsListInstalled returns the installed Go toolchains (eg "go1.13.8",
 	// "go1.14") in GoToolchainDir, and current "active" versions with a shortname, eg
-	// "go" as "go1.14" and "go-prev" as "go1.13.8".
-	async GoToolchainsListInstalled(password: string): Promise<[string[] | null, { [key: string]: string }]> {
+	// "go" as "go1.14", "go-prev" as "go1.13.8" and "go-next" as "go1.23rc1".
+	async GoToolchainsListInstalled(password: string): Promise<[string[] | null, GoToolchains]> {
 		const fn: string = "GoToolchainsListInstalled"
 		const paramTypes: string[][] = [["string"]]
-		const returnTypes: string[][] = [["[]","string"],["{}","string"]]
+		const returnTypes: string[][] = [["[]","string"],["GoToolchains"]]
 		const params: any[] = [password]
-		return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params) as [string[] | null, { [key: string]: string }]
+		return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params) as [string[] | null, GoToolchains]
 	}
 
 	// GoToolchainsListReleased returns all known released Go toolchains available at
@@ -403,7 +415,7 @@ export class Client {
 
 	// GoToolchainInstall downloads, verifies and extracts the release Go toolchain
 	// represented by goversion (eg "go1.13.8", "go1.14") into the GoToolchainDir, and
-	// optionally "activates" the version under shortname ("go", "go-prev", ""; empty
+	// optionally "activates" the version under shortname ("go", "go-prev", "go-next", ""; empty
 	// string does nothing).
 	async GoToolchainInstall(password: string, goversion: string, shortname: string): Promise<void> {
 		const fn: string = "GoToolchainInstall"
@@ -413,8 +425,8 @@ export class Client {
 		return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params) as void
 	}
 
-	// GoToolchainRemove removes a toolchain from go toolchain dir.
-	// It does not remove a shortname symlink to this toolchain if it exists.
+	// GoToolchainRemove removes a toolchain from the go toolchain dir.
+	// It also removes shortname symlinks to this toolchain if they exists.
 	async GoToolchainRemove(password: string, goversion: string): Promise<void> {
 		const fn: string = "GoToolchainRemove"
 		const paramTypes: string[][] = [["string"],["string"]]
@@ -424,13 +436,25 @@ export class Client {
 	}
 
 	// GoToolchainActivate activates goversion (eg "go1.13.8", "go1.14") under the name
-	// shortname ("go" or "go-prev"), by creating a symlink in the GoToolchainDir.
+	// shortname ("go", "go-prev" or "go-next"), by creating a symlink in the GoToolchainDir.
 	async GoToolchainActivate(password: string, goversion: string, shortname: string): Promise<void> {
 		const fn: string = "GoToolchainActivate"
 		const paramTypes: string[][] = [["string"],["string"],["string"]]
 		const returnTypes: string[][] = []
 		const params: any[] = [password, goversion, shortname]
 		return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params) as void
+	}
+
+	// GoToolchainAutomatic looks up the latest released Go toolchains, and installs
+	// the current and previous releases, and the next (release candidate) if present.
+	// Then it starts low-prio builds for all repositories that have opted in to
+	// automatic building on new Go toolchains.
+	async GoToolchainAutomatic(password: string): Promise<boolean> {
+		const fn: string = "GoToolchainAutomatic"
+		const paramTypes: string[][] = [["string"]]
+		const returnTypes: string[][] = [["bool"]]
+		const params: any[] = [password]
+		return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params) as boolean
 	}
 
 	// LogLevel returns the current log level.

@@ -54,7 +54,7 @@ type msgCancelCommand struct {
 // Install released go toolchain into GoToolchainDir.
 type msgInstallGoToolchain struct {
 	File      goreleases.File
-	Shortname string // "go" or "go-prev"
+	Shortname string // "go", "go-prev" or "go-next"
 }
 
 // Remove installed go toolchain from GoToolchainDir, leaving shortname symlink untouched.
@@ -65,7 +65,11 @@ type msgRemoveGoToolchain struct {
 // Activate installed go toolchain in GoToolchainDir under shortname by creating a symlink.
 type msgActivateGoToolchain struct {
 	Goversion string // eg "go1.14 or "go1.13.8"
-	Shortname string // "go" or "go-prev"
+	Shortname string // "go", "go-prev" or "go-next"
+}
+
+// Lookup latest Go toolchains and update to them, setting go-prev, go, and possibly go-next symlinks.
+type msgAutomaticGoToolchain struct {
 }
 
 type msgLogLevelSet struct {
@@ -75,16 +79,17 @@ type msgLogLevelSet struct {
 // Message from unprivileged webserver to root process.
 // Only the first non-nil field is handled.
 type msg struct {
-	Build               *msgBuild
-	Chown               *msgChown
-	RemoveBuilddir      *msgRemoveBuilddir
-	RemoveRepo          *msgRemoveRepo
-	RemoveSharedHome    *msgRemoveSharedHome
-	CancelCommand       *msgCancelCommand
-	InstallGoToolchain  *msgInstallGoToolchain
-	RemoveGoToolchain   *msgRemoveGoToolchain
-	ActivateGoToolchain *msgActivateGoToolchain
-	LogLevelSet         *msgLogLevelSet
+	Build                *msgBuild
+	Chown                *msgChown
+	RemoveBuilddir       *msgRemoveBuilddir
+	RemoveRepo           *msgRemoveRepo
+	RemoveSharedHome     *msgRemoveSharedHome
+	CancelCommand        *msgCancelCommand
+	InstallGoToolchain   *msgInstallGoToolchain
+	RemoveGoToolchain    *msgRemoveGoToolchain
+	ActivateGoToolchain  *msgActivateGoToolchain
+	AutomaticGoToolchain *msgAutomaticGoToolchain
+	LogLevelSet          *msgLogLevelSet
 }
 
 // request from one of the http handlers to httpserve's request mux

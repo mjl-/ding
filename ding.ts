@@ -351,6 +351,7 @@ const popupRepoAdd = async () => {
 	let reuseUID: HTMLInputElement
 	let bubblewrap: HTMLInputElement
 	let bubblewrapNoNet: HTMLInputElement
+	let buildOnUpdatedToolchain: HTMLInputElement
 	let fieldset: HTMLFieldSetElement
 
 	let branchChanged = false
@@ -402,6 +403,7 @@ const popupRepoAdd = async () => {
 					CheckoutPath: name.value,
 					Bubblewrap: bubblewrap.checked,
 					BubblewrapNoNet: bubblewrapNoNet.checked,
+					BuildOnUpdatedToolchain: buildOnUpdatedToolchain.checked,
 					WebhookSecret: '',
 					AllowGlobalWebhookSecrets: false,
 					BuildScript: '',
@@ -452,6 +454,11 @@ const popupRepoAdd = async () => {
 						bubblewrapNoNet=dom.input(attr.type('checkbox'), attr.checked('')),
 						' Prevent network access from build script. Only active if bubblewrap is active.',
 						attr.title('Hide network interfaces from the build script. Only a loopback device is available.'),
+					),
+					dom.div(),
+					dom.label(
+						buildOnUpdatedToolchain=dom.input(attr.type('checkbox'), attr.checked('')),
+						' Schedule a low-priority build when new toolchains are automatically installed.',
 					),
 				),
 				dom.br(),
@@ -637,11 +644,12 @@ const pageGoToolchains = async (): Promise<Page> => {
 
 		let gocur: HTMLSelectElement
 		let goprev: HTMLSelectElement
+		let gonext: HTMLSelectElement
 
 		dom._kids(pageElem,
-			dom.p('Go toolchains can easily be installed in the toolchains directory set in the configuration file. Build scripts can add $toolchaindir/<goversion>/bin to their $PATH.'),
+			dom.p('Go toolchains can easily be installed in the toolchains directory set in the configuration file. Build scripts can add $DING_TOOLCHAINDIR/<goversion>/bin to their $PATH.'),
 			dom.h1('Current and previous Go toolchains'),
-			dom.p('The "current" Go toolchain is available through $toolchaindir/go/bin, and the "previous" Go toolchain through $toolchaindir/go-prev/bin.'),
+			dom.p('The current/previous/next (release candidate) Go toolchains are available through $DING_TOOLCHAINDIR/{go,go-prev,go-next}/bin.'),
 			dom.table(
 				dom.tr(
 					dom.td('Current'),
@@ -651,13 +659,13 @@ const pageGoToolchains = async (): Promise<Page> => {
 								e.stopPropagation()
 								e.preventDefault()
 								await authed(() => client.GoToolchainActivate(password, gocur.value, 'go'))
-								active['go'] = gocur.value
+								active.Go = gocur.value
 								render()
 							},
 							dom.fieldset(
 								gocur=dom.select(
 									dom.option('(none)', attr.value('')),
-									installed.map(s => dom.option(s, active['go'] === s ? attr.selected('') : [])),
+									installed.map(s => dom.option(s, active.Go === s ? attr.selected('') : [])),
 								),
 								' ',
 								dom.submitbutton('Set', attr.title('Set Go toolchain as "go"')),
@@ -673,13 +681,13 @@ const pageGoToolchains = async (): Promise<Page> => {
 								e.stopPropagation()
 								e.preventDefault()
 								await authed(() => client.GoToolchainActivate(password, goprev.value, 'go-prev'))
-								active['go-prev'] = goprev.value
+								active.GoPrev = goprev.value
 								render()
 							},
 							dom.fieldset(
 								goprev=dom.select(
 									dom.option('(none)', attr.value('')),
-									installed.map(s => dom.option(s, active['go-prev'] === s ? attr.selected('') : [])),
+									installed.map(s => dom.option(s, active.GoPrev === s ? attr.selected('') : [])),
 								),
 								' ',
 								dom.submitbutton('Set', attr.title('Set Go toolchain as "go-prev"')),
@@ -687,6 +695,44 @@ const pageGoToolchains = async (): Promise<Page> => {
 						),
 					),
 				),
+				dom.tr(
+					dom.td('Next'),
+					dom.td(
+						dom.form(
+							async function submit(e: SubmitEvent) {
+								e.stopPropagation()
+								e.preventDefault()
+								await authed(() => client.GoToolchainActivate(password, gonext.value, 'go-next'))
+								active.GoNext = gonext.value
+								render()
+							},
+							dom.fieldset(
+								gonext=dom.select(
+									dom.option('(none)', attr.value('')),
+									installed.map(s => dom.option(s, active.GoNext === s ? attr.selected('') : [])),
+								),
+								' ',
+								dom.submitbutton('Set', attr.title('Set Go toolchain as "go-next"')),
+							)
+						),
+					),
+				),
+			),
+			dom.br(),
+			dom.div(
+				dom.clickbutton('Automatically update toolchains', attr.title('If new toolchains are installed, low prio builds are automatically scheduled for repositories that have opted in.'), async function click(e: TargetDisableable) {
+					await authed(() => client.GoToolchainAutomatic(password), e.target)
+					const [available0, [installed0, active0]] = await authed(() =>
+						Promise.all([
+							client.GoToolchainsListReleased(password),
+							client.GoToolchainsListInstalled(password),
+						])
+					)
+					available = available0 || []
+					installed = installed0 || []
+					active = active0 || []
+					render()
+				}),
 			),
 			dom.br(),
 
@@ -730,6 +776,7 @@ const pageSettings = async (): Promise<Page> => {
 	let notifyEmailAddrs: HTMLInputElement
 	let runPrefix: HTMLInputElement
 	let environment: HTMLTextAreaElement
+	let automaticGoToolchains: HTMLInputElement
 	let githubSecret: HTMLInputElement
 	let giteaSecret: HTMLInputElement
 	let bitbucketSecret: HTMLInputElement
@@ -747,6 +794,7 @@ const pageSettings = async (): Promise<Page> => {
 				settings.NotifyEmailAddrs = notifyEmailAddrs.value.split(',').map(s => s.trim()).filter(s => !!s)
 				settings.RunPrefix = runPrefix.value.split(' ').map(s => s.trim()).filter(s => !!s)
 				settings.Environment = environment.value.split('\n').map(s => s.trim()).filter(s => !!s)
+				settings.AutomaticGoToolchains = automaticGoToolchains.checked
 				settings.GithubWebhookSecret = githubSecret.value
 				settings.GiteaWebhookSecret = giteaSecret.value
 				settings.BitbucketWebhookSecret = bitbucketSecret.value
@@ -761,6 +809,12 @@ const pageSettings = async (): Promise<Page> => {
 					runPrefix=dom.input(attr.value((settings.RunPrefix || []).join(' '))),
 					dom.div('Additional environment variables', style({whiteSpace: 'nowrap'}), attr.title('Of the form key=value, one per line.')),
 					environment=dom.textarea(attr.placeholder('key=value\nkey=value\n...'), attr.value((settings.Environment || []).map(s => s+'\n').join('')), attr.rows(''+Math.max(8, (settings.Environment || []).length+1))),
+					dom.div(),
+					dom.label(
+						automaticGoToolchains=dom.input(attr.type('checkbox'), settings.AutomaticGoToolchains ? attr.checked('') : []),
+						' Automatic Go toolchain management',
+						attr.title('Check once per day if new Go toolchains have been released, and automatically install them and update the go/go-prev/go-next symlinks, and schedule low priority builds for repositories that have opted in.'),
+					),
 					dom.div(
 						style({gridColumn: '1 / 3'}),
 						'Global webhook secrets',
@@ -1008,6 +1062,7 @@ const pageRepo = async (repoName: string): Promise<Page> => {
 	let reuseUID: HTMLInputElement
 	let bubblewrap: HTMLInputElement
 	let bubblewrapNoNet: HTMLInputElement
+	let buildOnUpdatedToolchain: HTMLInputElement
 	let notifyEmailAddrs: HTMLInputElement
 	let buildScript: HTMLTextAreaElement
 	let fieldset: HTMLFieldSetElement
@@ -1110,6 +1165,7 @@ const pageRepo = async (repoName: string): Promise<Page> => {
 								UID: !reuseUID.checked ? null : (repo.UID || 1),
 								Bubblewrap: bubblewrap.checked,
 								BubblewrapNoNet: bubblewrapNoNet.checked,
+								BuildOnUpdatedToolchain: buildOnUpdatedToolchain.checked,
 								NotifyEmailAddrs: notifyEmailAddrs.value ? notifyEmailAddrs.value.split(',').map(s => s.trim()) : [],
 								WebhookSecret: '',
 								AllowGlobalWebhookSecrets: false,
@@ -1155,6 +1211,11 @@ const pageRepo = async (repoName: string): Promise<Page> => {
 									bubblewrapNoNet=dom.input(attr.type('checkbox'), repo.BubblewrapNoNet ? attr.checked('') : []),
 									' Prevent network access from build script. Only active if bubblewrap is active.',
 									attr.title('Hide network interfaces from the build script. Only a loopback device is available.'),
+								),
+								dom.div(),
+								dom.label(
+									buildOnUpdatedToolchain=dom.input(attr.type('checkbox'), repo.BuildOnUpdatedToolchain ? attr.checked('') : []),
+									' Schedule a low-priority build when new toolchains are automatically installed.',
 								),
 							),
 							dom.div(

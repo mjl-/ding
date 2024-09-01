@@ -13,6 +13,10 @@ type Settings struct {
 	BitbucketWebhookSecret string
 	RunPrefix              []string // Commands prefixed to the clone and build commands. E.g. /usr/bin/nice.
 	Environment            []string // Additional environment variables to set during clone and build.
+
+	// If set, new "go", "go-prev" and "go-next" (if present, for release candidates)
+	// are automatically downloaded and installed (symlinked as active).
+	AutomaticGoToolchains bool
 }
 
 // BuildStatus indicates the progress of a build.
@@ -65,6 +69,10 @@ type Repo struct {
 	// breakage/fixage, overriding the default address configured in the
 	// configuration file.
 	NotifyEmailAddrs []string
+
+	// If set, automatically installed Go toolchains will trigger a low priority build
+	// for this repository.
+	BuildOnUpdatedToolchain bool
 }
 
 // Build is an attempt at building a repository.
