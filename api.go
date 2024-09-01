@@ -508,6 +508,11 @@ func (Ding) Build(ctx context.Context, password, repoName string, buildID int32)
 	_dbread(ctx, func(tx *bstore.Tx) {
 		_, b = _build(tx, repoName, buildID)
 	})
+
+	if b.Finish == nil {
+		b.Steps = _buildSteps(b)
+	}
+
 	return
 }
 
