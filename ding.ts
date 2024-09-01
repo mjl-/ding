@@ -1382,7 +1382,7 @@ const pageBuild = async (repoName: string, buildID: number): Promise<Page> => {
 						dom.div(
 							style({display: 'flex', gap: '1em'}),
 							dom.h1('Results'),
-							b.Status === api.BuildStatus.StatusSuccess ? dom.div(
+							b.Status === api.BuildStatus.StatusSuccess && (b.Results || []).length > 0 ? dom.div(
 								dom.a(attr.href('dl/' + (b.Released ? 'release' : 'result') + '/'+encodeURIComponent(repo.Name) + '/' + b.ID + '/' + encodeURIComponent(repo.Name) + '-' + b.Version + '.zip'), attr.download(''), 'zip'),' ',
 								dom.a(attr.href('dl/' + (b.Released ? 'release' : 'result') + '/'+encodeURIComponent(repo.Name) + '/' + b.ID + '/' + encodeURIComponent(repo.Name) + '-' + b.Version + '.tgz'), attr.download(''), 'tgz'),
 							) : [],
