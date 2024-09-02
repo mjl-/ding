@@ -171,9 +171,9 @@ echo coverage-report: coverage.txt
 		run(workDir, "hg", "init", hgRepoDir)
 		run(hgRepoDir, "touch", "file.txt")
 		run(hgRepoDir, "hg", "add", "file.txt")
-		run(hgRepoDir, "hg", "commit", "-m", "test", "file.txt")
 		err = os.WriteFile(path.Join(hgRepoDir, ".hg/hgrc"), []byte("\n[ui]\nusername = ding <ding@ding.example>\n"), 0644)
 		tcheck(t, err, "writing user info to .hg/hgrc")
+		run(hgRepoDir, "hg", "commit", "-m", "test", "file.txt")
 		r = Repo{Name: "hg", VCS: VCSMercurial, Origin: hgRepoDir, DefaultBranch: "default", CheckoutPath: "hgrepo", BuildScript: "#!/usr/bin/env bash\nset -e\necho building...\necho hi>myfile\necho version: 1.2.3\necho release: mycmd linux amd64 toolchain1.2.3 myfile\n"}
 		r = api.RepoCreate(ctxbg, config.Password, r)
 		b = api.BuildCreate(ctxbg, config.Password, r.Name, r.DefaultBranch, "", false)
