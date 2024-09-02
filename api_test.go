@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path"
 	"testing"
 	"time"
 )
@@ -150,6 +151,12 @@ echo coverage-report: coverage.txt
 	run(workDir, "git", "init", "--initial-branch=main", gitRepoDir)
 	run(gitRepoDir, "touch", "file.txt")
 	run(gitRepoDir, "git", "add", "file.txt")
+	gitf, err := os.OpenFile(path.Join(gitRepoDir, ".git/config"), os.O_WRONLY|os.O_APPEND, 0644)
+	tcheck(t, err, "open .git/config")
+	_, err = gitf.Write([]byte("\n[user]\n\tname = ding\n\temail = <ding@ding.example>\n"))
+	tcheck(t, err, "adding user info to .git/config")
+	err = gitf.Close()
+	tcheck(t, err, "close .git/config")
 	run(gitRepoDir, "git", "commit", "-m", "test", "file.txt")
 
 	r = Repo{Name: "g0", VCS: VCSGit, Origin: gitRepoDir, DefaultBranch: "main", CheckoutPath: "g0", BuildScript: buildScript}
@@ -165,7 +172,8 @@ echo coverage-report: coverage.txt
 		run(hgRepoDir, "touch", "file.txt")
 		run(hgRepoDir, "hg", "add", "file.txt")
 		run(hgRepoDir, "hg", "commit", "-m", "test", "file.txt")
-
+		err = os.WriteFile(path.Join(hgRepoDir, ".hg/hgrc"), []byte("\n[ui]\nusername = ding <ding@ding.example>\n"), 0644)
+		tcheck(t, err, "writing user info to .hg/hgrc")
 		r = Repo{Name: "hg", VCS: VCSMercurial, Origin: hgRepoDir, DefaultBranch: "default", CheckoutPath: "hgrepo", BuildScript: "#!/usr/bin/env bash\nset -e\necho building...\necho hi>myfile\necho version: 1.2.3\necho release: mycmd linux amd64 toolchain1.2.3 myfile\n"}
 		r = api.RepoCreate(ctxbg, config.Password, r)
 		b = api.BuildCreate(ctxbg, config.Password, r.Name, r.DefaultBranch, "", false)
