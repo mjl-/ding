@@ -524,6 +524,7 @@ func _cleanupBuilds(ctx context.Context, repoName, branch string) {
 
 func parseResults(checkoutDir, dldir string, r io.Reader) (version string, results []Result, coverage *float32, coverageReportFile string, rerr error) {
 	scanner := bufio.NewScanner(r)
+	resultFiles := map[string]bool{}
 	for scanner.Scan() {
 		line := scanner.Text()
 		t := strings.Split(line, " ")
@@ -544,9 +545,14 @@ func parseResults(checkoutDir, dldir string, r io.Reader) (version string, resul
 			}
 			info, err := os.Stat(result.Filename)
 			if err != nil {
-				rerr = errors.New("testing whether released file exists")
+				rerr = fmt.Errorf("testing whether released file exists: %v", err)
 				return
 			}
+			if resultFiles[result.Filename] {
+				rerr = fmt.Errorf("duplicate result for file %s", t[5])
+				return
+			}
+			resultFiles[result.Filename] = true
 			result.Filename = result.Filename[len(checkoutDir+"/"):]
 			result.Filesize = info.Size()
 			results = append(results, result)

@@ -900,29 +900,70 @@ const docsBuildScript = (): HTMLElement => {
 
 		dom.h2('Example'),
 		dom.pre(`#!/usr/bin/env bash
-set -xeuo pipefail
+set -x # Print commands executed.
+set -e # Stop executing script when a command fails.
+set -u # Fail when using undefined variables.
+set -o pipefail # Fail when one of the commands in a pipeline fails.
 
-export PATH=$DING_TOOLCHAINDIR/go/bin:$PATH
-
+# Make binaries more standalone, and more likely to work across different OS versions.
 export CGO_ENABLED=0
+# -mod=vendor requires dependencies to be present in repository.
+# -trimpath appears to put fewer new files in the build cache.
 export GOFLAGS="-mod=vendor -trimpath"
+# Don't allow fetching data (from the proxy).
 export GOPROXY=off
 
-export goos=linux
-export goarch=amd64
-version=$(git describe --always)
-goversion=$(go version | cut -f3 -d' ')
+# Find name for application.
 name=$(basename $PWD)
+# Get either a clean tagged name, or one with a commit hash.
+version=$(git describe --always)
 
+# Version to be picked up by ding.
 echo version: $version
 
-GOOS=$goos GOARCH=$goarch go build -o $name-$version-$goos-$goarch
-go vet
-go test -shuffle=on -coverprofile cover.out | sed "s/^coverage: \\(.*\\)% of statements/coverage: \\1/"
-go tool cover -html=cover.out -o $DING_DOWNLOADDIR/cover.html
-echo coverage-report: cover.html
+function build() {
+	godir=$1
+	export PATH=$DING_TOOLCHAINDIR/$godir/bin:$PATH
 
-echo release: $name $goos $goarch $goversion $name-$version-$goos-$goarch
+	goversion=$(go version | cut -f3 -d' ')
+
+	function result() {
+		goos=$1
+		goarch=$2
+
+		# Build the binary.
+		suffix=''
+		if test $goos = 'windows'; then
+			suffix=.exe
+		fi
+		GOOS=$goos GOARCH=$goarch go build -o $name-$version-$goos-$goarch-$goversion$suffix
+
+		# Tell ding about a result file.
+		echo release: $name $goos $goarch $goversion $name-$version-$goos-$goarch-$goversion$suffix
+	}
+
+	# Build for linux/amd64, linux/386, ...
+	result linux amd64
+	result linux 386
+
+	go vet
+
+	# Run tests, and modify output so ding can pick up the coverage result.
+	go test -shuffle=on -coverprofile cover.out | sed "s/^coverage: \\(.*\\)% of statements/coverage: \\1/"
+	go tool cover -html=cover.out -o $DING_DOWNLOADDIR/cover.html
+	echo coverage-report: cover.html
+
+	# Reformat code, require versioned files did not change.
+	go fmt ./...
+	git diff --exit-code
+}
+
+# Build for current Go version, and previous, and optional next (release candidate).
+build go
+build go-prev
+if test -e $DING_TOOLCHAINDIR/go-next; then
+	build go-next
+fi
 `),
 		dom.br(),
 		dom.p('You can include a script like the above in a repository, and call that.'),

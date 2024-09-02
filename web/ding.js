@@ -1500,29 +1500,70 @@ data/
 };
 const docsBuildScript = () => {
 	return dom.div(dom.h1('Build script environment'), dom.p('The build script is run in a clean environment. It should exit with status 0 only when successful. Patterns in the output indicate where build results can be found, such as files and test coverage, see below.'), dom.p('The working directory is set to $DING_BUILDDIR/checkout/$DING_CHECKOUTPATH.'), dom.h2('Example'), dom.pre(`#!/usr/bin/env bash
-set -xeuo pipefail
+set -x # Print commands executed.
+set -e # Stop executing script when a command fails.
+set -u # Fail when using undefined variables.
+set -o pipefail # Fail when one of the commands in a pipeline fails.
 
-export PATH=$DING_TOOLCHAINDIR/go/bin:$PATH
-
+# Make binaries more standalone, and more likely to work across different OS versions.
 export CGO_ENABLED=0
+# -mod=vendor requires dependencies to be present in repository.
+# -trimpath appears to put fewer new files in the build cache.
 export GOFLAGS="-mod=vendor -trimpath"
+# Don't allow fetching data (from the proxy).
 export GOPROXY=off
 
-export goos=linux
-export goarch=amd64
-version=$(git describe --always)
-goversion=$(go version | cut -f3 -d' ')
+# Find name for application.
 name=$(basename $PWD)
+# Get either a clean tagged name, or one with a commit hash.
+version=$(git describe --always)
 
+# Version to be picked up by ding.
 echo version: $version
 
-GOOS=$goos GOARCH=$goarch go build -o $name-$version-$goos-$goarch
-go vet
-go test -shuffle=on -coverprofile cover.out | sed "s/^coverage: \\(.*\\)% of statements/coverage: \\1/"
-go tool cover -html=cover.out -o $DING_DOWNLOADDIR/cover.html
-echo coverage-report: cover.html
+function build() {
+	godir=$1
+	export PATH=$DING_TOOLCHAINDIR/$godir/bin:$PATH
 
-echo release: $name $goos $goarch $goversion $name-$version-$goos-$goarch
+	goversion=$(go version | cut -f3 -d' ')
+
+	function result() {
+		goos=$1
+		goarch=$2
+
+		# Build the binary.
+		suffix=''
+		if test $goos = 'windows'; then
+			suffix=.exe
+		fi
+		GOOS=$goos GOARCH=$goarch go build -o $name-$version-$goos-$goarch-$goversion$suffix
+
+		# Tell ding about a result file.
+		echo release: $name $goos $goarch $goversion $name-$version-$goos-$goarch-$goversion$suffix
+	}
+
+	# Build for linux/amd64, linux/386, ...
+	result linux amd64
+	result linux 386
+
+	go vet
+
+	# Run tests, and modify output so ding can pick up the coverage result.
+	go test -shuffle=on -coverprofile cover.out | sed "s/^coverage: \\(.*\\)% of statements/coverage: \\1/"
+	go tool cover -html=cover.out -o $DING_DOWNLOADDIR/cover.html
+	echo coverage-report: cover.html
+
+	# Reformat code, require versioned files did not change.
+	go fmt ./...
+	git diff --exit-code
+}
+
+# Build for current Go version, and previous, and optional next (release candidate).
+build go
+build go-prev
+if test -e $DING_TOOLCHAINDIR/go-next; then
+	build go-next
+fi
 `), dom.br(), dom.p('You can include a script like the above in a repository, and call that.'), dom.p('Run a command like ', dom.tt('ding build -bwrap -toolchaindir $HOME/sdk tmp/buildtest ./build.sh'), ' locally to test build scripts. It sets up similar environment variables as during a normal build, and creates target directories. Then it clones the git or hg repository in the working directory to the temporary destination (first parameter) and builds using build.sh, isolated with bwrap. The resulting output is parsed and a summary printed. If that works, the script is likely to work with a regular build in ding too.'), dom.br(), dom.h2('Environment variables'), dom.ul(dom.li("$HOME, an initially empty directory; for repo's with per-build unique UIDs, equal to $DING_BUILDDIR/home, with reused $HOME/uid set to data/home/$DING_REPONAME."), dom.li('$DING_REPONAME, name of the repository'), dom.li('$DING_BRANCH, the branch of the build'), dom.li('$DING_COMMIT, the commit id/hash, empty if not yet known'), dom.li('$DING_BUILDID, the build number, unique over all builds in ding'), dom.li('$DING_BUILDDIR, where all files related to the build are stored, set to data/build/$DING_REPONAME/$DING_BUILDID/'), dom.li('$DING_DOWNLOADDIR, files stored here are available over HTTP at /dl/file/$DING_REPONAME/$DING_BUILDID/...'), dom.li('$DING_CHECKOUTPATH, where files are checked out as configured for the repository, relative to $DING_BUILDDIR/checkout/'), dom.li('$DING_TOOLCHAINDIR, only if configured, the directory where toolchains are stored, like the Go toolchains'), dom.li('any key/value pair from the "environment" object in the ding config file')), dom.br(), dom.h2('Output patterns'), dom.p('The standard output of the release script is parsed for lines that can influence the build results. First word is the literal string, the later words are parameters.'), dom.p('Set the version of this build:'), dom.p(dom._class('indent'), dom.tt('version:', ' ', dom.i(dom._class('mono'), 'string'))), dom.p('Add file to build results:'), dom.p(dom._class('indent'), dom.tt('release:', ' ', dom.i(dom._class('mono'), 'command os arch toolchain path'))), dom.ul(dom.li(dom.i('command'), ' is the name of the command, as you would type it in a terminal'), dom.li(dom.i('os'), ' must be one of: ', dom.i('any, linux, darwin, openbsd, windows'), '; the OS this program can run on, ', dom.i('any'), ' is for platform-independent tools like a jar'), dom.li(dom.i('arch'), ' must be one of: ', dom.i('any, amd64, arm64'), '; similar to OS'), dom.li(dom.i('toolchain'), ' should describe the compiler and possibly other tools that are used to build this release'), dom.li(dom.i('path'), ' is the local path (either absolute or relative to the checkout directory) of the released file')), dom.p('Specify test coverage in percentage from 0 to 100 as floating point:'), dom.p(dom._class('indent'), dom.tt('coverage:', ' ', dom.i(dom._class('mono'), 'float'))), dom.p('Filename (must be relative to $DING_DOWNLOADDIR) for more details about the code coverage, e.g. an html coverage file:'), dom.p(dom._class('indent'), dom.tt('coverage-report:', ' ', dom.i(dom._class('mono'), 'file'))));
 };
 const pageRepo = async (repoName) => {
