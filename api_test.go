@@ -36,6 +36,8 @@ func TestAPI(t *testing.T) {
 	tneederr(t, "user:badAuth", func() { api.RepoSave(ctxbg, "badpass", Repo{}) })
 	tneederr(t, "user:badAuth", func() { api.Settings(ctxbg, "badpass") })
 	tneederr(t, "user:badAuth", func() { api.SettingsSave(ctxbg, "badpass", Settings{}) })
+	tneederr(t, "user:badAuth", func() { api.LogLevel(ctxbg, "badpass") })
+	tneederr(t, "user:badAuth", func() { api.LogLevelSet(ctxbg, "badpass", LogInfo) })
 	tneederr(t, "user:badAuth", func() { api.Version(ctxbg, "badpass") })
 
 	// todo: test more api failures (bad parameters).
@@ -189,6 +191,9 @@ echo coverage-report: coverage.txt
 
 	_, _, settings := api.Settings(ctxbg, config.Password)
 	api.SettingsSave(ctxbg, config.Password, settings)
+
+	api.LogLevel(ctxbg, config.Password)
+	api.LogLevelSet(ctxbg, config.Password, LogInfo)
 
 	api.Version(ctxbg, config.Password)
 }

@@ -742,7 +742,9 @@ const (
 )
 
 // LogLevel returns the current log level.
-func (Ding) LogLevel(ctx context.Context) LogLevel {
+func (Ding) LogLevel(ctx context.Context, password string) LogLevel {
+	_checkPassword(password)
+
 	switch loglevel.Level() {
 	case slog.LevelDebug:
 		return LogDebug
@@ -757,7 +759,9 @@ func (Ding) LogLevel(ctx context.Context) LogLevel {
 }
 
 // LogLevelSet sets a new log level.
-func (Ding) LogLevelSet(ctx context.Context, level LogLevel) {
+func (Ding) LogLevelSet(ctx context.Context, password string, level LogLevel) {
+	_checkPassword(password)
+
 	var nlevel slog.Level
 	switch level {
 	case LogDebug:

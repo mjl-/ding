@@ -458,20 +458,20 @@ export class Client {
 	}
 
 	// LogLevel returns the current log level.
-	async LogLevel(): Promise<LogLevel> {
+	async LogLevel(password: string): Promise<LogLevel> {
 		const fn: string = "LogLevel"
-		const paramTypes: string[][] = []
+		const paramTypes: string[][] = [["string"]]
 		const returnTypes: string[][] = [["LogLevel"]]
-		const params: any[] = []
+		const params: any[] = [password]
 		return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params) as LogLevel
 	}
 
 	// LogLevelSet sets a new log level.
-	async LogLevelSet(level: LogLevel): Promise<void> {
+	async LogLevelSet(password: string, level: LogLevel): Promise<void> {
 		const fn: string = "LogLevelSet"
-		const paramTypes: string[][] = [["LogLevel"]]
+		const paramTypes: string[][] = [["string"],["LogLevel"]]
 		const returnTypes: string[][] = []
-		const params: any[] = [level]
+		const params: any[] = [password, level]
 		return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params) as void
 	}
 

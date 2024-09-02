@@ -560,7 +560,14 @@
 		{
 			"Name": "LogLevel",
 			"Docs": "LogLevel returns the current log level.",
-			"Params": [],
+			"Params": [
+				{
+					"Name": "password",
+					"Typewords": [
+						"string"
+					]
+				}
+			],
 			"Returns": [
 				{
 					"Name": "r0",
@@ -574,6 +581,12 @@
 			"Name": "LogLevelSet",
 			"Docs": "LogLevelSet sets a new log level.",
 			"Params": [
+				{
+					"Name": "password",
+					"Typewords": [
+						"string"
+					]
+				},
 				{
 					"Name": "level",
 					"Typewords": [

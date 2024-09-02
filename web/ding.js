@@ -540,19 +540,19 @@ var api;
 			return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params);
 		}
 		// LogLevel returns the current log level.
-		async LogLevel() {
+		async LogLevel(password) {
 			const fn = "LogLevel";
-			const paramTypes = [];
+			const paramTypes = [["string"]];
 			const returnTypes = [["LogLevel"]];
-			const params = [];
+			const params = [password];
 			return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params);
 		}
 		// LogLevelSet sets a new log level.
-		async LogLevelSet(level) {
+		async LogLevelSet(password, level) {
 			const fn = "LogLevelSet";
-			const paramTypes = [["LogLevel"]];
+			const paramTypes = [["string"], ["LogLevel"]];
 			const returnTypes = [];
-			const params = [level];
+			const params = [password, level];
 			return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params);
 		}
 		// Settings returns the runtime settings.
@@ -1303,19 +1303,13 @@ const popupRepoAdd = async () => {
 };
 const pageHome = async () => {
 	const page = new Page();
-	let [rbl0, loglevel] = await authed(() => Promise.all([
-		client.RepoBuilds(password),
-		client.LogLevel(),
-	]));
-	let rbl = rbl0 || [];
+	let rbl = await authed(() => client.RepoBuilds(password)) || [];
 	dom._kids(crumbElem, 'Home');
 	document.title = 'Ding - Repos';
-	let loglevelElem;
-	let loglevelFieldset;
 	const atexit = page.newAtexit();
 	const render = () => {
 		atexit.run();
-		dom._kids(pageElem, dom.div(style({ marginBottom: '1ex' }), link('#gotoolchains', 'Go Toolchains'), ' ', link('#settings', 'Settings'), ' '), dom.div(style({ marginBottom: '1ex', display: 'flex', justifyContent: 'space-between' }), dom.div(dom.clickbutton('Add repo', attr.title('Add new repository, to build.'), function click() {
+		dom._kids(pageElem, dom.div(style({ marginBottom: '1ex' }), link('#gotoolchains', 'Go Toolchains'), ' ', link('#settings', 'Settings'), ' '), dom.div(dom.clickbutton('Add repo', attr.title('Add new repository, to build.'), function click() {
 			popupRepoAdd();
 		}), ' ', dom.clickbutton('Clear homedirs', attr.title('Remove home directories for all repositories that reuse home directories across builds. Cache in such directories can grow over time, consuming quite some disk space.'), async function click(e) {
 			if (!confirm('Are you sure?')) {
@@ -1324,11 +1318,7 @@ const pageHome = async () => {
 			await authed(() => client.ClearRepoHomedirs(password), e.target);
 		}), ' ', dom.clickbutton('Build all lowprio', attr.title('Schedule builds for all repositories, but at low priority.'), async function click(e) {
 			await authed(() => client.BuildsCreateLowPrio(password), e.target);
-		})), dom.div(dom.form(async function submit(e) {
-			e.preventDefault();
-			e.stopPropagation();
-			await authed(() => client.LogLevelSet(loglevelElem.value), loglevelFieldset);
-		}, loglevelFieldset = dom.fieldset(dom.label('Log level ', loglevelElem = dom.select(['debug', 'info', 'warn', 'error'].map(s => dom.option(s, loglevel == s ? attr.selected('') : []))), ' ', dom.submitbutton('Set')))))), dom.table(dom._class('striped', 'wide'), dom.thead(dom.tr(['Repo', 'Branch', 'Build ID', 'Status', 'Duration', 'Version', 'Coverage', 'Disk usage', 'Home disk usage', 'Age'].map(s => dom.th(s)), dom.th(style({ textAlign: 'left' }), 'Error'))), dom.tbody(rbl.length === 0 ? dom.tr(dom.td(attr.colspan('10'), 'No repositories', style({ textAlign: 'left' }))) : [], rbl.map(rb => {
+		})), dom.table(dom._class('striped', 'wide'), dom.thead(dom.tr(['Repo', 'Branch', 'Build ID', 'Status', 'Duration', 'Version', 'Coverage', 'Disk usage', 'Home disk usage', 'Age'].map(s => dom.th(s)), dom.th(style({ textAlign: 'left' }), 'Error'))), dom.tbody(rbl.length === 0 ? dom.tr(dom.td(attr.colspan('10'), 'No repositories', style({ textAlign: 'left' }))) : [], rbl.map(rb => {
 			if ((rb.Builds || []).length === 0) {
 				return dom.tr(dom.td(link('#repo/' + encodeURIComponent(rb.Repo.Name), rb.Repo.Name)));
 			}
@@ -1449,7 +1439,12 @@ const pageGoToolchains = async () => {
 };
 const pageSettings = async () => {
 	const page = new Page();
-	const [isolationEnabled, mailEnabled, settings] = await authed(() => client.Settings(password));
+	const [loglevel, [isolationEnabled, mailEnabled, settings]] = await authed(() => Promise.all([
+		client.LogLevel(password),
+		client.Settings(password),
+	]));
+	let loglevelElem;
+	let loglevelFieldset;
 	let notifyEmailAddrs;
 	let runPrefix;
 	let environment;
@@ -1460,7 +1455,11 @@ const pageSettings = async () => {
 	let fieldset;
 	dom._kids(crumbElem, link('#', 'Home'), ' / ', 'Settings');
 	document.title = 'Ding - Settings';
-	dom._kids(pageElem, isolationEnabled ? dom.p('Each repository and potentially build is isolated to run under a unique uid.') : dom.p('NOTE: Repositories and builds are NOT isolated to run under a unique uid. You may want to enable isolated builds in the configuration file (requires restart).'), mailEnabled ? [] : dom.p('NOTE: No SMTP server is configured for outgoing emails, no email will be sent for broken/fixed builds.'), dom.form(async function submit(e) {
+	dom._kids(pageElem, isolationEnabled ? dom.p('Each repository and potentially build is isolated to run under a unique uid.') : dom.p('NOTE: Repositories and builds are NOT isolated to run under a unique uid. You may want to enable isolated builds in the configuration file (requires restart).'), mailEnabled ? [] : dom.p('NOTE: No SMTP server is configured for outgoing emails, no email will be sent for broken/fixed builds.'), dom.div(dom.form(async function submit(e) {
+		e.preventDefault();
+		e.stopPropagation();
+		await authed(() => client.LogLevelSet(password, loglevelElem.value), loglevelFieldset);
+	}, loglevelFieldset = dom.fieldset(dom.label('Log level ', loglevelElem = dom.select(['debug', 'info', 'warn', 'error'].map(s => dom.option(s, loglevel == s ? attr.selected('') : []))), ' ', dom.submitbutton('Set'))))), dom.br(), dom.form(async function submit(e) {
 		e.preventDefault();
 		e.stopPropagation();
 		settings.NotifyEmailAddrs = notifyEmailAddrs.value.split(',').map(s => s.trim()).filter(s => !!s);

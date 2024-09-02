@@ -475,19 +475,10 @@ const popupRepoAdd = async () => {
 
 const pageHome = async (): Promise<Page> => {
 	const page = new Page()
-	let [rbl0, loglevel] = await authed(() =>
-		Promise.all([
-			client.RepoBuilds(password),
-			client.LogLevel(),
-		])
-	)
-	let rbl = rbl0 || []
+	let rbl = await authed(() => client.RepoBuilds(password)) || []
 
 	dom._kids(crumbElem, 'Home')
 	document.title = 'Ding - Repos'
-
-	let loglevelElem: HTMLSelectElement
-	let loglevelFieldset: HTMLFieldSetElement
 
 	const atexit = page.newAtexit()
 	const render = () => {
@@ -500,39 +491,18 @@ const pageHome = async (): Promise<Page> => {
 				link('#settings', 'Settings'), ' ',
 			),
 			dom.div(
-				style({marginBottom: '1ex', display: 'flex', justifyContent: 'space-between'}),
-				dom.div(
-					dom.clickbutton('Add repo', attr.title('Add new repository, to build.'), function click() {
-						popupRepoAdd()
-					}), ' ',
-					dom.clickbutton('Clear homedirs', attr.title('Remove home directories for all repositories that reuse home directories across builds. Cache in such directories can grow over time, consuming quite some disk space.'), async function click(e: MouseEvent & TargetDisableable) {
-						if (!confirm('Are you sure?')) {
-							return
-						}
-						await authed(() => client.ClearRepoHomedirs(password), e.target)
-					}), ' ',
-					dom.clickbutton('Build all lowprio', attr.title('Schedule builds for all repositories, but at low priority.'), async function click(e: MouseEvent & TargetDisableable) {
-						await authed(() => client.BuildsCreateLowPrio(password), e.target)
-					})
-				),
-				dom.div(
-					dom.form(
-						async function submit(e: SubmitEvent) {
-							e.preventDefault()
-							e.stopPropagation()
-							await authed(() => client.LogLevelSet(loglevelElem.value as api.LogLevel), loglevelFieldset)
-						},
-						loglevelFieldset=dom.fieldset(
-							dom.label(
-								'Log level ',
-								loglevelElem=dom.select(
-									['debug', 'info', 'warn', 'error'].map(s => dom.option(s, loglevel == s ? attr.selected('') : [])),
-								), ' ',
-								dom.submitbutton('Set'),
-							),
-						),
-					),
-				),
+				dom.clickbutton('Add repo', attr.title('Add new repository, to build.'), function click() {
+					popupRepoAdd()
+				}), ' ',
+				dom.clickbutton('Clear homedirs', attr.title('Remove home directories for all repositories that reuse home directories across builds. Cache in such directories can grow over time, consuming quite some disk space.'), async function click(e: MouseEvent & TargetDisableable) {
+					if (!confirm('Are you sure?')) {
+						return
+					}
+					await authed(() => client.ClearRepoHomedirs(password), e.target)
+				}), ' ',
+				dom.clickbutton('Build all lowprio', attr.title('Schedule builds for all repositories, but at low priority.'), async function click(e: MouseEvent & TargetDisableable) {
+					await authed(() => client.BuildsCreateLowPrio(password), e.target)
+				})
 			),
 			dom.table(
 				dom._class('striped', 'wide'),
@@ -771,7 +741,15 @@ const pageGoToolchains = async (): Promise<Page> => {
 
 const pageSettings = async (): Promise<Page> => {
 	const page = new Page()
-	const [isolationEnabled, mailEnabled, settings] = await authed(() => client.Settings(password))
+	const [loglevel, [isolationEnabled, mailEnabled, settings]] = await authed(() =>
+		Promise.all([
+			client.LogLevel(password),
+			client.Settings(password),
+		])
+	)
+
+	let loglevelElem: HTMLSelectElement
+	let loglevelFieldset: HTMLFieldSetElement
 
 	let notifyEmailAddrs: HTMLInputElement
 	let runPrefix: HTMLInputElement
@@ -782,11 +760,31 @@ const pageSettings = async (): Promise<Page> => {
 	let bitbucketSecret: HTMLInputElement
 	let fieldset: HTMLFieldSetElement
 
+
 	dom._kids(crumbElem, link('#', 'Home'), ' / ', 'Settings')
 	document.title = 'Ding - Settings'
 	dom._kids(pageElem,
 		isolationEnabled ? dom.p('Each repository and potentially build is isolated to run under a unique uid.') : dom.p('NOTE: Repositories and builds are NOT isolated to run under a unique uid. You may want to enable isolated builds in the configuration file (requires restart).'),
 		mailEnabled ? [] : dom.p('NOTE: No SMTP server is configured for outgoing emails, no email will be sent for broken/fixed builds.'),
+		dom.div(
+			dom.form(
+				async function submit(e: SubmitEvent) {
+					e.preventDefault()
+					e.stopPropagation()
+					await authed(() => client.LogLevelSet(password, loglevelElem.value as api.LogLevel), loglevelFieldset)
+				},
+				loglevelFieldset=dom.fieldset(
+					dom.label(
+						'Log level ',
+						loglevelElem=dom.select(
+							['debug', 'info', 'warn', 'error'].map(s => dom.option(s, loglevel == s ? attr.selected('') : [])),
+						), ' ',
+						dom.submitbutton('Set'),
+					),
+				),
+			),
+		),
+		dom.br(),
 		dom.form(
 			async function submit(e: SubmitEvent) {
 				e.preventDefault()
