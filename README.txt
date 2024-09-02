@@ -48,7 +48,7 @@ instructions (run "ding help").
 
 Download a binary at:
 
-	https://beta.gobuilds.org/github.com/mjl-/ding@latest
+	https://beta.gobuilds.org/github.com/mjl-/ding@latest/linux-amd64-latest/
 
 
 # Compiling
