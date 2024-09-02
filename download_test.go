@@ -11,7 +11,7 @@ func TestDownload(t *testing.T) {
 	testEnv(t)
 	api := Ding{}
 
-	const buildScript = `#!/bin/bash
+	const buildScript = `#!/usr/bin/env bash
 set -e
 echo building...
 echo hi>myfile

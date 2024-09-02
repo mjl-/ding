@@ -44,7 +44,7 @@ func TestAPI(t *testing.T) {
 
 	api.Status(ctxbg)
 
-	const buildScript = `#!/bin/bash
+	const buildScript = `#!/usr/bin/env bash
 set -e
 echo building...
 echo hi>myfile
@@ -111,7 +111,7 @@ echo coverage-report: coverage.txt
 
 	// Create a build that we will cancel.
 	nr = api.Repo(ctxbg, config.Password, nr.Name)
-	nr.BuildScript = "#!/bin/bash\nsleep 3\n"
+	nr.BuildScript = "#!/usr/bin/env bash\nsleep 3\n"
 	nr = api.RepoSave(ctxbg, config.Password, nr)
 	cb := api.BuildCreate(ctxbg, config.Password, r.Name, "unused", "", true)
 	api.BuildCancel(ctxbg, config.Password, r.Name, cb.ID)
@@ -166,7 +166,7 @@ echo coverage-report: coverage.txt
 		run(hgRepoDir, "hg", "add", "file.txt")
 		run(hgRepoDir, "hg", "commit", "-m", "test", "file.txt")
 
-		r = Repo{Name: "hg", VCS: VCSMercurial, Origin: hgRepoDir, DefaultBranch: "default", CheckoutPath: "hgrepo", BuildScript: "#!/bin/bash\nset -e\necho building...\necho hi>myfile\necho version: 1.2.3\necho release: mycmd linux amd64 toolchain1.2.3 myfile\n"}
+		r = Repo{Name: "hg", VCS: VCSMercurial, Origin: hgRepoDir, DefaultBranch: "default", CheckoutPath: "hgrepo", BuildScript: "#!/usr/bin/env bash\nset -e\necho building...\necho hi>myfile\necho version: 1.2.3\necho release: mycmd linux amd64 toolchain1.2.3 myfile\n"}
 		r = api.RepoCreate(ctxbg, config.Password, r)
 		b = api.BuildCreate(ctxbg, config.Password, r.Name, r.DefaultBranch, "", false)
 		twaitBuild(t, b, StatusSuccess)

@@ -13,7 +13,7 @@ func TestMail(t *testing.T) {
 	api := Ding{}
 
 	// Check email is sent when build starts failing.
-	r := Repo{Name: "mailtest", VCS: VCSCommand, Origin: "exit 1", DefaultBranch: "main", CheckoutPath: "mailtest", BuildScript: "#!/bin/bash\necho hi\n"}
+	r := Repo{Name: "mailtest", VCS: VCSCommand, Origin: "exit 1", DefaultBranch: "main", CheckoutPath: "mailtest", BuildScript: "#!/usr/bin/env bash\necho hi\n"}
 	r = api.RepoCreate(ctxbg, config.Password, r)
 	b := api.BuildCreate(ctxbg, config.Password, r.Name, "unused", "", false)
 	twaitBuild(t, b, StatusClone)

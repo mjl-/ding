@@ -43,7 +43,7 @@ func TestWebhook(t *testing.T) {
 		Origin:        "sh -c 'echo clone..; mkdir -p checkout/$DING_CHECKOUTPATH; echo commit: ...'",
 		DefaultBranch: "main",
 		CheckoutPath:  "hooktest",
-		BuildScript:   "#!/bin/bash\necho build...\n",
+		BuildScript:   "#!/usr/bin/env bash\necho build...\n",
 	}
 	repo = api.RepoCreate(ctxbg, config.Password, repo)
 
