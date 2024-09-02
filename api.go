@@ -796,3 +796,9 @@ func (Ding) SettingsSave(ctx context.Context, password string, settings Settings
 	err := database.Update(ctx, &settings)
 	_checkf(err, "update settings")
 }
+
+// Version returns the ding version this instance is running.
+func (Ding) Version(ctx context.Context, password string) (dingversion, goos, goarch, goversion string) {
+	_checkPassword(password)
+	return version, runtime.GOOS, runtime.GOARCH, runtime.Version()
+}

@@ -571,6 +571,14 @@ var api;
 			const params = [password, settings];
 			return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params);
 		}
+		// Version returns the ding version this instance is running.
+		async Version(password) {
+			const fn = "Version";
+			const paramTypes = [["string"]];
+			const returnTypes = [["string"], ["string"], ["string"], ["string"]];
+			const params = [password];
+			return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params);
+		}
 		// ExampleSSE is a no-op.
 		// This function only serves to include documentation for the server-sent event types.
 		async ExampleSSE() {
@@ -1472,6 +1480,7 @@ const pageSettings = async () => {
 };
 const pageDocs = async () => {
 	const page = new Page();
+	const [version, goos, goarch, goversion] = await authed(() => client.Version(password));
 	document.title = 'Ding - Docs';
 	dom._kids(crumbElem, link('#', 'Home'), ' / Docs');
 	dom._kids(pageElem, dom.h1('Introduction'), dom.p("Ding is a minimalistic build server for internal use. The goal is to make it easy to build software projects in an isolated environment, ensuring it also works on other people's machines. Ding clones a git or mercurial repository, or runs a custom shell script to clone a project, and runs a shell script to build the software. The shell script should output certain lines that ding recognizes, to find build results, test coverage, etc."), dom.h1('Notifications'), dom.p('Ding can be configured to send a notification email if a repo breaks (failed build) or is repaired again (successful build after previous failure)'), dom.h1('Webhooks'), dom.p('For each project to build, first configure a repository and a build script. Optionally configure the code repository to call a ding webhook to start a build. For git, this can be done with post-receive shell script in .git/hooks, or through various settings in web apps like gitea, github and bitbucket. For custom scripts, run ', dom.tt('ding kick baseURL repoName branch commit < password-file'), ' to start a build, where baseURL could be http://localhost:6084 (for default settings), and password is what you use for logging in. For externally-defined webhook formats, ensure the ding webhook listener is publicly accessible (e.g. through a reverse proxy), and configure these paths for the respective services: ', dom.tt('https://.../gitea/<repo>'), ', ', dom.tt('https://.../github/<repo>'), ' or ', dom.tt('https://.../bitbucket/<repo>/<secret>'), '. Gitea includes a "secret" in an Authorization header, github signs its request payload, for bitbucket you must include a secret value in the URL they send the webhook too. These secrets must be configured in the ding configuration file.'), dom.h1('Authentication'), dom.p('Ding only has simple password-based authentication, with a single password for the entire system. Everyone with the password can see all repositories, builds and scripts, and modify all data.'), dom.h1('Go toolchains'), dom.p('Ding has builtin functionality for downloading Go toolchains for use in builds.'), dom.h1('API'), dom.p('Ding has a simple HTTP/JSON-based API, see ', link('ding/', 'Ding API'), '.'), dom.h1('Files and directories'), dom.p('Ding stores all files for repositories, builds, releases and home directories in its "data" directory:'), dom.pre(`
@@ -1487,7 +1496,7 @@ data/
 	release/<repoName>/<buildID>/
 		<result-filename>
 	home/<repoName>/				  (for builds with reused $HOME/uid)
-`), dom.br(), docsBuildScript(), dom.h1('Licenses'), dom.p('Ding is open source software. See ', link('licenses', 'licenses'), '.'));
+`), dom.br(), docsBuildScript(), dom.h1('Licenses'), dom.p('Ding is open source software. See ', link('licenses', 'licenses'), '.'), dom.h1('Version'), dom.p('This is version ', version, ', ', goversion, ' running on ', goos, '/', goarch, '.'));
 	return page;
 };
 const docsBuildScript = () => {

@@ -492,6 +492,15 @@ export class Client {
 		const params: any[] = [password, settings]
 		return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params) as void
 	}
+
+	// Version returns the ding version this instance is running.
+	async Version(password: string): Promise<[string, string, string, string]> {
+		const fn: string = "Version"
+		const paramTypes: string[][] = [["string"]]
+		const returnTypes: string[][] = [["string"],["string"],["string"],["string"]]
+		const params: any[] = [password]
+		return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params) as [string, string, string, string]
+	}
 	// ExampleSSE is a no-op.
 	// This function only serves to include documentation for the server-sent event types.
 	async ExampleSSE(): Promise<[EventRepo, EventRemoveRepo, EventBuild, EventRemoveBuild, EventOutput]> {

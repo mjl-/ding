@@ -842,6 +842,7 @@ const pageSettings = async (): Promise<Page> => {
 
 const pageDocs = async (): Promise<Page> => {
 	const page = new Page()
+	const [version, goos, goarch, goversion] = await authed(() => client.Version(password))
 
 	document.title = 'Ding - Docs'
 	dom._kids(crumbElem, link('#', 'Home'), ' / Docs')
@@ -886,6 +887,8 @@ data/
 		docsBuildScript(),
 		dom.h1('Licenses'),
 		dom.p('Ding is open source software. See ', link('licenses', 'licenses'), '.'),
+		dom.h1('Version'),
+		dom.p('This is version ', version, ', ', goversion, ' running on ', goos, '/', goarch, '.'),
 	)
 
 	return page

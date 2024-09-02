@@ -633,6 +633,44 @@
 				}
 			],
 			"Returns": []
+		},
+		{
+			"Name": "Version",
+			"Docs": "Version returns the ding version this instance is running.",
+			"Params": [
+				{
+					"Name": "password",
+					"Typewords": [
+						"string"
+					]
+				}
+			],
+			"Returns": [
+				{
+					"Name": "dingversion",
+					"Typewords": [
+						"string"
+					]
+				},
+				{
+					"Name": "goos",
+					"Typewords": [
+						"string"
+					]
+				},
+				{
+					"Name": "goarch",
+					"Typewords": [
+						"string"
+					]
+				},
+				{
+					"Name": "goversion",
+					"Typewords": [
+						"string"
+					]
+				}
+			]
 		}
 	],
 	"Sections": [
