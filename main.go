@@ -46,6 +46,8 @@ func init() {
 	}
 }
 
+// Config is read from the static config file, changing it requires restarting
+// the application.
 type Config struct {
 	ShowSherpaErrors      bool   `sconf-doc:"If set, returns the full error message for sherpa calls failing with a server error. Otherwise, only returns generic error message."`
 	PrintSherpaErrorStack bool   `sconf-doc:"If set, prints error stack for sherpa server errors."`
