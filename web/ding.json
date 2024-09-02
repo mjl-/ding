@@ -682,6 +682,12 @@
 					"Typewords": [
 						"string"
 					]
+				},
+				{
+					"Name": "haveBubblewrap",
+					"Typewords": [
+						"bool"
+					]
 				}
 			]
 		}

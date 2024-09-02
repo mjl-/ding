@@ -340,7 +340,7 @@ const popupOpts = (opaque: boolean, ...kids: ElemArg[]) => {
 
 const popup = (...kids: ElemArg[]) => popupOpts(false, ...kids)
 
-const popupRepoAdd = async () => {
+const popupRepoAdd = async (haveBubblewrap: boolean) => {
 	let vcs: HTMLSelectElement
 	let origin: HTMLInputElement | HTMLTextAreaElement
 	let originBox: HTMLElement
@@ -445,13 +445,13 @@ const popupRepoAdd = async () => {
 					),
 					dom.div(),
 					dom.label(
-						bubblewrap=dom.input(attr.type('checkbox'), attr.checked('')),
+						bubblewrap=dom.input(attr.type('checkbox'), haveBubblewrap ? attr.checked('') : []),
 						' Run build script in bubblewrap, with limited system access',
 						attr.title('Only available on Linux, with bubblewrap (bwrap) installed. Commands are run in a new mount namespace with access to system directories like /bin /lib /usr, and to the ding build, home and toolchain directories.'),
 					),
 					dom.div(),
 					dom.label(
-						bubblewrapNoNet=dom.input(attr.type('checkbox'), attr.checked('')),
+						bubblewrapNoNet=dom.input(attr.type('checkbox'), haveBubblewrap ? attr.checked('') : []),
 						' Prevent network access from build script. Only active if bubblewrap is active.',
 						attr.title('Hide network interfaces from the build script. Only a loopback device is available.'),
 					),
@@ -475,7 +475,13 @@ const popupRepoAdd = async () => {
 
 const pageHome = async (): Promise<Page> => {
 	const page = new Page()
-	let rbl = await authed(() => client.RepoBuilds(password)) || []
+	let [rbl0, [, , , , haveBubblewrap]] = await authed(() =>
+		Promise.all([
+			client.RepoBuilds(password),
+			client.Version(password),
+		])
+	)
+	let rbl = rbl0 || []
 
 	dom._kids(crumbElem, 'Home')
 	document.title = 'Ding - Repos'
@@ -492,7 +498,7 @@ const pageHome = async (): Promise<Page> => {
 			),
 			dom.div(
 				dom.clickbutton('Add repo', attr.title('Add new repository, to build.'), function click() {
-					popupRepoAdd()
+					popupRepoAdd(haveBubblewrap)
 				}), ' ',
 				dom.clickbutton('Clear homedirs', attr.title('Remove home directories for all repositories that reuse home directories across builds. Cache in such directories can grow over time, consuming quite some disk space.'), async function click(e: MouseEvent & TargetDisableable) {
 					if (!confirm('Are you sure?')) {

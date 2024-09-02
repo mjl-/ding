@@ -31,31 +31,53 @@ pushing any commits. It clones the git or hg repository in the current working
 directory, sets up environment variables and destination build directories, and
 calls the provided build script. Optionally isolated using bubblewrap (bwrap).
 
-Run "ding quickstart" to generate a config file, and a systemd service file
-when on linux.  See INSTALL.txt for manual installation instructions.
 
+# Installing
 
-# Requirements
+You'll need:
 
-- BSD/Linux machine
+- a BSD or Linux machine
 - git/mercurial or any other version control software you want to use
 
-Ding is distributed as a self-contained binary. It includes installation
-instructions (run "ding help").
+Ding is normally started as root. Ding then immediately starts an unprivileged
+process under a ding-specific uid/gid for webserving. The privileged process
+starts builds under a unique uids/gids, for isolation.
+
+To install, first create a ding user:
+
+	useradd -m ding
+
+Download the "ding" binary to the ding home directory (see "Download" below).
+
+Run the quickstart as root:
+
+	./ding quickstart
+
+The quickstart creates initial directories, fixes up permissions, and writes a
+ding.conf configuration file.
+
+On linux, you'll also get a systemd service, and instructions to enable and
+start the service. You can manually start (again as root):
+
+	umask 027
+	./ding -loglevel=debug serve -listen localhost:6084 -listenwebhook localhost:6085 -listenadmin localhost:6086 ding.conf
+
+For manual installation instructions, see INSTALL.txt in this repository, or
+run "ding help" to print the file included in ding.
 
 
 # Download
 
-Download a binary at:
+Download a binary for the latest release and latest Go toolchain at:
 
 	https://beta.gobuilds.org/github.com/mjl-/ding@latest/linux-amd64-latest/
 
 
 # Compiling
 
-Run:
+Ensure you have a recent Go toolchain and run:
 
-	CGO_ENABLED=0 go install github.com/mjl-/ding@latest
+	GOBIN=$PWD CGO_ENABLED=0 go install github.com/mjl-/ding@latest
 
 
 # Upgrading
@@ -65,7 +87,7 @@ v0.3.5, then v0.4.0, and then upgrade further. Versions before v0.4.0 used
 PostgreSQL as database. Upgrading to v0.3.5 ensures the PostgreSQL schema is at
 its latest. Version v0.4.0 then automatically migrates to the builtin database
 storage. For versions after v0.4.0, the "Database" connection field in the
-config should be removed.
+config must be removed.
 
 
 # Features

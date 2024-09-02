@@ -575,7 +575,7 @@ var api;
 		async Version(password) {
 			const fn = "Version";
 			const paramTypes = [["string"]];
-			const returnTypes = [["string"], ["string"], ["string"], ["string"]];
+			const returnTypes = [["string"], ["string"], ["string"], ["string"], ["bool"]];
 			const params = [password];
 			return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params);
 		}
@@ -1229,7 +1229,7 @@ const popupOpts = (opaque, ...kids) => {
 	return close;
 };
 const popup = (...kids) => popupOpts(false, ...kids);
-const popupRepoAdd = async () => {
+const popupRepoAdd = async (haveBubblewrap) => {
 	let vcs;
 	let origin;
 	let originBox;
@@ -1298,19 +1298,23 @@ const popupRepoAdd = async () => {
 		let s = t[t.length - 1] || t[t.length - 2] || '';
 		s = s.replace(/\.git$/, '');
 		name.value = s;
-	})), 'Name', name = dom.input(attr.required(''), function change() { nameChanged = true; }), dom.div('Default branch', style({ whiteSpace: 'nowrap' })), defaultBranch = dom.input(attr.value('main'), attr.placeholder('main, master, default'), function change() { branchChanged = true; }), dom.div(), dom.label(reuseUID = dom.input(attr.type('checkbox'), attr.checked('')), ' Reuse $HOME and UID for builds for this repo', attr.title('By reusing $HOME and running builds for this repository under the same UID, build caches can be used. This typically leads to faster builds but reduces isolation of builds.')), dom.div(), dom.label(bubblewrap = dom.input(attr.type('checkbox'), attr.checked('')), ' Run build script in bubblewrap, with limited system access', attr.title('Only available on Linux, with bubblewrap (bwrap) installed. Commands are run in a new mount namespace with access to system directories like /bin /lib /usr, and to the ding build, home and toolchain directories.')), dom.div(), dom.label(bubblewrapNoNet = dom.input(attr.type('checkbox'), attr.checked('')), ' Prevent network access from build script. Only active if bubblewrap is active.', attr.title('Hide network interfaces from the build script. Only a loopback device is available.')), dom.div(), dom.label(buildOnUpdatedToolchain = dom.input(attr.type('checkbox'), attr.checked('')), ' Schedule a low-priority build when new toolchains are automatically installed.')), dom.br(), dom.p('The build script can be configured after creating.'), dom.div(style({ textAlign: 'right' }), dom.submitbutton('Add')))));
+	})), 'Name', name = dom.input(attr.required(''), function change() { nameChanged = true; }), dom.div('Default branch', style({ whiteSpace: 'nowrap' })), defaultBranch = dom.input(attr.value('main'), attr.placeholder('main, master, default'), function change() { branchChanged = true; }), dom.div(), dom.label(reuseUID = dom.input(attr.type('checkbox'), attr.checked('')), ' Reuse $HOME and UID for builds for this repo', attr.title('By reusing $HOME and running builds for this repository under the same UID, build caches can be used. This typically leads to faster builds but reduces isolation of builds.')), dom.div(), dom.label(bubblewrap = dom.input(attr.type('checkbox'), haveBubblewrap ? attr.checked('') : []), ' Run build script in bubblewrap, with limited system access', attr.title('Only available on Linux, with bubblewrap (bwrap) installed. Commands are run in a new mount namespace with access to system directories like /bin /lib /usr, and to the ding build, home and toolchain directories.')), dom.div(), dom.label(bubblewrapNoNet = dom.input(attr.type('checkbox'), haveBubblewrap ? attr.checked('') : []), ' Prevent network access from build script. Only active if bubblewrap is active.', attr.title('Hide network interfaces from the build script. Only a loopback device is available.')), dom.div(), dom.label(buildOnUpdatedToolchain = dom.input(attr.type('checkbox'), attr.checked('')), ' Schedule a low-priority build when new toolchains are automatically installed.')), dom.br(), dom.p('The build script can be configured after creating.'), dom.div(style({ textAlign: 'right' }), dom.submitbutton('Add')))));
 	originInput.focus();
 };
 const pageHome = async () => {
 	const page = new Page();
-	let rbl = await authed(() => client.RepoBuilds(password)) || [];
+	let [rbl0, [, , , , haveBubblewrap]] = await authed(() => Promise.all([
+		client.RepoBuilds(password),
+		client.Version(password),
+	]));
+	let rbl = rbl0 || [];
 	dom._kids(crumbElem, 'Home');
 	document.title = 'Ding - Repos';
 	const atexit = page.newAtexit();
 	const render = () => {
 		atexit.run();
 		dom._kids(pageElem, dom.div(style({ marginBottom: '1ex' }), link('#gotoolchains', 'Go Toolchains'), ' ', link('#settings', 'Settings'), ' '), dom.div(dom.clickbutton('Add repo', attr.title('Add new repository, to build.'), function click() {
-			popupRepoAdd();
+			popupRepoAdd(haveBubblewrap);
 		}), ' ', dom.clickbutton('Clear homedirs', attr.title('Remove home directories for all repositories that reuse home directories across builds. Cache in such directories can grow over time, consuming quite some disk space.'), async function click(e) {
 			if (!confirm('Are you sure?')) {
 				return;

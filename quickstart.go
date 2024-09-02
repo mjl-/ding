@@ -38,7 +38,7 @@ func quickstart(args []string) {
 
 	u, err := user.Lookup("ding")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "looking up user ding: %v\nHint: useradd -m -d %s ding\n", err, workdir)
+		fmt.Fprintf(os.Stderr, "looking up user ding: %v\nHint: useradd -d %s ding\n", err, workdir)
 		os.Exit(2)
 	}
 	uid, err := strconv.ParseInt(u.Uid, 10, 64)
@@ -100,10 +100,15 @@ ding.service).
 	xcheckf(err, "open db file")
 	settings := Settings{
 		ID:                    1, // singleton
-		RunPrefix:             []string{"nice", "ionice", "-c3", "timeout", "600s"},
-		Environment:           []string{"PATH=/bin:/usr/bin"},
+		Environment:           []string{"PATH=/bin:/usr/bin:/usr/local/bin"},
 		AutomaticGoToolchains: true,
 	}
+	if runtime.GOOS == "linux" {
+		settings.RunPrefix = []string{"nice", "ionice", "-c3", "timeout", "600s"}
+	} else {
+		settings.RunPrefix = []string{"nice", "timeout", "600s"}
+	}
+
 	err = db.Insert(context.Background(), &settings)
 	xcheckf(err, "inserting settings in database")
 	err = db.Close()
@@ -157,6 +162,11 @@ A systemd service file has been written to ding.service. To install as service a
 `)
 	}
 	fmt.Printf(`
+You can start ding manuall by running:
+
+	umask 027
+	./ding -loglevel=debug serve -listen localhost:6084 -listenwebhook localhost:6085 -listenadmin localhost:6086 ding.conf
+
 After starting, ding will serve on:
 
 - http://localhost:6084, the web interface, check the settings and toolchains page

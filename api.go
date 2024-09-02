@@ -10,6 +10,7 @@ import (
 	"maps"
 	mathrand "math/rand/v2"
 	"os"
+	"os/exec"
 	"path"
 	"runtime"
 	"slices"
@@ -802,7 +803,15 @@ func (Ding) SettingsSave(ctx context.Context, password string, settings Settings
 }
 
 // Version returns the ding version this instance is running.
-func (Ding) Version(ctx context.Context, password string) (dingversion, goos, goarch, goversion string) {
+func (Ding) Version(ctx context.Context, password string) (dingversion, goos, goarch, goversion string, haveBubblewrap bool) {
 	_checkPassword(password)
-	return version, runtime.GOOS, runtime.GOARCH, runtime.Version()
+
+	// Check if bwrap is present.
+	cmd := exec.CommandContext(ctx, "which", "bwrap")
+	cmd.Stdout = io.Discard
+	cmd.Stderr = io.Discard
+	err := cmd.Run()
+	haveBubblewrap = err == nil
+
+	return version, runtime.GOOS, runtime.GOARCH, runtime.Version(), haveBubblewrap
 }
