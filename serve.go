@@ -335,8 +335,8 @@ func bwrapCmd(nonet bool, homeDir, buildDir, toolchainDir string) []string {
 		"--ro-bind", "/bin", "/bin",
 		"--ro-bind", "/usr", "/usr",
 		"--ro-bind", "/lib", "/lib",
-		"--ro-bind", "/lib32", "/lib32",
-		"--ro-bind", "/lib64", "/lib64",
+		"--ro-bind-try", "/lib32", "/lib32",
+		"--ro-bind-try", "/lib64", "/lib64",
 		"--bind", homeDir, homeDir,
 		"--bind", buildDir, buildDir,
 	)
