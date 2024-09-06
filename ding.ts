@@ -1173,6 +1173,7 @@ const pageRepo = async (repoName: string): Promise<Page> => {
 			}), ' ',
 			dom.clickbutton('Build ...', attr.title('Create build for specific branch, possibly low-priority.'), async function click() {
 				let branch: HTMLInputElement
+				let commit: HTMLInputElement
 				let lowprio: HTMLInputElement
 
 				const close = popup(
@@ -1181,7 +1182,7 @@ const pageRepo = async (repoName: string): Promise<Page> => {
 						async function submit(e: SubmitEvent) {
 							e.stopPropagation()
 							e.preventDefault()
-							const nb = await authed(() => client.BuildCreate(password, repo.Name, branch.value, '', lowprio.checked), fieldset)
+							const nb = await authed(() => client.BuildCreate(password, repo.Name, branch.value, commit.value, lowprio.checked), fieldset)
 							if (!builds.find(b => b.ID === nb.ID)) {
 								builds.unshift(nb)
 								renderBuilds()
@@ -1193,6 +1194,8 @@ const pageRepo = async (repoName: string): Promise<Page> => {
 								style({display: 'grid', columnGap: '1em', rowGap: '.5ex', gridTemplateColumns: 'min-content 1fr', alignItems: 'top'}),
 								'Branch',
 								branch=dom.input(attr.required(''), attr.value(repo.DefaultBranch)),
+								dom.div('Commit (optional)', style({whiteSpace: 'nowrap'})),
+								commit=dom.input(),
 								dom.div(),
 								dom.label(
 									lowprio=dom.input(attr.type('checkbox')),

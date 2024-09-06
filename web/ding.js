@@ -1671,17 +1671,18 @@ const pageRepo = async (repoName) => {
 			location.hash = '#repo/' + encodeURIComponent(repo.Name) + '/build/' + nb.ID;
 		}), ' ', dom.clickbutton('Build ...', attr.title('Create build for specific branch, possibly low-priority.'), async function click() {
 			let branch;
+			let commit;
 			let lowprio;
 			const close = popup(dom.h1('New build'), dom.form(async function submit(e) {
 				e.stopPropagation();
 				e.preventDefault();
-				const nb = await authed(() => client.BuildCreate(password, repo.Name, branch.value, '', lowprio.checked), fieldset);
+				const nb = await authed(() => client.BuildCreate(password, repo.Name, branch.value, commit.value, lowprio.checked), fieldset);
 				if (!builds.find(b => b.ID === nb.ID)) {
 					builds.unshift(nb);
 					renderBuilds();
 				}
 				close();
-			}, dom.fieldset(dom.div(style({ display: 'grid', columnGap: '1em', rowGap: '.5ex', gridTemplateColumns: 'min-content 1fr', alignItems: 'top' }), 'Branch', branch = dom.input(attr.required(''), attr.value(repo.DefaultBranch)), dom.div(), dom.label(lowprio = dom.input(attr.type('checkbox')), ' Low priority', attr.title('Create build, but only start it when there are no others in progress.'))), dom.br(), dom.submitbutton('Create'))));
+			}, dom.fieldset(dom.div(style({ display: 'grid', columnGap: '1em', rowGap: '.5ex', gridTemplateColumns: 'min-content 1fr', alignItems: 'top' }), 'Branch', branch = dom.input(attr.required(''), attr.value(repo.DefaultBranch)), dom.div('Commit (optional)', style({ whiteSpace: 'nowrap' })), commit = dom.input(), dom.div(), dom.label(lowprio = dom.input(attr.type('checkbox')), ' Low priority', attr.title('Create build, but only start it when there are no others in progress.'))), dom.br(), dom.submitbutton('Create'))));
 			branch.focus();
 		})),
 		dom.div(style({ display: 'grid', gap: '1em', gridTemplateColumns: '1fr 1fr', justifyItems: 'stretch' }), buildsElem, dom.div(style({ maxWidth: '50em' }), dom.div(dom.h1('Repository settings'), dom.form(async function submit(e) {
