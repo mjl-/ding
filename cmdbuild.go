@@ -11,58 +11,101 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 )
 
 func cmdBuild(args []string) {
 	fs := flag.NewFlagSet("build", flag.ExitOnError)
-	var bwrap bool
+	var nobwrap, needbwrap bool
 	var nonet bool
 	var clonecmd string
 	var toolchainDir string
-	fs.BoolVar(&bwrap, "bwrap", false, "isolate environment during build using bubblewrap (bwrap)")
-	fs.BoolVar(&nonet, "nonet", false, "execute build without network access; implies bwrap")
+	sdkDir := filepath.Join(os.Getenv("HOME"), "sdk")
+	if _, err := os.Stat(sdkDir); err == nil {
+		toolchainDir = sdkDir
+	}
+	var destdir string
+	var tmpdestdir bool
+
+	fs.BoolVar(&nobwrap, "nobwrap", false, "don't use bwrap; automatically used if available otherwise")
+	fs.BoolVar(&needbwrap, "needbwrap", false, "require bwrap, failing if not available")
+	fs.BoolVar(&nonet, "nonet", false, "execute build without network access; implies -needbwrap")
+	fs.StringVar(&destdir, "destdir", "", "directory for build, must be empty or not exist; if not specified, a tmpdir is automatically created and removed after the build")
 	fs.StringVar(&clonecmd, "clone", "", "command to run to clone the repository, instead of looking for .git or .hg in the current directory")
-	fs.StringVar(&toolchainDir, "toolchaindir", "", "directory to make available as toolchaindir, e.g. $HOME/sdk for Go toolchains")
+	fs.StringVar(&toolchainDir, "toolchaindir", toolchainDir, "directory to make available as toolchaindir; if $HOME/sdk exists, it is used as toolchaindir")
 	fs.Usage = func() {
-		fmt.Fprintln(os.Stderr, "usage: ding build [-bwrap] [-nonet] [-clone cmd] [-toolchaindir dir] dstdir buildscript")
+		fmt.Fprintln(os.Stderr, "usage: ding build [-nobwrap] [-needbwrap] [-nonet] [-clone cmd] [-toolchaindir dir] [-destdir dir] cmd ...")
 		fs.PrintDefaults()
 		os.Exit(2)
 	}
 	fs.Parse(args)
 	args = fs.Args()
-	if len(args) != 2 {
+	if len(args) < 1 {
 		fs.Usage()
 	}
+	if nobwrap && needbwrap {
+		slog.Error("-nobwrap and -needbwrap are incompatible")
+		flag.Usage()
+	}
 	if nonet {
-		bwrap = true
+		needbwrap = true
 	}
 
 	workDir, err := os.Getwd()
 	xcheckf(err, "get workdir")
 	srcdir := workDir
 
-	dstdir := args[0]
-	if !path.IsAbs(dstdir) {
-		dstdir = path.Join(workDir, dstdir)
-	}
-	buildscript := args[1]
-	if !path.IsAbs(buildscript) {
-		buildscript = path.Join(workDir, buildscript)
-	}
-
-	// Check that dstdir is absent or empty.
-	if files, err := os.ReadDir(dstdir); err == nil && len(files) != 0 {
-		xcheckf(errors.New("must be empty"), "checking dstdir")
-	} else if err != nil {
-		if !os.IsNotExist(err) {
-			xcheckf(err, "checking dstdir")
+	// From here on, we don't use xcheckf, only xlcheckf: it cleans up any temp destdir.
+	xlcheckf := func(err error, format string, args ...any) {
+		if err == nil {
+			return
 		}
-		err := os.MkdirAll(dstdir, 0755)
-		xcheckf(err, "making dstdir")
+
+		msg := fmt.Sprintf(format, args...)
+		slog.Error(msg, "err", err)
+
+		if tmpdestdir {
+			err := os.RemoveAll(destdir)
+			if err != nil {
+				slog.Error("removing temporary destdir", "err", err, "destdir", destdir)
+			}
+		}
+
+		os.Exit(1)
 	}
 
-	homeDir := path.Join(dstdir, "home")
-	buildDir := path.Join(dstdir, "build")
+	if destdir != "" {
+		if !path.IsAbs(destdir) {
+			destdir = path.Join(workDir, destdir)
+		}
+
+		// Check that destdir is absent or empty.
+		if files, err := os.ReadDir(destdir); err == nil && len(files) != 0 {
+			xlcheckf(errors.New("must be empty"), "checking destdir")
+		} else if err != nil {
+			if !os.IsNotExist(err) {
+				xlcheckf(err, "checking destdir")
+			}
+			err := os.MkdirAll(destdir, 0755)
+			xlcheckf(err, "making destdir")
+		}
+	} else {
+		destdir, err = os.MkdirTemp("", "ding-build")
+		xlcheckf(err, "making temp destdir")
+		tmpdestdir = true
+		slog.Info("tempdir created, will be removed", "destdir", destdir)
+	}
+	buildscript := args[0]
+	var bindBuildscript bool
+	if _, err := os.Stat(buildscript); err == nil {
+		bindBuildscript = true
+		if !path.IsAbs(buildscript) {
+			buildscript = path.Join(workDir, buildscript)
+		}
+	}
+
+	homeDir := path.Join(destdir, "home")
+	buildDir := path.Join(destdir, "build")
 	var checkoutPath string
 	if clonecmd == "" {
 		checkoutPath = "checkout"
@@ -91,9 +134,11 @@ func cmdBuild(args []string) {
 
 	run := func(build bool, cmdargv ...string) ([]byte, []byte) {
 		var argv []string
-		if build && bwrap {
+		if build && (needbwrap || (!nobwrap && hasBubblewrap(context.Background()))) {
 			argv = bwrapCmd(nonet, homeDir, buildDir, toolchainDir)
-			argv = append(argv, "--bind", buildscript, buildscript)
+			if bindBuildscript {
+				argv = append(argv, "--bind", buildscript, buildscript)
+			}
 		}
 		argv = append(argv, cmdargv...)
 		slog.Info("executing", "cmd", argv, "workdir", buildDir)
@@ -104,20 +149,20 @@ func cmdBuild(args []string) {
 		cmd.Stdout = io.MultiWriter(os.Stdout, &stdout)
 		cmd.Stderr = io.MultiWriter(os.Stderr, &stderr)
 		err := cmd.Run()
-		xcheckf(err, "run command %v", argv)
+		xlcheckf(err, "run command %v", argv)
 		return stdout.Bytes(), stderr.Bytes()
 	}
 
 	checkoutDir := path.Join(buildDir, "checkout", checkoutPath)
 
 	err = os.MkdirAll(homeDir, 0755)
-	xcheckf(err, "making homedir")
+	xlcheckf(err, "making homedir")
 
 	err = os.MkdirAll(path.Dir(checkoutDir), 0755)
-	xcheckf(err, "making checkoutdir")
+	xlcheckf(err, "making checkoutdir")
 
 	err = os.MkdirAll(downloadDir, 0755)
-	xcheckf(err, "making dl dir")
+	xlcheckf(err, "making dl dir")
 
 	// Clone.
 	workDir = buildDir
@@ -131,16 +176,17 @@ func cmdBuild(args []string) {
 		run(false, "hg", "clone", srcdir, checkoutDir)
 		historySize = buildDiskUsage(path.Join(srcdir, ".hg"))
 	} else {
-		xcheckf(errors.New("cannot find .git or .hg in work dir"), "looking for vcs in workdir")
+		xlcheckf(errors.New("cannot find .git or .hg in work dir"), "looking for vcs in workdir")
 	}
 
 	checkoutSize := buildDiskUsage(checkoutDir)
 
 	// Build.
 	workDir = checkoutDir
-	stdout, stderr := run(true, buildscript)
+	args[0] = buildscript
+	stdout, stderr := run(true, args...)
 	version, results, coverage, coverageReportFile, err := parseResults(checkoutDir, downloadDir, io.MultiReader(bytes.NewReader(stdout), bytes.NewReader(stderr)))
-	xcheckf(err, "parsing results")
+	xlcheckf(err, "parsing results")
 	var coverageStr string
 	if coverage != nil {
 		coverageStr = fmt.Sprintf("%d%%", int(*coverage))
