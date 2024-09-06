@@ -518,7 +518,7 @@ const pageHome = async (): Promise<Page> => {
 				dom._class('striped', 'wide'),
 				dom.thead(
 					dom.tr(
-						['Repo', 'Branch', 'Build ID', 'Status', 'Duration', 'Version', 'Coverage', 'Disk usage', 'Home disk usage', 'Age'].map(s => dom.th(s)),
+						['Repo', 'Build ID', 'Status', 'Duration', 'Branch', 'Version', 'Coverage', 'Disk usage', 'Home disk usage', 'Age'].map(s => dom.th(s)),
 						dom.th(style({textAlign: 'left'}), 'Error'),
 					),
 				),
@@ -533,11 +533,11 @@ const pageHome = async (): Promise<Page> => {
 						return (rb.Builds || []).map((b, i) =>
 							dom.tr(
 								i === 0 ? dom.td(link('#repo/'+encodeURIComponent(rb.Repo.Name), rb.Repo.Name), attr.rowspan(''+(rb.Builds || []).length)) : [],
-								dom.td(b.Branch),
 								dom.td(link('#repo/'+encodeURIComponent(rb.Repo.Name)+'/build/'+b.ID, ''+b.ID)),
 								dom.td(buildStatus(b)),
 								dom.td(b.Start ? atexit.age(b.Start, b.Finish || undefined) : ''),
-								dom.td(b.Version),
+								dom.td(b.Branch),
+								dom.td(b.Version, b.CommitHash ? attr.title('Commit '+b.CommitHash) : []),
 								dom.td(formatCoverage(rb.Repo, b)),
 								dom.td(formatBuildSize(b)),
 								dom.td(rb.Repo.UID ? dom.span(formatSize(rb.Repo.HomeDiskUsage), attr.title('Of reused home directory')) : []),
@@ -1062,7 +1062,7 @@ const pageRepo = async (repoName: string): Promise<Page> => {
 							dom.td(b.Branch),
 							dom.td(buildStatus(b)),
 							dom.td(b.Start ? atexit.age(b.Start, b.Finish || undefined) : ''),
-							dom.td(b.Version),
+							dom.td(b.Version, b.CommitHash ? attr.title('Commit '+b.CommitHash) : []),
 							dom.td(formatCoverage(repo, b)),
 							dom.td(formatBuildSize(b)),
 							dom.td(atexit.ageMins(b.Created, undefined)),
@@ -1415,15 +1415,15 @@ const pageBuild = async (repoName: string, buildID: number): Promise<Page> => {
 				dom.h1('Summary'),
 				dom.table(
 					dom.tr(
-						['Status', 'Branch', 'Duration', 'Commit', 'Version', 'Coverage', 'Disk usage', 'Age'].map(s => dom.th(s)),
+						['Status', 'Branch', 'Duration', 'Version', 'Commit', 'Coverage', 'Disk usage', 'Age'].map(s => dom.th(s)),
 						dom.th(style({textAlign: 'left'}), 'Error'),
 					),
 					dom.tr(
 						dom.td(buildStatus(b)),
 						dom.td(b.Branch),
 						dom.td(b.Start ? atexit.age(b.Start, b.Finish || undefined) : ''),
-						dom.td(b.CommitHash),
 						dom.td(b.Version),
+						dom.td(b.CommitHash),
 						dom.td(formatCoverage(repo, b)),
 						dom.td(formatBuildSize(b)),
 						dom.td(atexit.ageMins(b.Created, undefined)),
