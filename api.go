@@ -119,6 +119,34 @@ func scheduleLowPrioBuilds(ctx context.Context, automaticOnly bool) error {
 	builds := make([]Build, len(repos))
 	buildDirs := make([]string, len(repos))
 	for i, repo := range repos {
+		// For automatically triggered builds, first clear the home directory, unless a
+		// build is in progress. Because the cache in the homedir will not be used with the
+		// new toolchain.
+		if automaticOnly && repo.UID != nil {
+			busy, err := bstore.QueryDB[Build](ctx, database).FilterFn(func(b Build) bool { return b.Start != nil && b.Finish == nil }).Exists()
+			if err != nil {
+				return fmt.Errorf("checking for builds on repo: %v", err)
+			}
+			if !busy {
+				msg := msg{RemoveSharedHome: &msgRemoveSharedHome{repo.Name}}
+				if err := requestPrivileged(msg); err != nil {
+					return fmt.Errorf("removing reused home directory for repo before scheduling automatic low-prio build for new toolchain")
+				}
+				nrepo := Repo{Name: repo.Name}
+				err := database.Write(ctx, func(tx *bstore.Tx) error {
+					if err := tx.Get(&nrepo); err != nil {
+						return err
+					}
+					nrepo.HomeDiskUsage = 0
+					return tx.Update(&nrepo)
+				})
+				if err != nil {
+					return fmt.Errorf("updating repo for new homedir size: %v", err)
+				}
+				events <- EventRepo{nrepo}
+			}
+		}
+
 		_, build, buildDir, err := prepareBuild(ctx, repo.Name, repo.DefaultBranch, commit, lowPrio)
 		if err != nil {
 			return fmt.Errorf("preparing build: %v", err)
@@ -457,6 +485,7 @@ func (Ding) RepoClearHomedir(ctx context.Context, password, repoName string) {
 		err := tx.Update(&r)
 		_checkf(err, "updating repo home disk usage in database")
 	})
+	events <- EventRepo{r}
 }
 
 // ClearRepoHomedirs removes the home directory of all repositories.
@@ -471,12 +500,18 @@ func (Ding) ClearRepoHomedirs(ctx context.Context, password string) {
 		err := requestPrivileged(msg)
 		_checkf(err, "privileged RemoveSharedHome")
 
-		_dbwrite(context.Background(), func(tx *bstore.Tx) {
+		_dbwrite(ctx, func(tx *bstore.Tx) {
 			r := _repo(tx, repo.Name)
 			r.HomeDiskUsage = 0
 			err = tx.Update(&r)
 			_checkf(err, "update repo home disk usage")
 		})
+	}
+
+	repos, err = bstore.QueryDB[Repo](ctx, database).FilterFn(func(r Repo) bool { return r.UID != nil }).List()
+	_checkf(err, "listing repos after cleaning")
+	for _, r := range repos {
+		events <- EventRepo{r}
 	}
 }
 

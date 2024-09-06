@@ -268,7 +268,11 @@ const age0 = (mins: boolean, start: Date, end?: Date | undefined): [HTMLElement,
 }
 
 const formatSize = (size: number) => (size/(1024*1024)).toFixed(1) + 'm'
-const formatBuildSize = (b: api.Build) => formatSize(b.DiskUsage) + (b.HomeDiskUsageDelta ? (b.HomeDiskUsageDelta > 0 ? '+' : '')+formatSize(b.HomeDiskUsageDelta) : '')
+const formatBuildSize = (b: api.Build) =>
+	dom.span(
+		attr.title('Disk usage of build directory (including checkout directory), and optional difference in size of (reused) home directory'),
+		formatSize(b.DiskUsage) + (b.HomeDiskUsageDelta ? (b.HomeDiskUsageDelta > 0 ? '+' : '')+formatSize(b.HomeDiskUsageDelta) : '')
+	)
 
 const statusColor = (b: api.Build) => {
 	if (b.ErrorMessage || b.Finish && b.Status !== api.BuildStatus.StatusSuccess) {
@@ -557,7 +561,7 @@ const pageHome = async (): Promise<Page> => {
 		const builds = rb.Builds || []
 		const i = builds.findIndex(b => b.ID === e.Build.ID)
 		if (i < 0) {
-			builds.push(e.Build)
+			builds.unshift(e.Build)
 		} else {
 			builds[i] = e.Build
 		}
@@ -574,6 +578,13 @@ const pageHome = async (): Promise<Page> => {
 	})
 	page.subscribe(streams.repo, (ev: api.EventRepo) => {
 		console.log('pageHome repo')
+		for (const rb of rbl) {
+			if (rb.Repo.Name == ev.Repo.Name) {
+				rb.Repo = ev.Repo
+				render()
+				return
+			}
+		}
 		rbl.unshift({Repo: ev.Repo, Builds: []})
 		render()
 	})
@@ -1404,7 +1415,7 @@ const pageBuild = async (repoName: string, buildID: number): Promise<Page> => {
 				dom.h1('Summary'),
 				dom.table(
 					dom.tr(
-						['Status', 'Branch', 'Duration', 'Commit', 'Version', 'Coverage', 'Size', 'Age'].map(s => dom.th(s)),
+						['Status', 'Branch', 'Duration', 'Commit', 'Version', 'Coverage', 'Disk usage', 'Age'].map(s => dom.th(s)),
 						dom.th(style({textAlign: 'left'}), 'Error'),
 					),
 					dom.tr(

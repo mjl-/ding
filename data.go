@@ -83,7 +83,7 @@ type Build struct {
 	CommitHash         string      // Can be empty until `checkout` step, when building latest version of a branch.
 	Status             BuildStatus `bstore:"nonzero"`
 	Created            time.Time   `bstore:"default now"` // Time of creation of this build. Ding only has one concurrent build per repo, so the start time may be later.
-	Start              *time.Time  // Time the build was started. Of a build is finish - start.
+	Start              *time.Time  // Time the build was started. Duration of a build is finish - start.
 	Finish             *time.Time
 	ErrorMessage       string
 	Released           *time.Time // Once set, this build itself won't be removed from the database, but its build directory may be removed.

@@ -204,6 +204,7 @@ func _doBuild0(ctx context.Context, repo Repo, build Build, buildDir string) {
 		}
 
 		var b Build
+		var re *EventRepo
 		_dbwrite(ctx, func(tx *bstore.Tx) {
 			b = Build{ID: build.ID}
 			err := tx.Get(&b)
@@ -224,10 +225,14 @@ func _doBuild0(ctx context.Context, repo Repo, build Build, buildDir string) {
 				r.HomeDiskUsage = homeDiskUsage
 				err = tx.Update(&r)
 				_checkf(err, "storing home directory disk usage in database")
+				re = &EventRepo{r}
 			}
 
 		})
 		events <- EventBuild{b}
+		if re != nil {
+			events <- *re
+		}
 
 		_cleanupBuilds(ctx, repo.Name, build.Branch)
 

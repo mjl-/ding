@@ -10,7 +10,7 @@ export interface Build {
 	CommitHash: string  // Can be empty until `checkout` step, when building latest version of a branch.
 	Status: BuildStatus
 	Created: Date  // Time of creation of this build. Ding only has one concurrent build per repo, so the start time may be later.
-	Start?: Date | null  // Time the build was started. Of a build is finish - start.
+	Start?: Date | null  // Time the build was started. Duration of a build is finish - start.
 	Finish?: Date | null
 	ErrorMessage: string
 	Released?: Date | null  // Once set, this build itself won't be removed from the database, but its build directory may be removed.

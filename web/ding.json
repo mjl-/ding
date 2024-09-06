@@ -885,7 +885,7 @@
 				},
 				{
 					"Name": "Start",
-					"Docs": "Time the build was started. Of a build is finish - start.",
+					"Docs": "Time the build was started. Duration of a build is finish - start.",
 					"Typewords": [
 						"nullable",
 						"timestamp"

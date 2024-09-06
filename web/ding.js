@@ -1169,7 +1169,7 @@ const age0 = (mins, start, end) => {
 	return [elem, cleanup];
 };
 const formatSize = (size) => (size / (1024 * 1024)).toFixed(1) + 'm';
-const formatBuildSize = (b) => formatSize(b.DiskUsage) + (b.HomeDiskUsageDelta ? (b.HomeDiskUsageDelta > 0 ? '+' : '') + formatSize(b.HomeDiskUsageDelta) : '');
+const formatBuildSize = (b) => dom.span(attr.title('Disk usage of build directory (including checkout directory), and optional difference in size of (reused) home directory'), formatSize(b.DiskUsage) + (b.HomeDiskUsageDelta ? (b.HomeDiskUsageDelta > 0 ? '+' : '') + formatSize(b.HomeDiskUsageDelta) : ''));
 const statusColor = (b) => {
 	if (b.ErrorMessage || b.Finish && b.Status !== api.BuildStatus.StatusSuccess) {
 		return colors.red;
@@ -1338,7 +1338,7 @@ const pageHome = async () => {
 		const builds = rb.Builds || [];
 		const i = builds.findIndex(b => b.ID === e.Build.ID);
 		if (i < 0) {
-			builds.push(e.Build);
+			builds.unshift(e.Build);
 		}
 		else {
 			builds[i] = e.Build;
@@ -1356,6 +1356,13 @@ const pageHome = async () => {
 	});
 	page.subscribe(streams.repo, (ev) => {
 		console.log('pageHome repo');
+		for (const rb of rbl) {
+			if (rb.Repo.Name == ev.Repo.Name) {
+				rb.Repo = ev.Repo;
+				render();
+				return;
+			}
+		}
 		rbl.unshift({ Repo: ev.Repo, Builds: [] });
 		render();
 	});
@@ -1766,7 +1773,7 @@ const pageBuild = async (repoName, buildID) => {
 		}), ' ', dom.clickbutton('Release', b.Released || b.Status !== api.BuildStatus.StatusSuccess ? attr.disabled('') : [], attr.title("Mark this build as released. Results of releases are not automatically removed. Build directories of releases can otherwise still be automatically removed, but this is done later than for builds that aren't released."), async function click(e) {
 			b = await authed(() => client.ReleaseCreate(password, repo.Name, b.ID), e.target);
 			render();
-		})), dom.div(dom.h1('Summary'), dom.table(dom.tr(['Status', 'Branch', 'Duration', 'Commit', 'Version', 'Coverage', 'Size', 'Age'].map(s => dom.th(s)), dom.th(style({ textAlign: 'left' }), 'Error')), dom.tr(dom.td(buildStatus(b)), dom.td(b.Branch), dom.td(b.Start ? atexit.age(b.Start, b.Finish || undefined) : ''), dom.td(b.CommitHash), dom.td(b.Version), dom.td(formatCoverage(repo, b)), dom.td(formatBuildSize(b)), dom.td(atexit.ageMins(b.Created, undefined)), dom.td(style({ textAlign: 'left' }), b.ErrorMessage ? dom.div(b.ErrorMessage, style({ maxWidth: '40em' })) : [])))), dom.br(), dom.div(style({ display: 'grid', gap: '1em', gridTemplateColumns: '1fr 1fr', justifyItems: 'stretch' }), dom.div(dom.h1('Steps'), stepsBox = dom.div(stepViews = steps.map((step) => newStepView(step)))), dom.div(dom.div(dom.div(style({ display: 'flex', gap: '1em' }), dom.h1('Results'), b.Status === api.BuildStatus.StatusSuccess && (b.Results || []).length > 0 ? dom.div(dom.a(attr.href('dl/' + (b.Released ? 'release' : 'result') + '/' + encodeURIComponent(repo.Name) + '/' + b.ID + '/' + encodeURIComponent(repo.Name) + '-' + b.Version + '.zip'), attr.download(''), 'zip'), ' ', dom.a(attr.href('dl/' + (b.Released ? 'release' : 'result') + '/' + encodeURIComponent(repo.Name) + '/' + b.ID + '/' + encodeURIComponent(repo.Name) + '-' + b.Version + '.tgz'), attr.download(''), 'tgz')) : []), dom.table(dom.thead(dom.tr(['Name', 'OS', 'Arch', 'Toolchain', 'Link', 'Size'].map(s => dom.th(s)))), dom.tbody(results.length === 0 ? dom.tr(dom.td(attr.colspan('6'), 'No results', style({ textAlign: 'left' }))) : [], results.map(rel => dom.tr(dom.td(rel.Command), dom.td(rel.Os), dom.td(rel.Arch), dom.td(rel.Toolchain), dom.td(dom.a(attr.href((b.Released ? 'release/' : 'result/') + encodeURIComponent(repo.Name) + '/' + b.ID + '/' + (b.Released ? basename(rel.Filename) : rel.Filename)), attr.download(''), rel.Filename)), dom.td(formatSize(rel.Filesize))))))), dom.br(), dom.div(dom.h1('Build script'), dom.pre(b.BuildScript)))));
+		})), dom.div(dom.h1('Summary'), dom.table(dom.tr(['Status', 'Branch', 'Duration', 'Commit', 'Version', 'Coverage', 'Disk usage', 'Age'].map(s => dom.th(s)), dom.th(style({ textAlign: 'left' }), 'Error')), dom.tr(dom.td(buildStatus(b)), dom.td(b.Branch), dom.td(b.Start ? atexit.age(b.Start, b.Finish || undefined) : ''), dom.td(b.CommitHash), dom.td(b.Version), dom.td(formatCoverage(repo, b)), dom.td(formatBuildSize(b)), dom.td(atexit.ageMins(b.Created, undefined)), dom.td(style({ textAlign: 'left' }), b.ErrorMessage ? dom.div(b.ErrorMessage, style({ maxWidth: '40em' })) : [])))), dom.br(), dom.div(style({ display: 'grid', gap: '1em', gridTemplateColumns: '1fr 1fr', justifyItems: 'stretch' }), dom.div(dom.h1('Steps'), stepsBox = dom.div(stepViews = steps.map((step) => newStepView(step)))), dom.div(dom.div(dom.div(style({ display: 'flex', gap: '1em' }), dom.h1('Results'), b.Status === api.BuildStatus.StatusSuccess && (b.Results || []).length > 0 ? dom.div(dom.a(attr.href('dl/' + (b.Released ? 'release' : 'result') + '/' + encodeURIComponent(repo.Name) + '/' + b.ID + '/' + encodeURIComponent(repo.Name) + '-' + b.Version + '.zip'), attr.download(''), 'zip'), ' ', dom.a(attr.href('dl/' + (b.Released ? 'release' : 'result') + '/' + encodeURIComponent(repo.Name) + '/' + b.ID + '/' + encodeURIComponent(repo.Name) + '-' + b.Version + '.tgz'), attr.download(''), 'tgz')) : []), dom.table(dom.thead(dom.tr(['Name', 'OS', 'Arch', 'Toolchain', 'Link', 'Size'].map(s => dom.th(s)))), dom.tbody(results.length === 0 ? dom.tr(dom.td(attr.colspan('6'), 'No results', style({ textAlign: 'left' }))) : [], results.map(rel => dom.tr(dom.td(rel.Command), dom.td(rel.Os), dom.td(rel.Arch), dom.td(rel.Toolchain), dom.td(dom.a(attr.href((b.Released ? 'release/' : 'result/') + encodeURIComponent(repo.Name) + '/' + b.ID + '/' + (b.Released ? basename(rel.Filename) : rel.Filename)), attr.download(''), rel.Filename)), dom.td(formatSize(rel.Filesize))))))), dom.br(), dom.div(dom.h1('Build script'), dom.pre(b.BuildScript)))));
 	};
 	render();
 	page.subscribe(streams.build, (e) => {
