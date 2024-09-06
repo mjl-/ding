@@ -966,7 +966,7 @@ function build() {
 	go vet
 
 	# Run tests, and modify output so ding can pick up the coverage result.
-	go test -shuffle=on -coverprofile cover.out | sed "s/^coverage: \\(.*\\)% of statements/coverage: \\1/"
+	go test -shuffle=on -coverprofile cover.out
 	go tool cover -html=cover.out -o $DING_DOWNLOADDIR/cover.html
 	echo coverage-report: cover.html
 
@@ -1018,7 +1018,7 @@ fi
 			dom.li(dom.i('path'), ' is the local path (either absolute or relative to the checkout directory) of the released file'),
 		),
 
-		dom.p('Specify test coverage in percentage from 0 to 100 as floating point:'),
+		dom.p('Specify test coverage in percentage from 0 to 100 as floating point (an optional trailing "% ..." is ignored):'),
 		dom.p(dom._class('indent'), dom.tt('coverage:', ' ', dom.i(dom._class('mono'), 'float'))),
 
 		dom.p('Filename (must be relative to $DING_DOWNLOADDIR) for more details about the code coverage, e.g. an html coverage file:'),

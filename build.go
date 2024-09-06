@@ -568,12 +568,13 @@ func parseResults(checkoutDir, dldir string, r io.Reader) (version string, resul
 			}
 			version = t[1]
 		case "coverage:":
-			// "coverage:" 75.0
-			if len(t) != 2 {
+			// "coverage:" 75.0[% more]
+			if len(t) < 2 {
 				rerr = errors.New("invalid \"coverage:\"-line, should have 1 parameter: " + line)
 				return
 			}
-			fl, err := strconv.ParseFloat(t[1], 32)
+			// Remove optional suffix "%".
+			fl, err := strconv.ParseFloat(strings.TrimSuffix(t[1], "%"), 32)
 			if err != nil {
 				rerr = fmt.Errorf("invalid \"coverage:\"-line (%q), parsing float: %s", line, err)
 				return
