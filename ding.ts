@@ -166,7 +166,7 @@ const authed = async <T>(fn: () => Promise<T>, elem?: {disabled: boolean}): Prom
 								e.preventDefault()
 								password = passwordElem.value
 								try {
-									window.sessionStorage.setItem('dingpassword', password)
+									window.localStorage.setItem('dingpassword', password)
 								} catch (err) {
 									console.log('setting session storage', err)
 								}
@@ -1561,7 +1561,7 @@ const hashchange = async (e?: HashChangeEvent) => {
 
 const init = async () => {
 	try {
-		password = window.sessionStorage.getItem('dingpassword') || ''
+		password = window.localStorage.getItem('dingpassword') || ''
 	} catch(err: any) {
 		console.log('setting password storage', err)
 	}
@@ -1584,7 +1584,7 @@ const init = async () => {
 				link('#docs', 'Docs'), ' ',
 				dom.clickbutton('Logout', function click() {
 					try {
-						window.sessionStorage.removeItem('dingpassword')
+						window.localStorage.removeItem('dingpassword')
 					} catch (err) {
 						console.log('remove from session storage', err)
 					}

@@ -1084,7 +1084,7 @@ const authed = async (fn, elem) => {
 						e.preventDefault();
 						password = passwordElem.value;
 						try {
-							window.sessionStorage.setItem('dingpassword', password);
+							window.localStorage.setItem('dingpassword', password);
 						}
 						catch (err) {
 							console.log('setting session storage', err);
@@ -1862,7 +1862,7 @@ const hashchange = async (e) => {
 };
 const init = async () => {
 	try {
-		password = window.sessionStorage.getItem('dingpassword') || '';
+		password = window.localStorage.getItem('dingpassword') || '';
 	}
 	catch (err) {
 		console.log('setting password storage', err);
@@ -1877,7 +1877,7 @@ const init = async () => {
 	}
 	const root = dom.div(dom.div(style({ display: 'flex', justifyContent: 'space-between', marginBottom: '1ex', padding: '.5em 1em', backgroundColor: '#f8f8f8' }), crumbElem, updateElem, dom.div(sseElem, ' ', link('#docs', 'Docs'), ' ', dom.clickbutton('Logout', function click() {
 		try {
-			window.sessionStorage.removeItem('dingpassword');
+			window.localStorage.removeItem('dingpassword');
 		}
 		catch (err) {
 			console.log('remove from session storage', err);
