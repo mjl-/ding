@@ -600,6 +600,7 @@ func parseResults(checkoutDir, dldir string, r io.Reader) (version string, resul
 				rerr = fmt.Errorf("bad file in \"coverage-report:\"-line (%q): %s", line, err)
 				return
 			}
+			coverageReportFile = strings.TrimPrefix(p, dldir+"/")
 		}
 	}
 	rerr = scanner.Err()

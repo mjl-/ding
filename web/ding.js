@@ -1108,7 +1108,7 @@ const authed = async (fn, elem) => {
 const formatCoverage = (repo, b) => {
 	const anchor = b.Coverage ? (Math.round(b.Coverage) + '%') : 'report';
 	if (b.CoverageReportFile && !b.BuilddirRemoved) {
-		return dom.a(attr.href('dl/file/' + encodeURIComponent(repo.Name) + '/' + b.ID + '/' + b.CoverageReportFile), attr.download(''), anchor);
+		return dom.a(attr.href('dl/file/' + encodeURIComponent(repo.Name) + '/' + b.ID + '/' + b.CoverageReportFile), anchor);
 	}
 	return anchor === 'report' ? '' : anchor;
 };

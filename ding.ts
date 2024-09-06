@@ -201,7 +201,7 @@ const authed = async <T>(fn: () => Promise<T>, elem?: {disabled: boolean}): Prom
 const formatCoverage = (repo: api.Repo, b: api.Build) => {
 	const anchor = b.Coverage ? (Math.round(b.Coverage)+'%') : 'report'
 	if (b.CoverageReportFile && !b.BuilddirRemoved) {
-		return dom.a(attr.href('dl/file/'+encodeURIComponent(repo.Name)+'/'+b.ID + '/' + b.CoverageReportFile), attr.download(''), anchor)
+		return dom.a(attr.href('dl/file/'+encodeURIComponent(repo.Name)+'/'+b.ID + '/' + b.CoverageReportFile), anchor)
 	}
 	return anchor === 'report' ? '' : anchor
 }
