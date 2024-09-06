@@ -268,7 +268,7 @@ const age0 = (mins: boolean, start: Date, end?: Date | undefined): [HTMLElement,
 }
 
 const formatSize = (size: number) => (size/(1024*1024)).toFixed(1) + 'm'
-const formatBuildSize = (b: api.Build) => formatSize(b.DiskUsage) + (b.HomeDiskUsageDelta ? '+'+formatSize(b.HomeDiskUsageDelta) : '')
+const formatBuildSize = (b: api.Build) => formatSize(b.DiskUsage) + (b.HomeDiskUsageDelta ? (b.HomeDiskUsageDelta > 0 ? '+' : '')+formatSize(b.HomeDiskUsageDelta) : '')
 
 const statusColor = (b: api.Build) => {
 	if (b.ErrorMessage || b.Finish && b.Status !== api.BuildStatus.StatusSuccess) {

@@ -1169,7 +1169,7 @@ const age0 = (mins, start, end) => {
 	return [elem, cleanup];
 };
 const formatSize = (size) => (size / (1024 * 1024)).toFixed(1) + 'm';
-const formatBuildSize = (b) => formatSize(b.DiskUsage) + (b.HomeDiskUsageDelta ? '+' + formatSize(b.HomeDiskUsageDelta) : '');
+const formatBuildSize = (b) => formatSize(b.DiskUsage) + (b.HomeDiskUsageDelta ? (b.HomeDiskUsageDelta > 0 ? '+' : '') + formatSize(b.HomeDiskUsageDelta) : '');
 const statusColor = (b) => {
 	if (b.ErrorMessage || b.Finish && b.Status !== api.BuildStatus.StatusSuccess) {
 		return colors.red;
