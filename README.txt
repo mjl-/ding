@@ -31,6 +31,9 @@ directory, sets up environment variables and destination build directories, and
 calls the provided build script. Optionally isolated using bubblewrap (bwrap)
 on Linux.
 
+Command "ding go" updates $HOME/sdk to the latest Go toolchains (current,
+previous and optionaly next), and sets symlinks go/goprev/gonext.
+
 
 # Installing
 

@@ -363,7 +363,7 @@ func automaticGoToolchain() (updated bool, rerr error) {
 			return false, err
 		}
 	} else {
-		if err := os.Remove(path.Join(config.GoToolchainDir, "gonext")); err != nil {
+		if err := os.Remove(path.Join(config.GoToolchainDir, "gonext")); err != nil && !os.IsNotExist(err) {
 			slog.Error("removing gonext symlink", "err", err)
 		}
 	}

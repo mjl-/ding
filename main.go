@@ -173,6 +173,11 @@ func main() {
 		cmdBuild(args)
 	case "kick":
 		kick(args)
+	case "go":
+		if len(args) != 0 {
+			log.Fatalf("usage: ding go")
+		}
+		getgo()
 	case "version":
 		fmt.Printf("%s\n", version)
 	case "license":
