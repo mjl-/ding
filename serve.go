@@ -320,7 +320,7 @@ func doMsgCancelCommand(msg *msgCancelCommand, enc *gob.Encoder) error {
 }
 
 func bwrapCmd(nonet bool, homeDir, buildDir, checkoutPath, toolchainDir string) []string {
-	argv := []string{"bwrap"}
+	argv := []string{"bwrap", "--die-with-parent"}
 	if nonet {
 		argv = append(argv, "--unshare-all")
 	} else {
