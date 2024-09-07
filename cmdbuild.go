@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os/signal"
+	"time"
 	"bytes"
 	"context"
 	"errors"
@@ -56,6 +58,29 @@ func cmdBuild(args []string) {
 	xcheckf(err, "get workdir")
 	srcdir := workDir
 
+	cleanupTempDestDir := func() {
+		if tmpdestdir {
+			err := os.RemoveAll(destdir)
+			if err != nil {
+				slog.Error("removing temporary destdir", "err", err, "destdir", destdir)
+			}
+		}
+	}
+
+	ctx, ctxcancel := context.WithCancel(context.Background())
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, os.Kill)
+	go func() {
+		<-c
+		ctxcancel()
+		slog.Error("signal, cleaning up and stopping")
+		// Give build process time to stop.
+		time.Sleep(50*time.Millisecond)
+		cleanupTempDestDir()
+		os.Exit(1)
+	}()
+
 	// From here on, we don't use xcheckf, only xlcheckf: it cleans up any temp destdir.
 	xlcheckf := func(err error, format string, args ...any) {
 		if err == nil {
@@ -65,12 +90,7 @@ func cmdBuild(args []string) {
 		msg := fmt.Sprintf(format, args...)
 		slog.Error(msg, "err", err)
 
-		if tmpdestdir {
-			err := os.RemoveAll(destdir)
-			if err != nil {
-				slog.Error("removing temporary destdir", "err", err, "destdir", destdir)
-			}
-		}
+		cleanupTempDestDir()
 
 		os.Exit(1)
 	}
@@ -135,7 +155,7 @@ func cmdBuild(args []string) {
 
 	run := func(build bool, cmdargv ...string) ([]byte, []byte) {
 		var argv []string
-		if build && (needbwrap || (!nobwrap && hasBubblewrap(context.Background()))) {
+		if build && (needbwrap || (!nobwrap && hasBubblewrap(ctx))) {
 			argv = bwrapCmd(nonet, homeDir, buildDir, checkoutPath, toolchainDir)
 			if bindBuildscript {
 				dstbuildscript := buildscript
@@ -148,7 +168,7 @@ func cmdBuild(args []string) {
 		}
 		argv = append(argv, cmdargv...)
 		slog.Info("executing", "cmd", argv, "workdir", buildDir)
-		cmd := exec.CommandContext(context.Background(), argv[0], argv[1:]...)
+		cmd := exec.CommandContext(ctx, argv[0], argv[1:]...)
 		cmd.Dir = workDir
 		cmd.Env = env
 		var stdout, stderr bytes.Buffer
@@ -206,4 +226,6 @@ func cmdBuild(args []string) {
 	buildSize := buildDiskUsage(buildDir)
 	const mb = 1024 * 1024
 	fmt.Printf("sizes: vcs history %.1fm, checkout %.1fm, home %.1fm, build %.1fm\n", float64(historySize)/mb, float64(checkoutSize-historySize)/mb, float64(homeSize)/mb, float64(buildSize-checkoutSize)/mb)
+
+	cleanupTempDestDir()
 }
