@@ -448,7 +448,7 @@ const popupRepoAdd = async (haveBubblewrap: boolean, haveGoToolchainDir: boolean
 			fieldset=dom.fieldset(
 				dom.div(
 					style({display: 'grid', columnGap: '1em', rowGap: '.5ex', gridTemplateColumns: 'min-content 1fr', alignItems: 'top'}),
-					'VCS',
+					dom.span('VCS', attr.title('Clones are run as the configured ding user, not under a unique/reused UID. After cloning, file permissions are fixed up. Configure an .ssh/config and/or ssh keys in the home directory of the ding user.')),
 					vcs=dom.select(
 						dom.option('git'),
 						dom.option('mercurial'),
@@ -986,9 +986,12 @@ data/
 
 const docsBuildScript = (): HTMLElement => {
 	return dom.div(
+		dom.h1('Clone'),
+		dom.p('Clones are run as the configured ding user, not under a unique/reused UID. After cloning, file permissions are fixed up. Configure an .ssh/config and/or ssh keys in the home directory of the ding user.'),
 		dom.h1('Build script environment'),
 		dom.p('The build script is run in a clean environment. It should exit with status 0 only when successful. Patterns in the output indicate where build results can be found, such as files and test coverage, see below.'),
 		dom.p('The working directory is set to $DING_BUILDDIR/checkout/$DING_CHECKOUTPATH.'),
+		dom.p('Only a single build will be run for a repository.'),
 
 		dom.h2('Example'),
 		dom.h3('Basic'),
@@ -1353,7 +1356,7 @@ const pageRepo = async (repoName: string): Promise<Page> => {
 								style({display: 'grid', columnGap: '1em', rowGap: '.5ex', gridTemplateColumns: 'min-content 1fr', alignItems: 'top'}),
 								'Name',
 								name=dom.input(attr.disabled(''), attr.value(repo.Name)),
-								'VCS',
+								dom.span('VCS', attr.title('Clones are run as the configured ding user, not under a unique/reused UID. After cloning, file permissions are fixed up. Configure an .ssh/config and/or ssh keys in the home directory of the ding user.')),
 								vcs=dom.select(
 									dom.option('git', repo.VCS == 'git' ? attr.selected('') : []),
 									dom.option('mercurial', repo.VCS == 'mercurial' ? attr.selected('') : []),

@@ -1,4 +1,6 @@
-# Ding - simple secure self-hosted private build server for developers
+Ding is a simple secure self-hosted private build server (for continuous
+integration) for individual developers and small teams, with specialized
+features for building Go applications, intended to run on BSDs too.
 
 Ding lets you configure repositories and build scripts and compile your
 software.
@@ -36,6 +38,8 @@ previous and optionaly next), and sets symlinks go/goprev/gonext.
 
 
 # Installing
+
+You should be up and running within a few minutes with the quickstart.
 
 You'll need:
 
@@ -112,14 +116,22 @@ config must be removed.
 
 - Deployments: Different task, different software. Ding exports released files
   which can be picked up by deployment tools.
-- Be all things to everybody: Ding does not integrate with every VCS/SCM, does
-  not have a plugin infrastructure.
+- Be all things to everybody: Ding does not integrate with every VCS/SCM system
+  or deploy system, and does not have a plugin infrastructure. If integrations
+  are needed, they happen with shell scripts. This prevents having to implement
+  dozens of custom APIs.
 - Use docker images: Ding assumes you create self-contained programs, such as
   statically linked Go binaries or JVM .jar files. If you need other services to
   run tests, say a database server, just configure it when setting up your
   repository in ding. If you need certain OS dependencies installed, first try to
   get rid of those dependencies, as a last resort install the dependencies on the
   machine running ding.
+- User accounts and access control. A ding instance has a single password, with
+  full access.
+- Separate servers that run builds. All builds are run on the same machine has
+  ding itself.
+- Visualized steps for a build. You just write the shell script that gets the
+  job done.
 
 
 # License
@@ -141,13 +153,14 @@ Several reasons:
 
 ## Q: Does Ding have a website?
 
-No, this is the website.
+Not a separate website, this is it. The ding web app also comes with
+documentation.
 
 ## Q:  Where is the documentation?
 
 - The README you are reading right now.
 - INSTALL.txt with installation instructions, also available with "ding help".
-- Documentation behind the "Help" button in the top-right corner in the Ding web UI.
+- Documentation behind the "Docs" button in the top-right corner in the Ding web UI.
 - API documentation at /ding/ when you've started Ding.
 
 ## Q: What does "Ding" mean?
@@ -161,23 +174,3 @@ resolved before the software becomes a lost cause.
 # Contact
 
 For feedback, bug reports and questions, please contact mechiel@ueber.net.
-
-
-# Developing
-
-You need a Go compiler and nodejs+npm with jshint and sass.  Run "make
-setup" to install the js dependencies.
-
-Now run: "make build test"
-
-
-# Todo
-
-- when doing a concurrent build, check how much memory is available, and how much the build likely needs (based on previous build, need to start keeping track of rusage), and delay execution if there isn't enough memory.
-- authentication on downloadable files? currently very useful to just wget a built binary (with internal endpoints).
-- on reconnect after sse failure, make sure our state is up to date again. it isn't now.
-
-- parse & process the output of a build as it comes in, instead of when the build is done. allows making result-files earlier in the process, eg before slow tests are run.
-- when cloning, clone from previous checkout, then pull changes from remote as need, should be faster, especially for larger repo's.
-- attempt to detect pushes of commits+tag, don't build for both the commit and the tag if they're about the same thing.
-- allow configuring a cleanup script, that is run when a builddir is removed. eg for dropping a database that was created in build.sh.
