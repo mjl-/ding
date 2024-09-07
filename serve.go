@@ -319,7 +319,7 @@ func doMsgCancelCommand(msg *msgCancelCommand, enc *gob.Encoder) error {
 	return nil
 }
 
-func bwrapCmd(nonet bool, homeDir, buildDir, toolchainDir string) []string {
+func bwrapCmd(nonet bool, homeDir, buildDir, checkoutPath, toolchainDir string) []string {
 	argv := []string{"bwrap"}
 	if nonet {
 		argv = append(argv, "--unshare-all")
@@ -337,12 +337,13 @@ func bwrapCmd(nonet bool, homeDir, buildDir, toolchainDir string) []string {
 		"--ro-bind", "/lib", "/lib",
 		"--ro-bind-try", "/lib32", "/lib32",
 		"--ro-bind-try", "/lib64", "/lib64",
-		"--bind", homeDir, homeDir,
-		"--bind", buildDir, buildDir,
+		"--bind", homeDir, "/home/ding",
+		"--bind", buildDir, "/home/ding/build",
 	)
 	if toolchainDir != "" {
-		argv = append(argv, "--bind", toolchainDir, toolchainDir)
+		argv = append(argv, "--bind", toolchainDir, "/home/ding/toolchain")
 	}
+	argv = append(argv, "--chdir", "/home/ding/build/checkout/"+checkoutPath)
 	return argv
 }
 
@@ -372,11 +373,13 @@ func doMsgBuild(msg *msgBuild, enc *gob.Encoder, unixconn *net.UnixConn) error {
 	}
 
 	argv := []string{}
+	envBuildDir := buildDir
 	if msg.Bubblewrap {
-		argv = bwrapCmd(msg.BubblewrapNoNet, msg.HomeDir, buildDir, msg.ToolchainDir)
+		envBuildDir = "/home/ding/build"
+		argv = bwrapCmd(msg.BubblewrapNoNet, msg.HomeDir, buildDir, msg.CheckoutPath, msg.ToolchainDir)
 	}
 	argv = append(argv, msg.RunPrefix...)
-	argv = append(argv, buildDir+"/scripts/build.sh")
+	argv = append(argv, envBuildDir+"/scripts/build.sh")
 	cmd := exec.CommandContext(buildCommand.ctx, argv[0], argv[1:]...)
 	cmd.Dir = workDir
 	cmd.Env = msg.Env

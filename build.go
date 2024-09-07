@@ -309,18 +309,25 @@ func _doBuild0(ctx context.Context, repo Repo, build Build, buildDir string) {
 		})
 	}
 
+	envHomeDir := homeDir
+	envBuildDir := buildDir
+	if repo.Bubblewrap {
+		envHomeDir = "/home/ding"
+		envBuildDir = "/home/ding/build"
+	}
+
 	// Also see cmdbuild.go.
 	env := []string{
-		"HOME=" + homeDir,
-		"DING_BUILDDIR=" + buildDir,
+		"HOME=" + envHomeDir,
+		"DING_BUILDDIR=" + envBuildDir,
 		"DING_CHECKOUTPATH=" + repo.CheckoutPath,
-		"DING_DOWNLOADDIR=" + buildDir + "/dl",
+		"DING_DOWNLOADDIR=" + envBuildDir + "/dl",
 		"DING_BUILDID=" + fmt.Sprintf("%d", build.ID),
 		"DING_REPONAME=" + repo.Name,
 		"DING_BRANCH=" + build.Branch,
 		"DING_COMMIT=" + build.CommitHash,
 	}
-	var toolchainDir string
+	var toolchainDir, envToolchainDir string
 	if config.GoToolchainDir != "" {
 		toolchainDir = config.GoToolchainDir
 		if !path.IsAbs(toolchainDir) {
@@ -332,8 +339,12 @@ func _doBuild0(ctx context.Context, repo Repo, build Build, buildDir string) {
 				toolchainDir = path.Join(workDir, toolchainDir)
 			}
 		}
-		if toolchainDir != "" {
-			env = append(env, "DING_TOOLCHAINDIR="+toolchainDir)
+		envToolchainDir = toolchainDir
+		if repo.Bubblewrap {
+			envToolchainDir = envHomeDir + "/toolchain"
+		}
+		if envToolchainDir != "" {
+			env = append(env, "DING_TOOLCHAINDIR="+envToolchainDir)
 		}
 	}
 	env = append(env, settings.Environment...)

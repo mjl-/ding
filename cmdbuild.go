@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"strings"
 )
 
 func cmdBuild(args []string) {
@@ -118,10 +119,10 @@ func cmdBuild(args []string) {
 	// Also see build.go.
 	env := []string{
 		"PATH=/bin:/usr/bin",
-		"HOME=" + homeDir,
-		"DING_BUILDDIR=" + buildDir,
+		"HOME=/home/ding",
+		"DING_BUILDDIR=/home/ding/build",
 		"DING_CHECKOUTPATH=" + checkoutPath,
-		"DING_DOWNLOADDIR=" + downloadDir,
+		"DING_DOWNLOADDIR=/home/ding/build/dl",
 		"DING_BUILDID=1",
 		"DING_REPONAME=" + checkoutPath,
 		// todo: could try to get this from the current checkout
@@ -129,15 +130,20 @@ func cmdBuild(args []string) {
 		"DING_COMMIT=deadbeef",
 	}
 	if toolchainDir != "" {
-		env = append(env, "DING_TOOLCHAINDIR="+toolchainDir)
+		env = append(env, "DING_TOOLCHAINDIR=/home/ding/toolchain")
 	}
 
 	run := func(build bool, cmdargv ...string) ([]byte, []byte) {
 		var argv []string
 		if build && (needbwrap || (!nobwrap && hasBubblewrap(context.Background()))) {
-			argv = bwrapCmd(nonet, homeDir, buildDir, toolchainDir)
+			argv = bwrapCmd(nonet, homeDir, buildDir, checkoutPath, toolchainDir)
 			if bindBuildscript {
-				argv = append(argv, "--bind", buildscript, buildscript)
+				dstbuildscript := buildscript
+				if strings.HasPrefix(buildscript, workDir+"/") {
+					dstbuildscript = strings.Replace(dstbuildscript, workDir, "/home/ding/build/checkout/"+checkoutPath, 1)
+					buildscript = strings.Replace(buildscript, workDir, "/home/ding/build/checkout/"+checkoutPath, 1)
+				}
+				argv = append(argv, "--bind", buildscript, dstbuildscript)
 			}
 		}
 		argv = append(argv, cmdargv...)
