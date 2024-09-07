@@ -197,7 +197,7 @@ echo coverage-report: coverage.txt
 	api.RepoClearHomedir(ctxbg, config.Password, r.Name)
 	api.ClearRepoHomedirs(ctxbg, config.Password)
 
-	_, _, settings := api.Settings(ctxbg, config.Password)
+	_, _, _, settings := api.Settings(ctxbg, config.Password)
 	api.SettingsSave(ctxbg, config.Password, settings)
 
 	api.LogLevel(ctxbg, config.Password)

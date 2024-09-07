@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"strings"
 	"syscall"
 
 	"golang.org/x/sys/unix"
@@ -356,21 +357,87 @@ func doMsgBuild(msg *msgBuild, enc *gob.Encoder, unixconn *net.UnixConn) error {
 		}
 	}()
 
-	outr, outw, err := os.Pipe()
-	xcheckf(err, "create stdout pipe")
-	defer outr.Close()
-	defer outw.Close()
-
-	errr, errw, err := os.Pipe()
-	xcheckf(err, "create stderr pipe")
-	defer errr.Close()
-	defer errw.Close()
+	if config.IsolateBuilds.Enabled && (msg.UID < config.IsolateBuilds.UIDStart || msg.UID >= config.IsolateBuilds.UIDEnd) {
+		return errBadParams
+	}
 
 	buildDir := fmt.Sprintf("%s/build/%s/%d", dingDataDir, msg.RepoName, msg.BuildID)
 	workDir := fmt.Sprintf("%s/checkout/%s", buildDir, msg.CheckoutPath)
 	if path.Clean(buildDir) != buildDir || path.Clean(workDir) != workDir {
 		return errBadParams
 	}
+
+	var buildEnvs [][]string
+	var zt GoToolchains
+	if msg.GoToolchains == zt {
+		buildEnvs = append(buildEnvs, msg.Env)
+	} else {
+		addBuildEnv := func(goversion, goname string) {
+			if goversion == "" {
+				return
+			}
+			slog.Debug("will be building for go toolchain", "repo", msg.RepoName, "goname", goname, "goversion", goversion)
+			env := append([]string{}, msg.Env...)
+			gotoolchainpath := msg.ToolchainDir
+			if msg.Bubblewrap {
+				gotoolchainpath = "/home/ding/toolchain"
+			}
+			gotoolchainpath = path.Join(gotoolchainpath, goname, "bin")
+			var have bool
+			for i, e := range env {
+				if strings.HasPrefix(e, "PATH=") {
+					env[i] = "PATH=" + gotoolchainpath + ":" + strings.TrimPrefix(e, "PATH=")
+					have = true
+					break
+				}
+			}
+			if !have {
+				env = append(env, "PATH="+gotoolchainpath+":/usr/bin:/bin:/usr/local/bin")
+			}
+			env = append(env, "GOTOOLCHAIN="+goversion)
+			env = append(env, "DING_GOTOOLCHAIN="+goname)
+			if msg.NewGoToolchain {
+				env = append(env, "DING_NEWGOTOOLCHAIN=yes")
+			}
+			buildEnvs = append(buildEnvs, env)
+		}
+		addBuildEnv(msg.GoToolchains.Go, "go")
+		addBuildEnv(msg.GoToolchains.GoPrev, "goprev")
+		addBuildEnv(msg.GoToolchains.GoNext, "gonext")
+		if len(buildEnvs) == 0 {
+			return fmt.Errorf("internal error: no go toolchain build envs")
+		}
+	}
+
+	outr, outw, err := os.Pipe()
+	if err != nil {
+		return fmt.Errorf("create stdout pipe: %v", err)
+	}
+
+	errr, errw, err := os.Pipe()
+	if err != nil {
+		outr.Close()
+		outw.Close()
+		return fmt.Errorf("create stderr pipe: %v", err)
+	}
+
+	statusr, statusw, err := os.Pipe()
+	if err != nil {
+		outr.Close()
+		outw.Close()
+		errr.Close()
+		errw.Close()
+		return fmt.Errorf("create status pipe: %v", err)
+	}
+
+	buf := []byte{1}
+	oob := unix.UnixRights(int(outr.Fd()), int(errr.Fd()), int(statusr.Fd()))
+	_, _, err = unixconn.WriteMsgUnix(buf, oob, nil)
+	xcheckf(err, "sending fds from root to http")
+	outr.Close()
+	errr.Close()
+	statusr.Close()
+	needCancel = false
 
 	argv := []string{}
 	envBuildDir := buildDir
@@ -380,49 +447,45 @@ func doMsgBuild(msg *msgBuild, enc *gob.Encoder, unixconn *net.UnixConn) error {
 	}
 	argv = append(argv, msg.RunPrefix...)
 	argv = append(argv, envBuildDir+"/scripts/build.sh")
-	cmd := exec.CommandContext(buildCommand.ctx, argv[0], argv[1:]...)
-	cmd.Dir = workDir
-	cmd.Env = msg.Env
-	cmd.Stdout = outw
-	cmd.Stderr = errw
-	uidgid := ""
-	if config.IsolateBuilds.Enabled {
-		if msg.UID < config.IsolateBuilds.UIDStart || msg.UID >= config.IsolateBuilds.UIDEnd {
-			return errBadParams
-		}
-		uidgid = fmt.Sprintf("%d/%d", msg.UID, config.IsolateBuilds.DingGID)
-		cmd.SysProcAttr = &syscall.SysProcAttr{
-			Credential: &syscall.Credential{
-				Uid:    msg.UID,
-				Gid:    config.IsolateBuilds.DingGID,
-				Groups: []uint32{},
-			},
-		}
-	}
 
-	slog.Debug("running build command", "repo", msg.RepoName, "buildid", msg.BuildID, "builddir", buildDir, "workdir", workDir, "cmd", argv, "uidgid", uidgid)
-
-	err = cmd.Start()
-	if err != nil {
-		return err
-	}
-
-	statusr, statusw, err := os.Pipe()
-	xcheckf(err, "create status pipe")
-
-	buf := []byte{1}
-	oob := unix.UnixRights(int(outr.Fd()), int(errr.Fd()), int(statusr.Fd()))
-	_, _, err = unixconn.WriteMsgUnix(buf, oob, nil)
-	xcheckf(err, "sending fds from root to http")
-	statusr.Close()
-
-	needCancel = false
+	// todo: we are now running each build command in the build step, with one big output. should split them up and show their results separately too. including their own test coverage.
 
 	go func() {
+		defer outw.Close()
+		defer errw.Close()
 		defer statusw.Close()
 		defer buildIDCommandCancel(msg.BuildID)
 
-		err := cmd.Wait()
+		var err error
+		for _, env := range buildEnvs {
+			cmd := exec.CommandContext(buildCommand.ctx, argv[0], argv[1:]...)
+			cmd.Dir = workDir
+			cmd.Env = env
+			cmd.Stdout = outw
+			cmd.Stderr = errw
+			uidgid := ""
+			if config.IsolateBuilds.Enabled {
+				uidgid = fmt.Sprintf("%d/%d", msg.UID, config.IsolateBuilds.DingGID)
+				cmd.SysProcAttr = &syscall.SysProcAttr{
+					Credential: &syscall.Credential{
+						Uid:    msg.UID,
+						Gid:    config.IsolateBuilds.DingGID,
+						Groups: []uint32{},
+					},
+				}
+			}
+
+			slog.Debug("running build command", "repo", msg.RepoName, "buildid", msg.BuildID, "builddir", buildDir, "workdir", workDir, "cmd", argv, "uidgid", uidgid, "env", env)
+
+			if err = cmd.Start(); err != nil {
+				slog.Error("starting command", "err", err)
+				break
+			}
+			if err = cmd.Wait(); err != nil {
+				slog.Error("command result", "err", err)
+				break
+			}
+		}
 		err = gob.NewEncoder(statusw).Encode(errstr(err))
 		xcheckf(err, "writing status to http-serve")
 	}()

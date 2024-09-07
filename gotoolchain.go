@@ -15,6 +15,21 @@ import (
 	"github.com/mjl-/goreleases"
 )
 
+// GoToolchains lists the active current, previous and next versions of the Go
+// toolchain, as symlinked in $DING_TOOLCHAINDIR.
+type GoToolchains struct {
+	Go     string
+	GoPrev string
+	GoNext string
+}
+
+func activeGoToolchains() (active GoToolchains) {
+	active.Go, _ = os.Readlink(path.Join(config.GoToolchainDir, "go"))
+	active.GoPrev, _ = os.Readlink(path.Join(config.GoToolchainDir, "goprev"))
+	active.GoNext, _ = os.Readlink(path.Join(config.GoToolchainDir, "gonext"))
+	return
+}
+
 func installGoToolchain(file goreleases.File, shortname string) error {
 	slog.Debug("installing go toolchain", "filename", file.Filename)
 
@@ -49,7 +64,7 @@ func installGoToolchain(file goreleases.File, shortname string) error {
 	}
 
 	switch shortname {
-	case "go", "go-prev", "go-next":
+	case "go", "goprev", "gonext":
 		err := makeToolchainSymlink(file.Version, shortname, perms)
 		if err != nil {
 			return fmt.Errorf("activating toolchain under shortname: %v", err)
@@ -107,10 +122,7 @@ func removeGoToolchain(goversion string) error {
 	}
 
 	// Remove well-known symlinks that point to the toolchain that will be removed.
-	var active GoToolchains
-	active.Go, _ = os.Readlink(path.Join(config.GoToolchainDir, "go"))
-	active.GoPrev, _ = os.Readlink(path.Join(config.GoToolchainDir, "go-prev"))
-	active.GoNext, _ = os.Readlink(path.Join(config.GoToolchainDir, "go-next"))
+	active := activeGoToolchains()
 	removeLink := func(short, v string) {
 		if v == goversion {
 			if err := os.Remove(path.Join(config.GoToolchainDir, short)); err != nil {
@@ -119,8 +131,8 @@ func removeGoToolchain(goversion string) error {
 		}
 	}
 	removeLink("go", active.Go)
-	removeLink("go-prev", active.GoPrev)
-	removeLink("go-next", active.GoNext)
+	removeLink("goprev", active.GoPrev)
+	removeLink("gonext", active.GoNext)
 
 	return os.RemoveAll(path.Join(config.GoToolchainDir, goversion))
 }
@@ -136,7 +148,7 @@ func activateGoToolchain(goversion, shortname string) error {
 		return fmt.Errorf("bad goversion")
 	}
 	switch shortname {
-	case "go", "go-prev", "go-next":
+	case "go", "goprev", "gonext":
 	default:
 		return fmt.Errorf("bad shortname")
 	}
@@ -176,10 +188,7 @@ func makeToolchainSymlink(goversion, shortname string, perms *goreleases.Permiss
 
 func automaticGoToolchain() (updated bool, rerr error) {
 	// Current Go toolchains.
-	var active GoToolchains
-	active.Go, _ = os.Readlink(path.Join(config.GoToolchainDir, "go"))
-	active.GoPrev, _ = os.Readlink(path.Join(config.GoToolchainDir, "go-prev"))
-	active.GoNext, _ = os.Readlink(path.Join(config.GoToolchainDir, "go-next"))
+	active := activeGoToolchains()
 
 	// todo: ideally get signal in a cheaper way. the full releases json is over one megabyte of json data.
 	releases, err := goreleases.ListAll()
@@ -346,16 +355,16 @@ func automaticGoToolchain() (updated bool, rerr error) {
 	if err := makeToolchainSymlink(gocur.rel.Version, "go", perms); err != nil {
 		return false, err
 	}
-	if err := makeToolchainSymlink(goprev.rel.Version, "go-prev", perms); err != nil {
+	if err := makeToolchainSymlink(goprev.rel.Version, "goprev", perms); err != nil {
 		return false, err
 	}
 	if gonext != nil {
-		if err := makeToolchainSymlink(gonext.rel.Version, "go-next", perms); err != nil {
+		if err := makeToolchainSymlink(gonext.rel.Version, "gonext", perms); err != nil {
 			return false, err
 		}
 	} else {
-		if err := os.Remove(path.Join(config.GoToolchainDir, "go-next")); err != nil {
-			slog.Error("removing go-next symlink", "err", err)
+		if err := os.Remove(path.Join(config.GoToolchainDir, "gonext")); err != nil {
+			slog.Error("removing gonext symlink", "err", err)
 		}
 	}
 

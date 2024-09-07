@@ -64,9 +64,50 @@ func buildIDCommandCancel(buildID int32) {
 	}
 }
 
-func _prepareBuild(ctx context.Context, repoName, branch, commit string, lowPrio bool) (repo Repo, build Build, buildDir string) {
+func repoGoToolchains(repo Repo) (GoToolchains, error) {
+	var tc GoToolchains
+	if repo.GoAuto {
+		if config.GoToolchainDir == "" {
+			return tc, fmt.Errorf("config.GoToolchainDir not set")
+		}
+		tc = activeGoToolchains()
+		var zt GoToolchains
+		if tc == zt {
+			return tc, fmt.Errorf("no go toolchains available")
+		}
+	} else if repo.GoCur || repo.GoPrev || repo.GoNext {
+		if config.GoToolchainDir == "" {
+			return tc, fmt.Errorf("config.GoToolchainDir not set")
+		}
+		get := func(use bool, goname string, goversion string) (string, error) {
+			if use && goversion == "" {
+				return "", fmt.Errorf("toolchain for %q not available", goname)
+			}
+			if use {
+				return goversion, nil
+			}
+			return "", nil
+		}
+		active := activeGoToolchains()
+		var err error
+		if tc.Go, err = get(repo.GoCur, "go", active.Go); err != nil {
+			return tc, err
+		}
+		if tc.GoPrev, err = get(repo.GoPrev, "goprev", active.GoPrev); err != nil {
+			return tc, err
+		}
+		tc.GoNext = active.GoNext
+	}
+	return tc, nil
+}
+
+func _prepareBuild(ctx context.Context, repoName, branch, commit string, lowPrio bool) (repo Repo, build Build, buildDir string, gotoolchains GoToolchains) {
 	_dbwrite(ctx, func(tx *bstore.Tx) {
 		repo = _repo(tx, repoName)
+
+		var err error
+		gotoolchains, err = repoGoToolchains(repo)
+		_checkf(err, "get go toolchains to build for")
 
 		b := Build{
 			RepoName:    repo.Name,
@@ -76,7 +117,7 @@ func _prepareBuild(ctx context.Context, repoName, branch, commit string, lowPrio
 			LowPrio:     lowPrio,
 			BuildScript: repo.BuildScript,
 		}
-		err := tx.Insert(&b)
+		err = tx.Insert(&b)
 		_checkf(err, "inserting new build into database")
 
 		buildDir = fmt.Sprintf("%s/build/%s/%d", dingDataDir, repo.Name, b.ID)
@@ -123,7 +164,7 @@ func _writeFile(path, content string) {
 	_checkf(err, "writing file")
 }
 
-func prepareBuild(ctx context.Context, repoName, branch, commit string, lowPrio bool) (repo Repo, build Build, buildDir string, err error) {
+func prepareBuild(ctx context.Context, repoName, branch, commit string, lowPrio bool) (repo Repo, build Build, buildDir string, gotoolchains GoToolchains, err error) {
 	if branch == "" {
 		err = fmt.Errorf("branch cannot be empty")
 		return
@@ -137,11 +178,11 @@ func prepareBuild(ctx context.Context, repoName, branch, commit string, lowPrio 
 			}
 		}
 	}()
-	repo, build, buildDir = _prepareBuild(ctx, repoName, branch, commit, lowPrio)
-	return repo, build, buildDir, nil
+	repo, build, buildDir, gotoolchains = _prepareBuild(ctx, repoName, branch, commit, lowPrio)
+	return repo, build, buildDir, gotoolchains, nil
 }
 
-func doBuild(ctx context.Context, repo Repo, build Build, buildDir string) (rerr error) {
+func doBuild(ctx context.Context, repo Repo, build Build, buildDir string, gotoolchains GoToolchains, newGoToolchain bool) (rerr error) {
 	defer func() {
 		if x := recover(); x != nil {
 			if err, ok := x.(*sherpa.Error); ok {
@@ -151,11 +192,11 @@ func doBuild(ctx context.Context, repo Repo, build Build, buildDir string) (rerr
 			}
 		}
 	}()
-	_doBuild(ctx, repo, build, buildDir)
+	_doBuild(ctx, repo, build, buildDir, gotoolchains, newGoToolchain)
 	return nil
 }
 
-func _doBuild(ctx context.Context, repo Repo, build Build, buildDir string) {
+func _doBuild(ctx context.Context, repo Repo, build Build, buildDir string, gotoolchains GoToolchains, newGoToolchain bool) {
 	job := job{
 		repo.Name,
 		build.LowPrio,
@@ -166,10 +207,10 @@ func _doBuild(ctx context.Context, repo Repo, build Build, buildDir string) {
 	defer func() {
 		finishedJobs <- job.repoName
 	}()
-	_doBuild0(ctx, repo, build, buildDir)
+	_doBuild0(ctx, repo, build, buildDir, gotoolchains, newGoToolchain)
 }
 
-func _doBuild0(ctx context.Context, repo Repo, build Build, buildDir string) {
+func _doBuild0(ctx context.Context, repo Repo, build Build, buildDir string, gotoolchains GoToolchains, newGoToolchain bool) {
 	slog.Debug("building", "repo", repo.Name, "buildid", build.ID)
 
 	buildCmd := buildIDCommandRegister(build.ID)
@@ -446,7 +487,7 @@ func _doBuild0(ctx context.Context, repo Repo, build Build, buildDir string) {
 
 	_updateStatus(StatusBuild, false)
 	req := request{
-		msg{Build: &msgBuild{repo.Name, build.ID, uid, repo.CheckoutPath, settings.RunPrefix, env, toolchainDir, homeDir, repo.Bubblewrap, repo.BubblewrapNoNet}},
+		msg{Build: &msgBuild{repo.Name, build.ID, uid, repo.CheckoutPath, settings.RunPrefix, env, toolchainDir, homeDir, repo.Bubblewrap, repo.BubblewrapNoNet, gotoolchains, newGoToolchain}},
 		nil,
 		make(chan buildResult),
 	}

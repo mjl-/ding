@@ -266,7 +266,7 @@ var api;
 		"Result": { "Name": "Result", "Docs": "", "Fields": [{ "Name": "Command", "Docs": "", "Typewords": ["string"] }, { "Name": "Os", "Docs": "", "Typewords": ["string"] }, { "Name": "Arch", "Docs": "", "Typewords": ["string"] }, { "Name": "Toolchain", "Docs": "", "Typewords": ["string"] }, { "Name": "Filename", "Docs": "", "Typewords": ["string"] }, { "Name": "Filesize", "Docs": "", "Typewords": ["int64"] }] },
 		"Step": { "Name": "Step", "Docs": "", "Fields": [{ "Name": "Name", "Docs": "", "Typewords": ["string"] }, { "Name": "Output", "Docs": "", "Typewords": ["string"] }, { "Name": "Nsec", "Docs": "", "Typewords": ["int64"] }] },
 		"RepoBuilds": { "Name": "RepoBuilds", "Docs": "", "Fields": [{ "Name": "Repo", "Docs": "", "Typewords": ["Repo"] }, { "Name": "Builds", "Docs": "", "Typewords": ["[]", "Build"] }] },
-		"Repo": { "Name": "Repo", "Docs": "", "Fields": [{ "Name": "Name", "Docs": "", "Typewords": ["string"] }, { "Name": "VCS", "Docs": "", "Typewords": ["VCS"] }, { "Name": "Origin", "Docs": "", "Typewords": ["string"] }, { "Name": "DefaultBranch", "Docs": "", "Typewords": ["string"] }, { "Name": "CheckoutPath", "Docs": "", "Typewords": ["string"] }, { "Name": "BuildScript", "Docs": "", "Typewords": ["string"] }, { "Name": "UID", "Docs": "", "Typewords": ["nullable", "uint32"] }, { "Name": "HomeDiskUsage", "Docs": "", "Typewords": ["int64"] }, { "Name": "WebhookSecret", "Docs": "", "Typewords": ["string"] }, { "Name": "AllowGlobalWebhookSecrets", "Docs": "", "Typewords": ["bool"] }, { "Name": "Bubblewrap", "Docs": "", "Typewords": ["bool"] }, { "Name": "BubblewrapNoNet", "Docs": "", "Typewords": ["bool"] }, { "Name": "NotifyEmailAddrs", "Docs": "", "Typewords": ["[]", "string"] }, { "Name": "BuildOnUpdatedToolchain", "Docs": "", "Typewords": ["bool"] }] },
+		"Repo": { "Name": "Repo", "Docs": "", "Fields": [{ "Name": "Name", "Docs": "", "Typewords": ["string"] }, { "Name": "VCS", "Docs": "", "Typewords": ["VCS"] }, { "Name": "Origin", "Docs": "", "Typewords": ["string"] }, { "Name": "DefaultBranch", "Docs": "", "Typewords": ["string"] }, { "Name": "CheckoutPath", "Docs": "", "Typewords": ["string"] }, { "Name": "BuildScript", "Docs": "", "Typewords": ["string"] }, { "Name": "UID", "Docs": "", "Typewords": ["nullable", "uint32"] }, { "Name": "HomeDiskUsage", "Docs": "", "Typewords": ["int64"] }, { "Name": "WebhookSecret", "Docs": "", "Typewords": ["string"] }, { "Name": "AllowGlobalWebhookSecrets", "Docs": "", "Typewords": ["bool"] }, { "Name": "GoAuto", "Docs": "", "Typewords": ["bool"] }, { "Name": "GoCur", "Docs": "", "Typewords": ["bool"] }, { "Name": "GoPrev", "Docs": "", "Typewords": ["bool"] }, { "Name": "GoNext", "Docs": "", "Typewords": ["bool"] }, { "Name": "Bubblewrap", "Docs": "", "Typewords": ["bool"] }, { "Name": "BubblewrapNoNet", "Docs": "", "Typewords": ["bool"] }, { "Name": "NotifyEmailAddrs", "Docs": "", "Typewords": ["[]", "string"] }, { "Name": "BuildOnUpdatedToolchain", "Docs": "", "Typewords": ["bool"] }] },
 		"GoToolchains": { "Name": "GoToolchains", "Docs": "", "Fields": [{ "Name": "Go", "Docs": "", "Typewords": ["string"] }, { "Name": "GoPrev", "Docs": "", "Typewords": ["string"] }, { "Name": "GoNext", "Docs": "", "Typewords": ["string"] }] },
 		"Settings": { "Name": "Settings", "Docs": "", "Fields": [{ "Name": "ID", "Docs": "", "Typewords": ["int32"] }, { "Name": "NotifyEmailAddrs", "Docs": "", "Typewords": ["[]", "string"] }, { "Name": "GithubWebhookSecret", "Docs": "", "Typewords": ["string"] }, { "Name": "GiteaWebhookSecret", "Docs": "", "Typewords": ["string"] }, { "Name": "BitbucketWebhookSecret", "Docs": "", "Typewords": ["string"] }, { "Name": "RunPrefix", "Docs": "", "Typewords": ["[]", "string"] }, { "Name": "Environment", "Docs": "", "Typewords": ["[]", "string"] }, { "Name": "AutomaticGoToolchains", "Docs": "", "Typewords": ["bool"] }] },
 		"BuildStatus": { "Name": "BuildStatus", "Docs": "", "Values": [{ "Name": "StatusNew", "Value": "new", "Docs": "" }, { "Name": "StatusClone", "Value": "clone", "Docs": "" }, { "Name": "StatusBuild", "Value": "build", "Docs": "" }, { "Name": "StatusSuccess", "Value": "success", "Docs": "" }, { "Name": "StatusCancelled", "Value": "cancelled", "Docs": "" }] },
@@ -483,7 +483,7 @@ var api;
 		}
 		// GoToolchainsListInstalled returns the installed Go toolchains (eg "go1.13.8",
 		// "go1.14") in GoToolchainDir, and current "active" versions with a shortname, eg
-		// "go" as "go1.14", "go-prev" as "go1.13.8" and "go-next" as "go1.23rc1".
+		// "go" as "go1.14", "goprev" as "go1.13.8" and "gonext" as "go1.23rc1".
 		async GoToolchainsListInstalled(password) {
 			const fn = "GoToolchainsListInstalled";
 			const paramTypes = [["string"]];
@@ -502,7 +502,7 @@ var api;
 		}
 		// GoToolchainInstall downloads, verifies and extracts the release Go toolchain
 		// represented by goversion (eg "go1.13.8", "go1.14") into the GoToolchainDir, and
-		// optionally "activates" the version under shortname ("go", "go-prev", "go-next", ""; empty
+		// optionally "activates" the version under shortname ("go", "goprev", "gonext", ""; empty
 		// string does nothing).
 		async GoToolchainInstall(password, goversion, shortname) {
 			const fn = "GoToolchainInstall";
@@ -521,7 +521,7 @@ var api;
 			return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params);
 		}
 		// GoToolchainActivate activates goversion (eg "go1.13.8", "go1.14") under the name
-		// shortname ("go", "go-prev" or "go-next"), by creating a symlink in the GoToolchainDir.
+		// shortname ("go", "goprev" or "gonext"), by creating a symlink in the GoToolchainDir.
 		async GoToolchainActivate(password, goversion, shortname) {
 			const fn = "GoToolchainActivate";
 			const paramTypes = [["string"], ["string"], ["string"]];
@@ -560,7 +560,7 @@ var api;
 		async Settings(password) {
 			const fn = "Settings";
 			const paramTypes = [["string"]];
-			const returnTypes = [["bool"], ["bool"], ["Settings"]];
+			const returnTypes = [["bool"], ["bool"], ["bool"], ["Settings"]];
 			const params = [password];
 			return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params);
 		}
@@ -1251,7 +1251,7 @@ const popupOpts = (opaque, ...kids) => {
 	return close;
 };
 const popup = (...kids) => popupOpts(false, ...kids);
-const popupRepoAdd = async (haveBubblewrap) => {
+const popupRepoAdd = async (haveBubblewrap, haveGoToolchainDir) => {
 	let vcs;
 	let origin;
 	let originBox;
@@ -1263,6 +1263,10 @@ const popupRepoAdd = async (haveBubblewrap) => {
 	let bubblewrap;
 	let bubblewrapNoNet;
 	let buildOnUpdatedToolchain;
+	let goauto;
+	let gocur;
+	let goprev;
+	let gonext;
 	let fieldset;
 	let branchChanged = false;
 	let nameChanged = false;
@@ -1308,6 +1312,10 @@ const popupRepoAdd = async (haveBubblewrap) => {
 			AllowGlobalWebhookSecrets: false,
 			BuildScript: '',
 			HomeDiskUsage: 0,
+			GoAuto: goauto.checked,
+			GoCur: gocur.checked,
+			GoPrev: goprev.checked,
+			GoNext: gonext.checked,
 		};
 		const r = await authed(() => client.RepoCreate(password, repo), fieldset);
 		location.hash = '#repo/' + encodeURIComponent(r.Name);
@@ -1320,7 +1328,13 @@ const popupRepoAdd = async (haveBubblewrap) => {
 		let s = t[t.length - 1] || t[t.length - 2] || '';
 		s = s.replace(/\.git$/, '');
 		name.value = s;
-	})), 'Name', name = dom.input(attr.required(''), function change() { nameChanged = true; }), dom.div('Default branch', style({ whiteSpace: 'nowrap' })), defaultBranch = dom.input(attr.value('main'), attr.placeholder('main, master, default'), function change() { branchChanged = true; }), dom.div(), dom.label(reuseUID = dom.input(attr.type('checkbox'), attr.checked('')), ' Reuse $HOME and UID for builds for this repo', attr.title('By reusing $HOME and running builds for this repository under the same UID, build caches can be used. This typically leads to faster builds but reduces isolation of builds.')), dom.div(), dom.label(bubblewrap = dom.input(attr.type('checkbox'), haveBubblewrap ? attr.checked('') : []), ' Run build script in bubblewrap, with limited system access', attr.title('Only available on Linux, with bubblewrap (bwrap) installed. Commands are run in a new mount namespace with access to system directories like /bin /lib /usr, and to the ding build, home and toolchain directories.')), dom.div(), dom.label(bubblewrapNoNet = dom.input(attr.type('checkbox'), haveBubblewrap ? attr.checked('') : []), ' Prevent network access from build script. Only active if bubblewrap is active.', attr.title('Hide network interfaces from the build script. Only a loopback device is available.')), dom.div(), dom.label(buildOnUpdatedToolchain = dom.input(attr.type('checkbox'), attr.checked('')), ' Schedule a low-priority build when new toolchains are automatically installed.')), dom.br(), dom.p('The build script can be configured after creating.'), dom.div(style({ textAlign: 'right' }), dom.submitbutton('Add')))));
+	})), 'Name', name = dom.input(attr.required(''), function change() { nameChanged = true; }), dom.div('Default branch', style({ whiteSpace: 'nowrap' })), defaultBranch = dom.input(attr.value('main'), attr.placeholder('main, master, default'), function change() { branchChanged = true; }), dom.div(), dom.label(reuseUID = dom.input(attr.type('checkbox'), attr.checked('')), ' Reuse $HOME and UID for builds for this repo', attr.title('By reusing $HOME and running builds for this repository under the same UID, build caches can be used. This typically leads to faster builds but reduces isolation of builds.')), dom.div(), dom.label(bubblewrap = dom.input(attr.type('checkbox'), haveBubblewrap ? attr.checked('') : []), ' Run build script in bubblewrap, with limited system access', attr.title('Only available on Linux, with bubblewrap (bwrap) installed. Commands are run in a new mount namespace with access to system directories like /bin /lib /usr, and to the ding build, home and toolchain directories.')), dom.div(), dom.label(bubblewrapNoNet = dom.input(attr.type('checkbox'), haveBubblewrap ? attr.checked('') : []), ' Prevent network access from build script. Only active if bubblewrap is active.', attr.title('Hide network interfaces from the build script. Only a loopback device is available.')), dom.div('Build for Go toolchains', style({ whiteSpace: 'nowrap' }), attr.title('The build script will be run for each of the selected Go toolchains. The short name (go, goprev, gonext) is set in $DING_GOTOOLCHAIN. If this build was triggered due to a new Go toolchain being installed, the variable $DING_NEWGOTOOLCHAIN is set.')), dom.div(dom.label(goauto = dom.input(attr.type('checkbox'), haveGoToolchainDir ? attr.checked('') : '', function change() {
+		if (goauto.checked) {
+			gocur.checked = false;
+			goprev.checked = false;
+			gonext.checked = false;
+		}
+	}), ' Automatic', attr.title('Build for each of the available Go toolchains, go/goprev/gonext. At least one must be found or the build will fail.')), ' ', dom.label(gocur = dom.input(attr.type('checkbox'), function change() { goauto.checked = false; }), ' Go latest', attr.title('Latest patch version of latest stable Go toolchain version.')), ' ', dom.label(goprev = dom.input(attr.type('checkbox'), function change() { goauto.checked = false; }), ' Go previous', attr.title('Latest patch version of Go toolchain minor version before the latest stable.')), ' ', dom.label(gonext = dom.input(attr.type('checkbox'), function change() { goauto.checked = false; }), ' Go next', attr.title('Release candidate of Go toolchain, if available.')), ' '), dom.div(), dom.label(buildOnUpdatedToolchain = dom.input(attr.type('checkbox'), attr.checked('')), ' Schedule a low-priority build when new toolchains are automatically installed.')), dom.br(), dom.p('The build script can be configured after creating.'), dom.div(style({ textAlign: 'right' }), dom.submitbutton('Add')))));
 	originInput.focus();
 };
 const pageHome = async () => {
@@ -1348,8 +1362,9 @@ const pageHome = async () => {
 	const atexit = page.newAtexit();
 	const render = () => {
 		atexit.run();
-		dom._kids(pageElem, dom.div(style({ marginBottom: '1ex' }), link('#gotoolchains', 'Go Toolchains'), ' ', link('#settings', 'Settings'), ' '), dom.div(dom.clickbutton('Add repo', attr.title('Add new repository, to build.'), function click() {
-			popupRepoAdd(haveBubblewrap);
+		dom._kids(pageElem, dom.div(style({ marginBottom: '1ex' }), link('#gotoolchains', 'Go Toolchains'), ' ', link('#settings', 'Settings'), ' '), dom.div(dom.clickbutton('Add repo', attr.title('Add new repository, to build.'), async function click() {
+			const [, , haveGoToolchainDir] = await authed(() => client.Settings(password));
+			popupRepoAdd(haveBubblewrap, haveGoToolchainDir);
 		}), ' ', dom.clickbutton('Clear homedirs', attr.title('Remove home directories for all repositories that reuse home directories across builds. Cache in such directories can grow over time, consuming quite some disk space.'), async function click(e) {
 			if (!confirm('Are you sure?')) {
 				return;
@@ -1441,7 +1456,7 @@ const pageGoToolchains = async () => {
 		let gocur;
 		let goprev;
 		let gonext;
-		dom._kids(pageElem, dom.p('Go toolchains can easily be installed in the toolchains directory set in the configuration file. Build scripts can add $DING_TOOLCHAINDIR/<goversion>/bin to their $PATH.'), dom.h1('Current and previous Go toolchains'), dom.p('The current/previous/next (release candidate) Go toolchains are available through $DING_TOOLCHAINDIR/{go,go-prev,go-next}/bin.'), dom.table(dom.tr(dom.td('Current'), dom.td(dom.form(async function submit(e) {
+		dom._kids(pageElem, dom.p('Go toolchains can easily be installed in the toolchains directory set in the configuration file. Build scripts can add $DING_TOOLCHAINDIR/<goversion>/bin to their $PATH.'), dom.h1('Current and previous Go toolchains'), dom.p('The current/previous/next (release candidate) Go toolchains are available through $DING_TOOLCHAINDIR/{go,goprev,gonext}/bin.'), dom.table(dom.tr(dom.td('Current'), dom.td(dom.form(async function submit(e) {
 			e.stopPropagation();
 			e.preventDefault();
 			await authed(() => client.GoToolchainActivate(password, gocur.value, 'go'));
@@ -1450,16 +1465,16 @@ const pageGoToolchains = async () => {
 		}, dom.fieldset(gocur = dom.select(dom.option('(none)', attr.value('')), installed.map(s => dom.option(s, active.Go === s ? attr.selected('') : []))), ' ', dom.submitbutton('Set', attr.title('Set Go toolchain as "go"')))))), dom.tr(dom.td('Previous'), dom.td(dom.form(async function submit(e) {
 			e.stopPropagation();
 			e.preventDefault();
-			await authed(() => client.GoToolchainActivate(password, goprev.value, 'go-prev'));
+			await authed(() => client.GoToolchainActivate(password, goprev.value, 'goprev'));
 			active.GoPrev = goprev.value;
 			render();
-		}, dom.fieldset(goprev = dom.select(dom.option('(none)', attr.value('')), installed.map(s => dom.option(s, active.GoPrev === s ? attr.selected('') : []))), ' ', dom.submitbutton('Set', attr.title('Set Go toolchain as "go-prev"')))))), dom.tr(dom.td('Next'), dom.td(dom.form(async function submit(e) {
+		}, dom.fieldset(goprev = dom.select(dom.option('(none)', attr.value('')), installed.map(s => dom.option(s, active.GoPrev === s ? attr.selected('') : []))), ' ', dom.submitbutton('Set', attr.title('Set Go toolchain as "goprev"')))))), dom.tr(dom.td('Next'), dom.td(dom.form(async function submit(e) {
 			e.stopPropagation();
 			e.preventDefault();
-			await authed(() => client.GoToolchainActivate(password, gonext.value, 'go-next'));
+			await authed(() => client.GoToolchainActivate(password, gonext.value, 'gonext'));
 			active.GoNext = gonext.value;
 			render();
-		}, dom.fieldset(gonext = dom.select(dom.option('(none)', attr.value('')), installed.map(s => dom.option(s, active.GoNext === s ? attr.selected('') : []))), ' ', dom.submitbutton('Set', attr.title('Set Go toolchain as "go-next"'))))))), dom.br(), dom.div(dom.clickbutton('Automatically update toolchains', attr.title('If new toolchains are installed, low prio builds are automatically scheduled for repositories that have opted in.'), async function click(e) {
+		}, dom.fieldset(gonext = dom.select(dom.option('(none)', attr.value('')), installed.map(s => dom.option(s, active.GoNext === s ? attr.selected('') : []))), ' ', dom.submitbutton('Set', attr.title('Set Go toolchain as "gonext"'))))))), dom.br(), dom.div(dom.clickbutton('Automatically update toolchains', attr.title('If new toolchains are installed, low prio builds are automatically scheduled for repositories that have opted in.'), async function click(e) {
 			await authed(() => client.GoToolchainAutomatic(password), e.target);
 			const [available0, [installed0, active0]] = await authed(() => Promise.all([
 				client.GoToolchainsListReleased(password),
@@ -1487,7 +1502,7 @@ const pageGoToolchains = async () => {
 };
 const pageSettings = async () => {
 	const page = new Page();
-	const [loglevel, [isolationEnabled, mailEnabled, settings]] = await authed(() => Promise.all([
+	const [loglevel, [isolationEnabled, mailEnabled, haveGoToolchainDir, settings]] = await authed(() => Promise.all([
 		client.LogLevel(password),
 		client.Settings(password),
 	]));
@@ -1523,7 +1538,7 @@ const pageSettings = async () => {
 	// autocomplete=off seems to be ignored by firefox, which also isn't smart enough
 	// to realize it doesn't make sense to store a password when there are 3 present in
 	// a form...
-	attr.autocomplete('off'), fieldset = dom.fieldset(dom.div(style({ display: 'grid', columnGap: '1em', rowGap: '.5ex', gridTemplateColumns: 'min-content 1fr', alignItems: 'top', maxWidth: '50em' }), dom.div('Notify email addresses', style({ whiteSpace: 'nowrap' }), attr.title('Comma-separated list of email address that will receive notifications when a build breaks or is fixed and a repository does not have its own addresses to notify configured.')), notifyEmailAddrs = dom.input(attr.value((settings.NotifyEmailAddrs || []).join(', ')), attr.placeholder('user@example.org, other@example.org')), dom.div('Clone and build command prefix', style({ whiteSpace: 'nowrap' }), attr.title('Can be used to run at lower priority and with timeout, e.g. "nice ionice -c 3 timeout 300s"')), runPrefix = dom.input(attr.value((settings.RunPrefix || []).join(' '))), dom.div('Additional environment variables', style({ whiteSpace: 'nowrap' }), attr.title('Of the form key=value, one per line.')), environment = dom.textarea((settings.Environment || []).map(s => s + '\n').join(''), attr.placeholder('key=value\nkey=value\n...'), attr.rows('' + Math.max(8, (settings.Environment || []).length + 1))), dom.div(), dom.label(automaticGoToolchains = dom.input(attr.type('checkbox'), settings.AutomaticGoToolchains ? attr.checked('') : []), ' Automatic Go toolchain management', attr.title('Check once per day if new Go toolchains have been released, and automatically install them and update the go/go-prev/go-next symlinks, and schedule low priority builds for repositories that have opted in.')), dom.div(style({ gridColumn: '1 / 3' }), 'Global webhook secrets (deprecated)', dom.p('For new repositories, unique webhooks are assigned to each repository. While global secrets are still configured, they will be accepted to start builds on all older repositories.')), dom.div('Github webhook secret', style({ whiteSpace: 'nowrap' })), githubSecret = dom.input(attr.value(settings.GithubWebhookSecret), attr.type('password'), attr.autocomplete('off')), dom.div('Gitea webhook secret', style({ whiteSpace: 'nowrap' })), giteaSecret = dom.input(attr.value(settings.GiteaWebhookSecret), attr.type('password'), attr.autocomplete('off')), dom.div('Bitbucket webhook secret', style({ whiteSpace: 'nowrap' })), bitbucketSecret = dom.input(attr.value(settings.BitbucketWebhookSecret), attr.type('password'), attr.autocomplete('off'))), dom.br(), dom.submitbutton('Save'))));
+	attr.autocomplete('off'), fieldset = dom.fieldset(dom.div(style({ display: 'grid', columnGap: '1em', rowGap: '.5ex', gridTemplateColumns: 'min-content 1fr', alignItems: 'top', maxWidth: '50em' }), dom.div('Notify email addresses', style({ whiteSpace: 'nowrap' }), attr.title('Comma-separated list of email address that will receive notifications when a build breaks or is fixed and a repository does not have its own addresses to notify configured.')), notifyEmailAddrs = dom.input(attr.value((settings.NotifyEmailAddrs || []).join(', ')), attr.placeholder('user@example.org, other@example.org')), dom.div('Clone and build command prefix', style({ whiteSpace: 'nowrap' }), attr.title('Can be used to run at lower priority and with timeout, e.g. "nice ionice -c 3 timeout 300s"')), runPrefix = dom.input(attr.value((settings.RunPrefix || []).join(' '))), dom.div('Additional environment variables', style({ whiteSpace: 'nowrap' }), attr.title('Of the form key=value, one per line.')), environment = dom.textarea((settings.Environment || []).map(s => s + '\n').join(''), attr.placeholder('key=value\nkey=value\n...'), attr.rows('' + Math.max(8, (settings.Environment || []).length + 1))), dom.div(), dom.label(automaticGoToolchains = dom.input(attr.type('checkbox'), settings.AutomaticGoToolchains ? attr.checked('') : []), ' Automatic Go toolchain management', attr.title('Check once per day if new Go toolchains have been released, and automatically install them and update the go/goprev/gonext symlinks, and schedule low priority builds for repositories that have opted in.' + !haveGoToolchainDir ? ' Warning: No Go toolchain directory is configured in the configuration file.' : '')), dom.div(style({ gridColumn: '1 / 3' }), 'Global webhook secrets (deprecated)', dom.p('For new repositories, unique webhooks are assigned to each repository. While global secrets are still configured, they will be accepted to start builds on all older repositories.')), dom.div('Github webhook secret', style({ whiteSpace: 'nowrap' })), githubSecret = dom.input(attr.value(settings.GithubWebhookSecret), attr.type('password'), attr.autocomplete('off')), dom.div('Gitea webhook secret', style({ whiteSpace: 'nowrap' })), giteaSecret = dom.input(attr.value(settings.GiteaWebhookSecret), attr.type('password'), attr.autocomplete('off')), dom.div('Bitbucket webhook secret', style({ whiteSpace: 'nowrap' })), bitbucketSecret = dom.input(attr.value(settings.BitbucketWebhookSecret), attr.type('password'), attr.autocomplete('off'))), dom.br(), dom.submitbutton('Save'))));
 	return page;
 };
 const pageDocs = async () => {
@@ -1549,7 +1564,16 @@ data/
 	return page;
 };
 const docsBuildScript = () => {
-	return dom.div(dom.h1('Build script environment'), dom.p('The build script is run in a clean environment. It should exit with status 0 only when successful. Patterns in the output indicate where build results can be found, such as files and test coverage, see below.'), dom.p('The working directory is set to $DING_BUILDDIR/checkout/$DING_CHECKOUTPATH.'), dom.h2('Example'), dom.pre(`#!/usr/bin/env bash
+	return dom.div(dom.h1('Build script environment'), dom.p('The build script is run in a clean environment. It should exit with status 0 only when successful. Patterns in the output indicate where build results can be found, such as files and test coverage, see below.'), dom.p('The working directory is set to $DING_BUILDDIR/checkout/$DING_CHECKOUTPATH.'), dom.h2('Example'), dom.h3('Basic'), dom.p('Basic build for building ding from github, using the "Build for Go toolchain" setting.'), dom.pre(`#!/usr/bin/env bash
+set -eu
+export CGO_ENABLED=0
+export GOFLAGS="-trimpath -mod=vendor"
+go build
+go vet
+go test -cover
+echo version: $(git describe --tag)
+echo release: ding linux amd64 $GOTOOLCHAIN ding
+`), dom.br(), dom.h3('More elaborate example'), dom.p('This script has comments, and builds release files for multiple architectures, but only for the current Go toolchain version. Assumed to be run with the "Build for Go toolchains" setting.'), dom.pre(`#!/usr/bin/env bash
 set -x # Print commands executed.
 set -e # Stop executing script when a command fails.
 set -u # Fail when using undefined variables.
@@ -1571,54 +1595,46 @@ version=$(git describe --always)
 # Version to be picked up by ding.
 echo version: $version
 
+goversion=$(go version | cut -f3 -d' ')
+
 function build() {
-	godir=$1
-	export PATH=$DING_TOOLCHAINDIR/$godir/bin:$PATH
+	goos=$1
+	goarch=$2
 
-	goversion=$(go version | cut -f3 -d' ')
+	# Build the binary.
+	suffix=''
+	if test $goos = 'windows'; then
+		suffix=.exe
+	fi
+	GOOS=$goos GOARCH=$goarch go build -o $DING_REPONAME-$version-$goos-$goarch-$GOTOOLCHAIN$suffix
 
-	function result() {
-		goos=$1
-		goarch=$2
-
-		# Build the binary.
-		suffix=''
-		if test $goos = 'windows'; then
-			suffix=.exe
-		fi
-		GOOS=$goos GOARCH=$goarch go build -o $name-$version-$goos-$goarch-$goversion$suffix
-
-		# Tell ding about a result file.
-		echo release: $name $goos $goarch $goversion $name-$version-$goos-$goarch-$goversion$suffix
-	}
-
-	# Build for linux/amd64, linux/386, ...
-	result linux amd64
-	result linux 386
-
-	go vet
-
-	# Run tests, and modify output so ding can pick up the coverage result.
-	go test -shuffle=on -coverprofile cover.out
-	go tool cover -html=cover.out -o $DING_DOWNLOADDIR/cover.html
-	echo coverage-report: cover.html
-
-	# Reformat code, require versioned files did not change.
-	go fmt ./...
-	git diff --exit-code
+	# Tell ding about a result file.
+	echo release: $DING_REPONAME $goos $goarch $GOTOOLCHAIN $DING_REPONAME-$version-$goos-$goarch-$GOTOOLCHAIN$suffix
 }
 
-# Build for current Go version, and previous, and optional next (release candidate).
-build go
-build go-prev
-if test -e $DING_TOOLCHAINDIR/go-next; then
-	build go-next
+# Test building.
+go build -o /dev/null
+go vet
+
+# Run tests, and modify output so ding can pick up the coverage result.
+go test -shuffle=on -coverprofile cover.out
+go tool cover -html=cover.out -o $DING_DOWNLOADDIR/cover.html
+echo coverage-report: cover.html
+
+# Build release results for most recent go toolchain, for linux/amd64, linux/386, ...
+if test "$DING_GOTOOLCHAIN" = 'go'; then
+	build linux amd64
+	build linux 386
 fi
-`), dom.br(), dom.p('You can include a script like the above in a repository, and call that.'), dom.p('Run a command like ', dom.tt('ding build -bwrap -toolchaindir $HOME/sdk tmp/buildtest ./build.sh'), ' locally to test build scripts. It sets up similar environment variables as during a normal build, and creates target directories. Then it clones the git or hg repository in the working directory to the temporary destination (first parameter) and builds using build.sh, isolated with bwrap. The resulting output is parsed and a summary printed. If that works, the script is likely to work with a regular build in ding too.'), dom.br(), dom.h2('Environment variables'), dom.ul(dom.li("$HOME, an initially empty directory; for repo's with per-build unique UIDs, equal to $DING_BUILDDIR/home, with reused $HOME/uid set to data/home/$DING_REPONAME."), dom.li('$DING_REPONAME, name of the repository'), dom.li('$DING_BRANCH, the branch of the build'), dom.li('$DING_COMMIT, the commit id/hash, empty if not yet known'), dom.li('$DING_BUILDID, the build number, unique over all builds in ding'), dom.li('$DING_BUILDDIR, where all files related to the build are stored, set to data/build/$DING_REPONAME/$DING_BUILDID/'), dom.li('$DING_DOWNLOADDIR, files stored here are available over HTTP at /dl/file/$DING_REPONAME/$DING_BUILDID/...'), dom.li('$DING_CHECKOUTPATH, where files are checked out as configured for the repository, relative to $DING_BUILDDIR/checkout/'), dom.li('$DING_TOOLCHAINDIR, only if configured, the directory where toolchains are stored, like the Go toolchains'), dom.li('any key/value pair from the "environment" object in the ding config file')), dom.br(), dom.h2('Output patterns'), dom.p('The standard output of the release script is parsed for lines that can influence the build results. First word is the literal string, the later words are parameters.'), dom.p('Set the version of this build:'), dom.p(dom._class('indent'), dom.tt('version:', ' ', dom.i(dom._class('mono'), 'string'))), dom.p('Add file to build results:'), dom.p(dom._class('indent'), dom.tt('release:', ' ', dom.i(dom._class('mono'), 'command os arch toolchain path'))), dom.ul(dom.li(dom.i('command'), ' is the name of the command, as you would type it in a terminal'), dom.li(dom.i('os'), ' must be one of: ', dom.i('any, linux, darwin, openbsd, windows'), '; the OS this program can run on, ', dom.i('any'), ' is for platform-independent tools like a jar'), dom.li(dom.i('arch'), ' must be one of: ', dom.i('any, amd64, arm64'), '; similar to OS'), dom.li(dom.i('toolchain'), ' should describe the compiler and possibly other tools that are used to build this release'), dom.li(dom.i('path'), ' is the local path (either absolute or relative to the checkout directory) of the released file')), dom.p('Specify test coverage in percentage from 0 to 100 as floating point (an optional trailing "% ..." is ignored):'), dom.p(dom._class('indent'), dom.tt('coverage:', ' ', dom.i(dom._class('mono'), 'float'))), dom.p('Filename (must be relative to $DING_DOWNLOADDIR) for more details about the code coverage, e.g. an html coverage file:'), dom.p(dom._class('indent'), dom.tt('coverage-report:', ' ', dom.i(dom._class('mono'), 'file'))));
+
+# Reformat code, require versioned files did not change.
+go fmt ./...
+git diff --exit-code
+`), dom.br(), dom.p('You can include a script like the above in a repository, and call that.'), dom.p('Run a command like ', dom.tt('ding build -goauto ./build.sh'), ' locally to test build scripts. It sets up similar environment variables as during a normal build, and creates target directories. Then it clones the git or hg repository in the working directory to the temporary destination (first parameter) and builds using build.sh, isolated with bwrap. The resulting output is parsed and a summary printed. If that works, the script is likely to work with a regular build in ding too.'), dom.br(), dom.h2('Environment variables'), dom.ul(dom.li("$HOME, an initially empty directory; for repo's with per-build unique UIDs, equal to $DING_BUILDDIR/home, with reused $HOME/uid set to data/home/$DING_REPONAME."), dom.li('$DING_REPONAME, name of the repository'), dom.li('$DING_BRANCH, the branch of the build'), dom.li('$DING_COMMIT, the commit id/hash, empty if not yet known'), dom.li('$DING_BUILDID, the build number, unique over all builds in ding'), dom.li('$DING_BUILDDIR, where all files related to the build are stored, set to data/build/$DING_REPONAME/$DING_BUILDID/'), dom.li('$DING_DOWNLOADDIR, files stored here are available over HTTP at /dl/file/$DING_REPONAME/$DING_BUILDID/...'), dom.li('$DING_CHECKOUTPATH, where files are checked out as configured for the repository, relative to $DING_BUILDDIR/checkout/'), dom.li('$DING_TOOLCHAINDIR, only if configured, the directory where toolchains are stored, like the Go toolchains'), dom.li('any key/value pair from the "environment" object in the ding config file')), dom.p('If "Build for Go toolchains" is used, the following environment variables will also be set, and PATH is adjusted to include the selected Go toolchain:'), dom.ul(dom.li('$DING_GOTOOLCHAIN, with short name go/goprev/gonext'), dom.li('$DING_NEWGOTOOLCHAIN, set when the reason was a newly installed version of the Go toolchain'), dom.li('$GOTOOLCHAIN, set to version of selected Go toolchain, preventing Go from downloading newer Go toolchains')), dom.br(), dom.h2('Output patterns'), dom.p('The standard output of the release script is parsed for lines that can influence the build results. First word is the literal string, the later words are parameters.'), dom.p('Set the version of this build:'), dom.p(dom._class('indent'), dom.tt('version:', ' ', dom.i(dom._class('mono'), 'string'))), dom.p('Add file to build results:'), dom.p(dom._class('indent'), dom.tt('release:', ' ', dom.i(dom._class('mono'), 'command os arch toolchain path'))), dom.ul(dom.li(dom.i('command'), ' is the name of the command, as you would type it in a terminal'), dom.li(dom.i('os'), ' must be one of: ', dom.i('any, linux, darwin, openbsd, windows'), '; the OS this program can run on, ', dom.i('any'), ' is for platform-independent tools like a jar'), dom.li(dom.i('arch'), ' must be one of: ', dom.i('any, amd64, arm64'), '; similar to OS'), dom.li(dom.i('toolchain'), ' should describe the compiler and possibly other tools that are used to build this release'), dom.li(dom.i('path'), ' is the local path (either absolute or relative to the checkout directory) of the released file')), dom.p('Specify test coverage in percentage from 0 to 100 as floating point (an optional trailing "% ..." is ignored):'), dom.p(dom._class('indent'), dom.tt('coverage:', ' ', dom.i(dom._class('mono'), 'float'))), dom.p('Filename (must be relative to $DING_DOWNLOADDIR) for more details about the code coverage, e.g. an html coverage file:'), dom.p(dom._class('indent'), dom.tt('coverage-report:', ' ', dom.i(dom._class('mono'), 'file'))));
 };
 const pageRepo = async (repoName) => {
 	const page = new Page();
-	let [repo, builds0, [, mailEnabled, settings]] = await authed(() => Promise.all([
+	let [repo, builds0, [, mailEnabled, haveGoToolchainDir, settings]] = await authed(() => Promise.all([
 		client.Repo(password, repoName),
 		client.Builds(password, repoName),
 		client.Settings(password),
@@ -1690,6 +1706,10 @@ const pageRepo = async (repoName) => {
 	let bubblewrap;
 	let bubblewrapNoNet;
 	let buildOnUpdatedToolchain;
+	let goauto;
+	let gocur;
+	let goprev;
+	let gonext;
 	let notifyEmailAddrs;
 	let buildScript;
 	let fieldset;
@@ -1755,9 +1775,19 @@ const pageRepo = async (repoName) => {
 				AllowGlobalWebhookSecrets: false,
 				BuildScript: buildScript.value,
 				HomeDiskUsage: 0,
+				GoAuto: goauto.checked,
+				GoCur: gocur.checked,
+				GoPrev: goprev.checked,
+				GoNext: gonext.checked,
 			};
 			repo = await authed(() => client.RepoSave(password, nr), fieldset);
-		}, fieldset = dom.fieldset(dom.div(style({ display: 'grid', columnGap: '1em', rowGap: '.5ex', gridTemplateColumns: 'min-content 1fr', alignItems: 'top' }), 'Name', name = dom.input(attr.disabled(''), attr.value(repo.Name)), 'VCS', vcs = dom.select(dom.option('git', repo.VCS == 'git' ? attr.selected('') : []), dom.option('mercurial', repo.VCS == 'mercurial' ? attr.selected('') : []), dom.option('command', repo.VCS == 'command' ? attr.selected('') : []), vcsChanged), 'Origin', originBox = dom.div(originInput = origin = dom.input(attr.value(repo.Origin), attr.required(''), attr.placeholder('https://... or ssh://... or user@host:path.git'), style({ width: '100%' }))), dom.div('Default branch', style({ whiteSpace: 'nowrap' })), defaultBranch = dom.input(attr.value(repo.DefaultBranch), attr.placeholder('main, master, default')), dom.div('Checkout path', style({ whiteSpace: 'nowrap' })), checkoutPath = dom.input(attr.value(repo.CheckoutPath), attr.required(''), attr.title('Name of the directory to checkout the repository. Go builds may use this name for the binary it creates.')), dom.div('Notify email addresses', style({ whiteSpace: 'nowrap' }), mailEnabled ? [] : [' *', attr.title('No SMTP server is configured for outgoing emails.')]), notifyEmailAddrs = dom.input(attr.value((repo.NotifyEmailAddrs || []).join(', ')), attr.title('Comma-separated list of email address that will receive notifications when a build breaks or is fixed. If empty, the email address configured in the configuration file receives a notification, if any.'), attr.placeholder((settings.NotifyEmailAddrs || []).join(', ') || 'user@example.org, other@example.org')), dom.div(), dom.label(reuseUID = dom.input(attr.type('checkbox'), repo.UID !== null ? attr.checked('') : []), ' Reuse $HOME and UID for builds for this repo', attr.title('By reusing $HOME and running builds for this repository under the same UID, build caches can be used. This typically leads to faster builds but reduces isolation of builds.')), dom.div(), dom.label(bubblewrap = dom.input(attr.type('checkbox'), repo.Bubblewrap ? attr.checked('') : []), ' Run build script in bubblewrap, with limited system access', attr.title('Only available on Linux, with bubblewrap (bwrap) installed. Commands are run in a new mount namespace with access to system directories like /bin /lib /usr, and to the ding build, home and toolchain directories.')), dom.div(), dom.label(bubblewrapNoNet = dom.input(attr.type('checkbox'), repo.BubblewrapNoNet ? attr.checked('') : []), ' Prevent network access from build script. Only active if bubblewrap is active.', attr.title('Hide network interfaces from the build script. Only a loopback device is available.')), dom.div(), dom.label(buildOnUpdatedToolchain = dom.input(attr.type('checkbox'), repo.BuildOnUpdatedToolchain ? attr.checked('') : []), ' Schedule a low-priority build when new toolchains are automatically installed.')), dom.div(dom.label(dom.div('Build script', style({ marginBottom: '.25ex' })), buildScript = dom.textarea(repo.BuildScript, attr.required(''), attr.rows('24'), style({ width: '100%' })))), dom.br(), dom.div(dom.submitbutton('Save'))))), dom.br(), dom.h1('Webhooks'), dom.p('Configure the following webhook URLs to trigger builds:'), dom.ul(dom.li(dom.tt('http[s]://[webhooklistener]/github/' + repo.Name), ', with secret: ', dom.tt(repo.WebhookSecret)), dom.li(dom.tt('http[s]://[webhooklistener]/gitea/' + repo.Name), ', with secret: ', dom.tt(repo.WebhookSecret)), dom.li(dom.tt('http[s]://[webhooklistener]/bitbucket/' + repo.Name + '/' + repo.WebhookSecret))), repo.AllowGlobalWebhookSecrets && (settings.GithubWebhookSecret || settings.GiteaWebhookSecret || settings.BitbucketWebhookSecret) ? dom.p('Warning: Globally configured webhook secrets are active and also accepted for this repository.') : dom.p('No other (globally configured) secrets are accepted for this repository.'), dom.div(docsBuildScript()), dom.h1('Build settings'), (settings.RunPrefix || []).length > 0 ? dom.p('Build commands are prefixed with: ', dom.tt((settings.RunPrefix || []).join(' '))) : dom.p('Build commands are not run within other commands.'), dom.div('Additional environments available during builds:'), (settings.Environment || []).length === 0 ? dom.p('None') : dom.ul((settings.Environment || []).map(s => dom.li(dom.tt(s)))))),
+		}, fieldset = dom.fieldset(dom.div(style({ display: 'grid', columnGap: '1em', rowGap: '.5ex', gridTemplateColumns: 'min-content 1fr', alignItems: 'top' }), 'Name', name = dom.input(attr.disabled(''), attr.value(repo.Name)), 'VCS', vcs = dom.select(dom.option('git', repo.VCS == 'git' ? attr.selected('') : []), dom.option('mercurial', repo.VCS == 'mercurial' ? attr.selected('') : []), dom.option('command', repo.VCS == 'command' ? attr.selected('') : []), vcsChanged), 'Origin', originBox = dom.div(originInput = origin = dom.input(attr.value(repo.Origin), attr.required(''), attr.placeholder('https://... or ssh://... or user@host:path.git'), style({ width: '100%' }))), dom.div('Default branch', style({ whiteSpace: 'nowrap' })), defaultBranch = dom.input(attr.value(repo.DefaultBranch), attr.placeholder('main, master, default')), dom.div('Checkout path', style({ whiteSpace: 'nowrap' })), checkoutPath = dom.input(attr.value(repo.CheckoutPath), attr.required(''), attr.title('Name of the directory to checkout the repository. Go builds may use this name for the binary it creates.')), dom.div('Notify email addresses', style({ whiteSpace: 'nowrap' }), mailEnabled ? [] : [' *', attr.title('No SMTP server is configured for outgoing emails.')]), notifyEmailAddrs = dom.input(attr.value((repo.NotifyEmailAddrs || []).join(', ')), attr.title('Comma-separated list of email address that will receive notifications when a build breaks or is fixed. If empty, the email address configured in the configuration file receives a notification, if any.'), attr.placeholder((settings.NotifyEmailAddrs || []).join(', ') || 'user@example.org, other@example.org')), dom.div(), dom.label(reuseUID = dom.input(attr.type('checkbox'), repo.UID !== null ? attr.checked('') : []), ' Reuse $HOME and UID for builds for this repo', attr.title('By reusing $HOME and running builds for this repository under the same UID, build caches can be used. This typically leads to faster builds but reduces isolation of builds.')), dom.div(), dom.label(bubblewrap = dom.input(attr.type('checkbox'), repo.Bubblewrap ? attr.checked('') : []), ' Run build script in bubblewrap, with limited system access', attr.title('Only available on Linux, with bubblewrap (bwrap) installed. Commands are run in a new mount namespace with access to system directories like /bin /lib /usr, and to the ding build, home and toolchain directories.')), dom.div(), dom.label(bubblewrapNoNet = dom.input(attr.type('checkbox'), repo.BubblewrapNoNet ? attr.checked('') : []), ' Prevent network access from build script. Only active if bubblewrap is active.', attr.title('Hide network interfaces from the build script. Only a loopback device is available.')), dom.div('Build for Go toolchains', style({ whiteSpace: 'nowrap' }), attr.title('The build script will be run for each of the selected Go toolchains. The short name (go, goprev, gonext) is set in $DING_GOTOOLCHAIN. If this build was triggered due to a new Go toolchain being installed, the variable $DING_NEWGOTOOLCHAIN is set.' + !haveGoToolchainDir ? ' Warning: No Go toolchain directory is configured in the configuration file.' : '')), dom.div(dom.label(goauto = dom.input(attr.type('checkbox'), repo.GoAuto ? attr.checked('') : [], function change() {
+			if (goauto.checked) {
+				gocur.checked = false;
+				goprev.checked = false;
+				gonext.checked = false;
+			}
+		}), ' Automatic', attr.title('Build for each of the available Go toolchains, go/goprev/gonext. At least one must be found or the build will fail.')), ' ', dom.label(gocur = dom.input(attr.type('checkbox'), repo.GoCur ? attr.checked('') : [], function change() { goauto.checked = false; }), ' Go latest', attr.title('Latest patch version of latest stable Go toolchain version.')), ' ', dom.label(goprev = dom.input(attr.type('checkbox'), repo.GoPrev ? attr.checked('') : [], function change() { goauto.checked = false; }), ' Go previous', attr.title('Latest patch version of Go toolchain minor version before the latest stable.')), ' ', dom.label(gonext = dom.input(attr.type('checkbox'), repo.GoNext ? attr.checked('') : [], function change() { goauto.checked = false; }), ' Go next', attr.title('Release candidate of Go toolchain, if available.')), ' '), dom.div(), dom.label(buildOnUpdatedToolchain = dom.input(attr.type('checkbox'), repo.BuildOnUpdatedToolchain ? attr.checked('') : []), ' Schedule a low-priority build when new toolchains are automatically installed.')), dom.div(dom.label(dom.div('Build script', style({ marginBottom: '.25ex' })), buildScript = dom.textarea(repo.BuildScript, attr.required(''), attr.rows('24'), style({ width: '100%' })))), dom.br(), dom.div(dom.submitbutton('Save'))))), dom.br(), dom.h1('Webhooks'), dom.p('Configure the following webhook URLs to trigger builds:'), dom.ul(dom.li(dom.tt('http[s]://[webhooklistener]/github/' + repo.Name), ', with secret: ', dom.tt(repo.WebhookSecret)), dom.li(dom.tt('http[s]://[webhooklistener]/gitea/' + repo.Name), ', with secret: ', dom.tt(repo.WebhookSecret)), dom.li(dom.tt('http[s]://[webhooklistener]/bitbucket/' + repo.Name + '/' + repo.WebhookSecret))), repo.AllowGlobalWebhookSecrets && (settings.GithubWebhookSecret || settings.GiteaWebhookSecret || settings.BitbucketWebhookSecret) ? dom.p('Warning: Globally configured webhook secrets are active and also accepted for this repository.') : dom.p('No other (globally configured) secrets are accepted for this repository.'), dom.div(docsBuildScript()), dom.h1('Build settings'), (settings.RunPrefix || []).length > 0 ? dom.p('Build commands are prefixed with: ', dom.tt((settings.RunPrefix || []).join(' '))) : dom.p('Build commands are not run within other commands.'), dom.div('Additional environments available during builds:'), (settings.Environment || []).length === 0 ? dom.p('None') : dom.ul((settings.Environment || []).map(s => dom.li(dom.tt(s)))))),
 	];
 	const elem = render();
 	vcsChanged();

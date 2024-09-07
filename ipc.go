@@ -19,6 +19,12 @@ type msgBuild struct {
 	HomeDir         string
 	Bubblewrap      bool
 	BubblewrapNoNet bool
+
+	// If non-empty, we do builds for one or more go toolchains.
+	GoToolchains GoToolchains
+
+	// Whether the reason for this build was the installation of a new Go toolchain.
+	NewGoToolchain bool
 }
 
 // Chown the home, checkout and download dir of a build.
@@ -54,7 +60,7 @@ type msgCancelCommand struct {
 // Install released go toolchain into GoToolchainDir.
 type msgInstallGoToolchain struct {
 	File      goreleases.File
-	Shortname string // "go", "go-prev" or "go-next"
+	Shortname string // "go", "goprev" or "gonext"
 }
 
 // Remove installed go toolchain from GoToolchainDir, leaving shortname symlink untouched.
@@ -65,10 +71,10 @@ type msgRemoveGoToolchain struct {
 // Activate installed go toolchain in GoToolchainDir under shortname by creating a symlink.
 type msgActivateGoToolchain struct {
 	Goversion string // eg "go1.14 or "go1.13.8"
-	Shortname string // "go", "go-prev" or "go-next"
+	Shortname string // "go", "goprev" or "gonext"
 }
 
-// Lookup latest Go toolchains and update to them, setting go-prev, go, and possibly go-next symlinks.
+// Lookup latest Go toolchains and update to them, setting goprev, go, and possibly gonext symlinks.
 type msgAutomaticGoToolchain struct {
 }
 

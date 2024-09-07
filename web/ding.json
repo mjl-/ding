@@ -422,7 +422,7 @@
 		},
 		{
 			"Name": "GoToolchainsListInstalled",
-			"Docs": "GoToolchainsListInstalled returns the installed Go toolchains (eg \"go1.13.8\",\n\"go1.14\") in GoToolchainDir, and current \"active\" versions with a shortname, eg\n\"go\" as \"go1.14\", \"go-prev\" as \"go1.13.8\" and \"go-next\" as \"go1.23rc1\".",
+			"Docs": "GoToolchainsListInstalled returns the installed Go toolchains (eg \"go1.13.8\",\n\"go1.14\") in GoToolchainDir, and current \"active\" versions with a shortname, eg\n\"go\" as \"go1.14\", \"goprev\" as \"go1.13.8\" and \"gonext\" as \"go1.23rc1\".",
 			"Params": [
 				{
 					"Name": "password",
@@ -470,7 +470,7 @@
 		},
 		{
 			"Name": "GoToolchainInstall",
-			"Docs": "GoToolchainInstall downloads, verifies and extracts the release Go toolchain\nrepresented by goversion (eg \"go1.13.8\", \"go1.14\") into the GoToolchainDir, and\noptionally \"activates\" the version under shortname (\"go\", \"go-prev\", \"go-next\", \"\"; empty\nstring does nothing).",
+			"Docs": "GoToolchainInstall downloads, verifies and extracts the release Go toolchain\nrepresented by goversion (eg \"go1.13.8\", \"go1.14\") into the GoToolchainDir, and\noptionally \"activates\" the version under shortname (\"go\", \"goprev\", \"gonext\", \"\"; empty\nstring does nothing).",
 			"Params": [
 				{
 					"Name": "password",
@@ -514,7 +514,7 @@
 		},
 		{
 			"Name": "GoToolchainActivate",
-			"Docs": "GoToolchainActivate activates goversion (eg \"go1.13.8\", \"go1.14\") under the name\nshortname (\"go\", \"go-prev\" or \"go-next\"), by creating a symlink in the GoToolchainDir.",
+			"Docs": "GoToolchainActivate activates goversion (eg \"go1.13.8\", \"go1.14\") under the name\nshortname (\"go\", \"goprev\" or \"gonext\"), by creating a symlink in the GoToolchainDir.",
 			"Params": [
 				{
 					"Name": "password",
@@ -616,6 +616,12 @@
 				},
 				{
 					"Name": "mailEnabled",
+					"Typewords": [
+						"bool"
+					]
+				},
+				{
+					"Name": "haveGoToolchainDir",
 					"Typewords": [
 						"bool"
 					]
@@ -1168,6 +1174,34 @@
 					]
 				},
 				{
+					"Name": "GoAuto",
+					"Docs": "Build with go toolchains. If set, PATH includes the go toolchain and GOTOOLCHAIN is set.; Build for each of the available go toolchains: go (current), goprev, gonext.",
+					"Typewords": [
+						"bool"
+					]
+				},
+				{
+					"Name": "GoCur",
+					"Docs": "",
+					"Typewords": [
+						"bool"
+					]
+				},
+				{
+					"Name": "GoPrev",
+					"Docs": "",
+					"Typewords": [
+						"bool"
+					]
+				},
+				{
+					"Name": "GoNext",
+					"Docs": "If Go toolchain gonext doesn't exist, it is skipped.",
+					"Typewords": [
+						"bool"
+					]
+				},
+				{
 					"Name": "Bubblewrap",
 					"Docs": "If true, build is run with bubblewrap (bwrap) to isolate the environment further. Only the system, the build directory, home directory and toolchain directory is available.",
 					"Typewords": [
@@ -1283,7 +1317,7 @@
 				},
 				{
 					"Name": "AutomaticGoToolchains",
-					"Docs": "If set, new \"go\", \"go-prev\" and \"go-next\" (if present, for release candidates) are automatically downloaded and installed (symlinked as active).",
+					"Docs": "If set, new \"go\", \"goprev\" and \"gonext\" (if present, for release candidates) are automatically downloaded and installed (symlinked as active).",
 					"Typewords": [
 						"bool"
 					]

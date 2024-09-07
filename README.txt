@@ -19,17 +19,17 @@ Ding starts a web server with a UI for creating/configuring repositories,
 starting builds, seeing the output. Ding serves an API at /ding/, including
 real-time updates to builds and repositories. The web UI uses only this API.
 
-Non-released builds older than 2 weeks or beyond the 10th build are
-automatically cleaned up.
+Old builds are automatically cleaned up.
 
 Command "ding kick" can be used in a git hook to signal that a build should
 start. Gitea, github and bitbucket webhooks are also supported.
 
 Command "ding build" can be used locally to run a build script similar to how
 it would run on the build server. This allows testing build scripts without
-pushing any commits. It clones the git or hg repository in the current working
+pushing any commits. It clones the git or hg repository of the current working
 directory, sets up environment variables and destination build directories, and
-calls the provided build script. Optionally isolated using bubblewrap (bwrap).
+calls the provided build script. Optionally isolated using bubblewrap (bwrap)
+on Linux.
 
 
 # Installing
@@ -93,13 +93,16 @@ config must be removed.
 # Features
 
 - Self-hosted build server. Keep control over your code and builds!
-- Simple. Get started quickly, experience the power of simplicity, use your
-  existing skills, avoid the burden of complex systems.
+- Simple. Get started quickly, use a simple shell script to make your build. No
+  need to learn custom yaml formats to describe how to build.
 - Secure, with isolated builds, each build starts under its own unix user id:
-  extremely fast, and builds can't interfere with each other.
+  extremely fast, and builds can't interfere with each other. Optionally use
+  bubblewrap to isolate the process further.
 - (Web) API for all functionality (what the html5/js frontend is using).
 - Runs on most unix systems (Linux, BSD's).
-- Automatically install Go toolchains when released, and kicking off builds.
+- Automatically install Go toolchains when released, and kicking off builds,
+  and running build scripts for each supported (or future) Go toolchain
+  version.
 
 
 # Non-features

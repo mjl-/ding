@@ -14,7 +14,7 @@ type Settings struct {
 	RunPrefix              []string // Commands prefixed to the clone and build commands. E.g. /usr/bin/nice.
 	Environment            []string // Additional environment variables to set during clone and build.
 
-	// If set, new "go", "go-prev" and "go-next" (if present, for release candidates)
+	// If set, new "go", "goprev" and "gonext" (if present, for release candidates)
 	// are automatically downloaded and installed (symlinked as active).
 	AutomaticGoToolchains bool
 }
@@ -56,6 +56,12 @@ type Repo struct {
 	HomeDiskUsage             int64   // Disk usage of shared home directory after last finished build. Only if UID is set.
 	WebhookSecret             string  // If non-empty, a per-repo secret for incoming webhook calls.
 	AllowGlobalWebhookSecrets bool    // If set, global webhook secrets are allowed to start builds. Set initially during migrations. Will be ineffective when global webhooks have been unconfigured.
+
+	// Build with go toolchains. If set, PATH includes the go toolchain and GOTOOLCHAIN is set.
+	GoAuto bool // Build for each of the available go toolchains: go (current), goprev, gonext.
+	GoCur  bool
+	GoPrev bool
+	GoNext bool // If Go toolchain gonext doesn't exist, it is skipped.
 
 	// If true, build is run with bubblewrap (bwrap) to isolate the environment
 	// further. Only the system, the build directory, home directory and toolchain

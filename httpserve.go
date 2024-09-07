@@ -152,6 +152,12 @@ func servehttp(args []string) {
 		err := database.Get(context.Background(), &repo)
 		xcheckf(err, "get repo for new build")
 
+		gotoolchains, err := repoGoToolchains(repo)
+		if err != nil {
+			slog.Error("get go toolchains for new build, skipping", "err", err)
+			continue
+		}
+
 		job := job{
 			b.RepoName,
 			b.LowPrio,
@@ -168,7 +174,8 @@ func servehttp(args []string) {
 			}()
 
 			buildDir := fmt.Sprintf("%s/build/%s/%d", dingDataDir, b.RepoName, b.ID)
-			_doBuild0(context.Background(), repo, b, buildDir)
+			const newGoToolchain = false // todo: should remember this in Build?
+			_doBuild0(context.Background(), repo, b, buildDir, gotoolchains, newGoToolchain)
 		}()
 	}
 

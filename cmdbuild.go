@@ -1,8 +1,6 @@
 package main
 
 import (
-	"os/signal"
-	"time"
 	"bytes"
 	"context"
 	"errors"
@@ -12,14 +10,17 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 func cmdBuild(args []string) {
 	fs := flag.NewFlagSet("build", flag.ExitOnError)
 	var nobwrap, needbwrap bool
+	var goauto, xgo, goprev, gonext bool
 	var nonet bool
 	var clonecmd string
 	var toolchainDir string
@@ -33,11 +34,15 @@ func cmdBuild(args []string) {
 	fs.BoolVar(&nobwrap, "nobwrap", false, "don't use bwrap; automatically used if available otherwise")
 	fs.BoolVar(&needbwrap, "needbwrap", false, "require bwrap, failing if not available")
 	fs.BoolVar(&nonet, "nonet", false, "execute build without network access; implies -needbwrap")
+	fs.BoolVar(&goauto, "goauto", false, "execute build script for available go toolchains: go, goprev, gonext, as available in toolchaindir (you may want to make symlinks there)")
+	fs.BoolVar(&xgo, "go", false, "execute build script \"go\" toolchain")
+	fs.BoolVar(&goprev, "goprev", false, "execute build script \"goprev\" toolchain")
+	fs.BoolVar(&gonext, "gonext", false, "execute build script \"gonext\" toolchain")
 	fs.StringVar(&destdir, "destdir", "", "directory for build, must be empty or not exist; if not specified, a tmpdir is automatically created and removed after the build")
 	fs.StringVar(&clonecmd, "clone", "", "command to run to clone the repository, instead of looking for .git or .hg in the current directory")
 	fs.StringVar(&toolchainDir, "toolchaindir", toolchainDir, "directory to make available as toolchaindir; if $HOME/sdk exists, it is used as toolchaindir")
 	fs.Usage = func() {
-		fmt.Fprintln(os.Stderr, "usage: ding build [-nobwrap] [-needbwrap] [-nonet] [-clone cmd] [-toolchaindir dir] [-destdir dir] cmd ...")
+		fmt.Fprintln(os.Stderr, "usage: ding build [-goauto] [-go] [-goprev] [-gonext] [-nobwrap] [-needbwrap] [-nonet] [-clone cmd] [-toolchaindir dir] [-destdir dir] cmd ...")
 		fs.PrintDefaults()
 		os.Exit(2)
 	}
@@ -52,6 +57,27 @@ func cmdBuild(args []string) {
 	}
 	if nonet {
 		needbwrap = true
+	}
+	if goauto && (xgo || goprev || gonext) {
+		slog.Error("-goauto and the other -go* flags should not be used together")
+		flag.Usage()
+	}
+	if toolchainDir == "" && (goauto || xgo || goprev || gonext) {
+		slog.Error("-toolchaindir required for -go* flags")
+		os.Exit(1)
+	}
+	if goauto {
+		statGo := func(name string) bool {
+			_, err := os.Stat(filepath.Join(toolchainDir, name))
+			return err == nil
+		}
+		xgo = statGo("go")
+		goprev = statGo("goprev")
+		gonext = statGo("gonext")
+		if !xgo && !goprev && !gonext {
+			slog.Error("no go toolchains found, you may want to make symlinks named go, goprev and/or gonext in the toolchaindir")
+			os.Exit(1)
+		}
 	}
 
 	workDir, err := os.Getwd()
@@ -76,7 +102,7 @@ func cmdBuild(args []string) {
 		ctxcancel()
 		slog.Error("signal, cleaning up and stopping")
 		// Give build process time to stop.
-		time.Sleep(50*time.Millisecond)
+		time.Sleep(50 * time.Millisecond)
 		cleanupTempDestDir()
 		os.Exit(1)
 	}()
@@ -137,8 +163,8 @@ func cmdBuild(args []string) {
 	downloadDir := path.Join(buildDir, "dl")
 
 	// Also see build.go.
-	env := []string{
-		"PATH=/bin:/usr/bin",
+	environment := []string{
+		"PATH=/usr/bin:/bin:/usr/local/bin", // Must be first, may be changed.
 		"HOME=/home/ding",
 		"DING_BUILDDIR=/home/ding/build",
 		"DING_CHECKOUTPATH=" + checkoutPath,
@@ -150,10 +176,10 @@ func cmdBuild(args []string) {
 		"DING_COMMIT=deadbeef",
 	}
 	if toolchainDir != "" {
-		env = append(env, "DING_TOOLCHAINDIR=/home/ding/toolchain")
+		environment = append(environment, "DING_TOOLCHAINDIR=/home/ding/toolchain")
 	}
 
-	run := func(build bool, cmdargv ...string) ([]byte, []byte) {
+	run := func(build bool, env []string, cmdargv ...string) ([]byte, []byte) {
 		var argv []string
 		if build && (needbwrap || (!nobwrap && hasBubblewrap(ctx))) {
 			argv = bwrapCmd(nonet, homeDir, buildDir, checkoutPath, toolchainDir)
@@ -194,12 +220,12 @@ func cmdBuild(args []string) {
 	workDir = buildDir
 	var historySize int64
 	if clonecmd != "" {
-		run(false, "sh", "-c", clonecmd)
+		run(false, environment, "sh", "-c", clonecmd)
 	} else if _, err := os.Stat(path.Join(srcdir, ".git")); err == nil {
-		run(false, "git", "clone", "--recursive", "--no-hardlinks", srcdir, checkoutDir)
+		run(false, environment, "git", "clone", "--recursive", "--no-hardlinks", srcdir, checkoutDir)
 		historySize = buildDiskUsage(path.Join(srcdir, ".git"))
 	} else if _, err := os.Stat(path.Join(srcdir, ".hg")); err == nil {
-		run(false, "hg", "clone", srcdir, checkoutDir)
+		run(false, environment, "hg", "clone", srcdir, checkoutDir)
 		historySize = buildDiskUsage(path.Join(srcdir, ".hg"))
 	} else {
 		xlcheckf(errors.New("cannot find .git or .hg in work dir"), "looking for vcs in workdir")
@@ -208,24 +234,59 @@ func cmdBuild(args []string) {
 	checkoutSize := buildDiskUsage(checkoutDir)
 
 	// Build.
-	workDir = checkoutDir
-	args[0] = buildscript
-	stdout, stderr := run(true, args...)
-	version, results, coverage, coverageReportFile, err := parseResults(checkoutDir, downloadDir, io.MultiReader(bytes.NewReader(stdout), bytes.NewReader(stderr)))
-	xlcheckf(err, "parsing results")
-	var coverageStr string
-	if coverage != nil {
-		coverageStr = fmt.Sprintf("%d%%", int(*coverage))
-	}
-	fmt.Printf("\nbuild ok\nversion %q, coverage %s file %q, %d result(s)\n", version, coverageStr, coverageReportFile, len(results))
-	for _, r := range results {
-		fmt.Printf("- %#v\n", r)
+	build := func(env []string) {
+		workDir = checkoutDir
+		args[0] = buildscript
+		stdout, stderr := run(true, env, args...)
+		version, results, coverage, coverageReportFile, err := parseResults(checkoutDir, downloadDir, io.MultiReader(bytes.NewReader(stdout), bytes.NewReader(stderr)))
+		xlcheckf(err, "parsing results")
+		var coverageStr string
+		if coverage != nil {
+			coverageStr = fmt.Sprintf("%d%%", int(*coverage))
+		}
+		fmt.Printf("\nbuild ok\nversion %q, coverage %s file %q, %d result(s)\n", version, coverageStr, coverageReportFile, len(results))
+		for _, r := range results {
+			fmt.Printf("- %#v\n", r)
+		}
+
+		homeSize := buildDiskUsage(homeDir)
+		buildSize := buildDiskUsage(buildDir)
+		const mb = 1024 * 1024
+		fmt.Printf("sizes: vcs history %.1fm, checkout %.1fm, home %.1fm, build %.1fm\n", float64(historySize)/mb, float64(checkoutSize-historySize)/mb, float64(homeSize)/mb, float64(buildSize-checkoutSize)/mb)
 	}
 
-	homeSize := buildDiskUsage(homeDir)
-	buildSize := buildDiskUsage(buildDir)
-	const mb = 1024 * 1024
-	fmt.Printf("sizes: vcs history %.1fm, checkout %.1fm, home %.1fm, build %.1fm\n", float64(historySize)/mb, float64(checkoutSize-historySize)/mb, float64(homeSize)/mb, float64(buildSize-checkoutSize)/mb)
+	if xgo || goprev || gonext {
+		buildGo := func(goname string) {
+			cmd := exec.CommandContext(ctx, filepath.Join(toolchainDir, goname, "bin", "go"), "version")
+			var stdout strings.Builder
+			cmd.Stdout = &stdout
+			err := cmd.Run()
+			xlcheckf(err, "running go version")
+			goverstr := stdout.String()
+			t := strings.Split(goverstr, " ")
+			if len(t) < 3 || !strings.HasPrefix(t[2], "go1.") {
+				xlcheckf(fmt.Errorf("unexpected output %q", goverstr), "parsing output of go version")
+			}
+			goversion := t[2]
+
+			env := append([]string{}, environment...)
+			env[0] = "PATH=" + filepath.Join("/home/ding/toolchain", goname, "bin") + ":/usr/bin:/bin:/usr/local/bin"
+			env = append(env, "GOTOOLCHAIN="+goversion, "DING_GOTOOLCHAIN="+goname)
+			slog.Info("building for go", "goname", goname, "goversion", goversion)
+			build(env)
+		}
+		if xgo {
+			buildGo("go")
+		}
+		if goprev {
+			buildGo("goprev")
+		}
+		if gonext {
+			buildGo("gonext")
+		}
+	} else {
+		build(environment)
+	}
 
 	cleanupTempDestDir()
 }

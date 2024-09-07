@@ -109,14 +109,14 @@ func bitbucketHookHandler(w http.ResponseWriter, r *http.Request) {
 		if change.New.Target != nil {
 			if change.New.Target.Type == "commit" {
 				commit := change.New.Target.Hash
-				repo, build, buildDir, err := prepareBuild(r.Context(), repoName, branch, commit, false)
+				repo, build, buildDir, gotoolchains, err := prepareBuild(r.Context(), repoName, branch, commit, false)
 				if err != nil {
 					slog.Error("bitbucket webhook: error starting build for push event", "repo", repoName, "branch", branch, "commit", commit, "err", err)
 					http.Error(w, "could not create build", http.StatusInternalServerError)
 					return
 				}
 				go func() {
-					err := doBuild(context.Background(), repo, build, buildDir)
+					err := doBuild(context.Background(), repo, build, buildDir, gotoolchains, false)
 					if err != nil {
 						slog.Error("build", "err", err)
 					}

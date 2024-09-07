@@ -100,7 +100,7 @@ ding.service).
 	xcheckf(err, "open db file")
 	settings := Settings{
 		ID:                    1, // singleton
-		Environment:           []string{"PATH=/bin:/usr/bin:/usr/local/bin"},
+		Environment:           []string{"PATH=/usr/bin:/bin:/usr/local/bin"},
 		AutomaticGoToolchains: true,
 	}
 	if runtime.GOOS == "linux" {

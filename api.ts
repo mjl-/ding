@@ -62,6 +62,10 @@ export interface Repo {
 	HomeDiskUsage: number  // Disk usage of shared home directory after last finished build. Only if UID is set.
 	WebhookSecret: string  // If non-empty, a per-repo secret for incoming webhook calls.
 	AllowGlobalWebhookSecrets: boolean  // If set, global webhook secrets are allowed to start builds. Set initially during migrations. Will be ineffective when global webhooks have been unconfigured.
+	GoAuto: boolean  // Build with go toolchains. If set, PATH includes the go toolchain and GOTOOLCHAIN is set.; Build for each of the available go toolchains: go (current), goprev, gonext.
+	GoCur: boolean
+	GoPrev: boolean
+	GoNext: boolean  // If Go toolchain gonext doesn't exist, it is skipped.
 	Bubblewrap: boolean  // If true, build is run with bubblewrap (bwrap) to isolate the environment further. Only the system, the build directory, home directory and toolchain directory is available.
 	BubblewrapNoNet: boolean  // If true, along with Bubblewrap, then no network access is possible during the build (though it is during clone).
 	NotifyEmailAddrs?: string[] | null  // If not empty, each address gets notified about build breakage/fixage, overriding the default address configured in the configuration file.
@@ -85,7 +89,7 @@ export interface Settings {
 	BitbucketWebhookSecret: string
 	RunPrefix?: string[] | null  // Commands prefixed to the clone and build commands. E.g. /usr/bin/nice.
 	Environment?: string[] | null  // Additional environment variables to set during clone and build.
-	AutomaticGoToolchains: boolean  // If set, new "go", "go-prev" and "go-next" (if present, for release candidates) are automatically downloaded and installed (symlinked as active).
+	AutomaticGoToolchains: boolean  // If set, new "go", "goprev" and "gonext" (if present, for release candidates) are automatically downloaded and installed (symlinked as active).
 }
 
 // BuildStatus indicates the progress of a build.
@@ -153,7 +157,7 @@ export const types: TypenameMap = {
 	"Result": {"Name":"Result","Docs":"","Fields":[{"Name":"Command","Docs":"","Typewords":["string"]},{"Name":"Os","Docs":"","Typewords":["string"]},{"Name":"Arch","Docs":"","Typewords":["string"]},{"Name":"Toolchain","Docs":"","Typewords":["string"]},{"Name":"Filename","Docs":"","Typewords":["string"]},{"Name":"Filesize","Docs":"","Typewords":["int64"]}]},
 	"Step": {"Name":"Step","Docs":"","Fields":[{"Name":"Name","Docs":"","Typewords":["string"]},{"Name":"Output","Docs":"","Typewords":["string"]},{"Name":"Nsec","Docs":"","Typewords":["int64"]}]},
 	"RepoBuilds": {"Name":"RepoBuilds","Docs":"","Fields":[{"Name":"Repo","Docs":"","Typewords":["Repo"]},{"Name":"Builds","Docs":"","Typewords":["[]","Build"]}]},
-	"Repo": {"Name":"Repo","Docs":"","Fields":[{"Name":"Name","Docs":"","Typewords":["string"]},{"Name":"VCS","Docs":"","Typewords":["VCS"]},{"Name":"Origin","Docs":"","Typewords":["string"]},{"Name":"DefaultBranch","Docs":"","Typewords":["string"]},{"Name":"CheckoutPath","Docs":"","Typewords":["string"]},{"Name":"BuildScript","Docs":"","Typewords":["string"]},{"Name":"UID","Docs":"","Typewords":["nullable","uint32"]},{"Name":"HomeDiskUsage","Docs":"","Typewords":["int64"]},{"Name":"WebhookSecret","Docs":"","Typewords":["string"]},{"Name":"AllowGlobalWebhookSecrets","Docs":"","Typewords":["bool"]},{"Name":"Bubblewrap","Docs":"","Typewords":["bool"]},{"Name":"BubblewrapNoNet","Docs":"","Typewords":["bool"]},{"Name":"NotifyEmailAddrs","Docs":"","Typewords":["[]","string"]},{"Name":"BuildOnUpdatedToolchain","Docs":"","Typewords":["bool"]}]},
+	"Repo": {"Name":"Repo","Docs":"","Fields":[{"Name":"Name","Docs":"","Typewords":["string"]},{"Name":"VCS","Docs":"","Typewords":["VCS"]},{"Name":"Origin","Docs":"","Typewords":["string"]},{"Name":"DefaultBranch","Docs":"","Typewords":["string"]},{"Name":"CheckoutPath","Docs":"","Typewords":["string"]},{"Name":"BuildScript","Docs":"","Typewords":["string"]},{"Name":"UID","Docs":"","Typewords":["nullable","uint32"]},{"Name":"HomeDiskUsage","Docs":"","Typewords":["int64"]},{"Name":"WebhookSecret","Docs":"","Typewords":["string"]},{"Name":"AllowGlobalWebhookSecrets","Docs":"","Typewords":["bool"]},{"Name":"GoAuto","Docs":"","Typewords":["bool"]},{"Name":"GoCur","Docs":"","Typewords":["bool"]},{"Name":"GoPrev","Docs":"","Typewords":["bool"]},{"Name":"GoNext","Docs":"","Typewords":["bool"]},{"Name":"Bubblewrap","Docs":"","Typewords":["bool"]},{"Name":"BubblewrapNoNet","Docs":"","Typewords":["bool"]},{"Name":"NotifyEmailAddrs","Docs":"","Typewords":["[]","string"]},{"Name":"BuildOnUpdatedToolchain","Docs":"","Typewords":["bool"]}]},
 	"GoToolchains": {"Name":"GoToolchains","Docs":"","Fields":[{"Name":"Go","Docs":"","Typewords":["string"]},{"Name":"GoPrev","Docs":"","Typewords":["string"]},{"Name":"GoNext","Docs":"","Typewords":["string"]}]},
 	"Settings": {"Name":"Settings","Docs":"","Fields":[{"Name":"ID","Docs":"","Typewords":["int32"]},{"Name":"NotifyEmailAddrs","Docs":"","Typewords":["[]","string"]},{"Name":"GithubWebhookSecret","Docs":"","Typewords":["string"]},{"Name":"GiteaWebhookSecret","Docs":"","Typewords":["string"]},{"Name":"BitbucketWebhookSecret","Docs":"","Typewords":["string"]},{"Name":"RunPrefix","Docs":"","Typewords":["[]","string"]},{"Name":"Environment","Docs":"","Typewords":["[]","string"]},{"Name":"AutomaticGoToolchains","Docs":"","Typewords":["bool"]}]},
 	"BuildStatus": {"Name":"BuildStatus","Docs":"","Values":[{"Name":"StatusNew","Value":"new","Docs":""},{"Name":"StatusClone","Value":"clone","Docs":""},{"Name":"StatusBuild","Value":"build","Docs":""},{"Name":"StatusSuccess","Value":"success","Docs":""},{"Name":"StatusCancelled","Value":"cancelled","Docs":""}]},
@@ -394,7 +398,7 @@ export class Client {
 
 	// GoToolchainsListInstalled returns the installed Go toolchains (eg "go1.13.8",
 	// "go1.14") in GoToolchainDir, and current "active" versions with a shortname, eg
-	// "go" as "go1.14", "go-prev" as "go1.13.8" and "go-next" as "go1.23rc1".
+	// "go" as "go1.14", "goprev" as "go1.13.8" and "gonext" as "go1.23rc1".
 	async GoToolchainsListInstalled(password: string): Promise<[string[] | null, GoToolchains]> {
 		const fn: string = "GoToolchainsListInstalled"
 		const paramTypes: string[][] = [["string"]]
@@ -415,7 +419,7 @@ export class Client {
 
 	// GoToolchainInstall downloads, verifies and extracts the release Go toolchain
 	// represented by goversion (eg "go1.13.8", "go1.14") into the GoToolchainDir, and
-	// optionally "activates" the version under shortname ("go", "go-prev", "go-next", ""; empty
+	// optionally "activates" the version under shortname ("go", "goprev", "gonext", ""; empty
 	// string does nothing).
 	async GoToolchainInstall(password: string, goversion: string, shortname: string): Promise<void> {
 		const fn: string = "GoToolchainInstall"
@@ -436,7 +440,7 @@ export class Client {
 	}
 
 	// GoToolchainActivate activates goversion (eg "go1.13.8", "go1.14") under the name
-	// shortname ("go", "go-prev" or "go-next"), by creating a symlink in the GoToolchainDir.
+	// shortname ("go", "goprev" or "gonext"), by creating a symlink in the GoToolchainDir.
 	async GoToolchainActivate(password: string, goversion: string, shortname: string): Promise<void> {
 		const fn: string = "GoToolchainActivate"
 		const paramTypes: string[][] = [["string"],["string"],["string"]]
@@ -476,12 +480,12 @@ export class Client {
 	}
 
 	// Settings returns the runtime settings.
-	async Settings(password: string): Promise<[boolean, boolean, Settings]> {
+	async Settings(password: string): Promise<[boolean, boolean, boolean, Settings]> {
 		const fn: string = "Settings"
 		const paramTypes: string[][] = [["string"]]
-		const returnTypes: string[][] = [["bool"],["bool"],["Settings"]]
+		const returnTypes: string[][] = [["bool"],["bool"],["bool"],["Settings"]]
 		const params: any[] = [password]
-		return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params) as [boolean, boolean, Settings]
+		return await _sherpaCall(this.baseURL, this.authState, { ...this.options }, paramTypes, returnTypes, fn, params) as [boolean, boolean, boolean, Settings]
 	}
 
 	// SettingsSave saves the runtime settings.
