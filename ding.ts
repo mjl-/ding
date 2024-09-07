@@ -12,6 +12,26 @@ const colors = {
 	gray: 'rgb(138, 138, 138)',
 }
 
+let favicon = dom.link(attr.rel('icon'), attr.href('favicon.ico')) // attr.href changed for some build states
+let favicons = {
+	default: 'favicon.ico', // blue
+	green: 'favicon-green.png',
+	red: 'favicon-red.png',
+	gray: 'favicon-gray.png',
+}
+const setFavicon = (href: string) => {
+	favicon.setAttribute('href', href)
+}
+const buildSetFavicon = (b: api.Build) => {
+	if (!b.Finish) {
+		setFavicon(favicons.gray)
+	} else if (b.Status !== api.BuildStatus.StatusSuccess) {
+		setFavicon(favicons.red)
+	} else {
+		setFavicon(favicons.green)
+	}
+}
+
 const link = (href: string, anchor: string) => dom.a(attr.href(href), anchor)
 
 interface TargetDisableable {
@@ -487,8 +507,22 @@ const pageHome = async (): Promise<Page> => {
 	)
 	let rbl = rbl0 || []
 
+	const rblFavicon = () => {
+		let busy = false
+		for (const rb of rbl) {
+			for (const b of (rb.Builds || [])) {
+				if (!b.Finish) {
+					busy = true
+					break
+				}
+			}
+		}
+		setFavicon(busy ? favicons.gray : favicons.default)
+	}
+
 	dom._kids(crumbElem, 'Home')
 	document.title = 'Ding - Repos'
+	rblFavicon()
 
 	const atexit = page.newAtexit()
 	const render = () => {
@@ -566,6 +600,7 @@ const pageHome = async (): Promise<Page> => {
 			builds[i] = e.Build
 		}
 		rb.Builds = builds
+		rblFavicon()
 		render()
 	})
 	page.subscribe(streams.removeBuild, (e: api.EventRemoveBuild) => {
@@ -574,10 +609,10 @@ const pageHome = async (): Promise<Page> => {
 			return
 		}
 		rb.Builds = (rb.Builds || []).filter(b => b.ID !== e.BuildID)
+		rblFavicon()
 		render()
 	})
 	page.subscribe(streams.repo, (ev: api.EventRepo) => {
-		console.log('pageHome repo')
 		for (const rb of rbl) {
 			if (rb.Repo.Name == ev.Repo.Name) {
 				rb.Repo = ev.Repo
@@ -589,8 +624,8 @@ const pageHome = async (): Promise<Page> => {
 		render()
 	})
 	page.subscribe(streams.removeRepo, (ev: api.EventRemoveRepo) => {
-		console.log('pageHome removeRepo')
 		rbl = rbl.filter(rb => rb.Repo.Name !== ev.RepoName)
+		rblFavicon()
 		render()
 	})
 
@@ -611,6 +646,7 @@ const pageGoToolchains = async (): Promise<Page> => {
 
 	dom._kids(crumbElem, link('#', 'Home'), ' / ', 'Go Toolchains')
 	document.title = 'Ding - Go Toolchains'
+	setFavicon(favicons.default)
 
 	const render = () => {
 		const groups: string[][] = []
@@ -780,6 +816,7 @@ const pageSettings = async (): Promise<Page> => {
 
 	dom._kids(crumbElem, link('#', 'Home'), ' / ', 'Settings')
 	document.title = 'Ding - Settings'
+	setFavicon(favicons.default)
 	dom._kids(pageElem,
 		isolationEnabled ? dom.p('Each repository and potentially build is isolated to run under a unique uid.') : dom.p('NOTE: Repositories and builds are NOT isolated to run under a unique uid. You may want to enable isolated builds in the configuration file (requires restart).'),
 		mailEnabled ? [] : dom.p('NOTE: No SMTP server is configured for outgoing emails, no email will be sent for broken/fixed builds.'),
@@ -859,8 +896,9 @@ const pageDocs = async (): Promise<Page> => {
 	const page = new Page()
 	const [version, goos, goarch, goversion] = await authed(() => client.Version(password))
 
-	document.title = 'Ding - Docs'
 	dom._kids(crumbElem, link('#', 'Home'), ' / Docs')
+	document.title = 'Ding - Docs'
+	setFavicon(favicons.default)
 
 	dom._kids(pageElem,
 		dom.h1('Introduction'),
@@ -1037,6 +1075,12 @@ const pageRepo = async (repoName: string): Promise<Page> => {
 	)
 	let builds = builds0 || []
 
+	if (builds.length === 0) {
+		setFavicon(favicons.gray)
+	} else {
+		buildSetFavicon(builds[0])
+	}
+
 	const buildsElem = dom.div()
 
 	const atexit = page.newAtexit()
@@ -1104,6 +1148,7 @@ const pageRepo = async (repoName: string): Promise<Page> => {
 		} else {
 			builds[i] = e.Build
 		}
+		buildSetFavicon(builds[0])
 		renderBuilds()
 	})
 	page.subscribe(streams.removeBuild, (e: api.EventRemoveBuild) => {
@@ -1111,6 +1156,11 @@ const pageRepo = async (repoName: string): Promise<Page> => {
 			return
 		}
 		builds = builds.filter(b => b.ID !== e.BuildID)
+		if (builds.length === 0) {
+			setFavicon(favicons.gray)
+		} else {
+			buildSetFavicon(builds[0])
+		}
 		renderBuilds()
 	})
 
@@ -1359,6 +1409,7 @@ const pageBuild = async (repoName: string, buildID: number): Promise<Page> => {
 		dom.span(link('#', 'Home'), ' / ', link('#repo/'+encodeURIComponent(repo.Name), 'Repo '+repo.Name), ' / ', 'Build '+b.ID),
 	)
 	document.title = 'Ding - Repo '+repoName + ' - Build '+b.ID
+	buildSetFavicon(b)
 
 	const renderMoreBuilds = () => {
 		if (moreBuilds.length === 0) {
@@ -1493,6 +1544,7 @@ const pageBuild = async (repoName: string, buildID: number): Promise<Page> => {
 			b = e.Build
 			results = b.Results || []
 			render()
+			buildSetFavicon(b)
 		} else if (!moreBuilds.includes(e.Build.ID)) {
 			moreBuilds.push(e.Build.ID)
 			renderMoreBuilds()
@@ -1587,6 +1639,8 @@ const init = async () => {
 			}
 		})
 	}
+
+	document.getElementsByTagName('head')[0].append(favicon)
 
 	const root = dom.div(
 		dom.div(

@@ -182,6 +182,7 @@ const dom = {
 	p: (...l: ElemArg[]) => _domKids(document.createElement('p'), l),
 	tt: (...l: ElemArg[]) => _domKids(document.createElement('tt'), l),
 	i: (...l: ElemArg[]) => _domKids(document.createElement('i'), l),
+	link: (...l: ElemArg[]) => _domKids(document.createElement('link'), l),
 }
 const _attr = (k: string, v: string) => { const o: {[key: string]: string} = {}; o[k] = v; return {_attrs: o} }
 const attr = {

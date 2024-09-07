@@ -186,6 +186,7 @@ const [dom, style, attr, prop] = (function () {
 		p: (...l) => _domKids(document.createElement('p'), l),
 		tt: (...l) => _domKids(document.createElement('tt'), l),
 		i: (...l) => _domKids(document.createElement('i'), l),
+		link: (...l) => _domKids(document.createElement('link'), l),
 	};
 	const _attr = (k, v) => { const o = {}; o[k] = v; return { _attrs: o }; };
 	const attr = {
@@ -950,6 +951,27 @@ const colors = {
 	red: 'rgb(228, 77, 52)',
 	gray: 'rgb(138, 138, 138)',
 };
+let favicon = dom.link(attr.rel('icon'), attr.href('favicon.ico')); // attr.href changed for some build states
+let favicons = {
+	default: 'favicon.ico',
+	green: 'favicon-green.png',
+	red: 'favicon-red.png',
+	gray: 'favicon-gray.png',
+};
+const setFavicon = (href) => {
+	favicon.setAttribute('href', href);
+};
+const buildSetFavicon = (b) => {
+	if (!b.Finish) {
+		setFavicon(favicons.gray);
+	}
+	else if (b.Status !== api.BuildStatus.StatusSuccess) {
+		setFavicon(favicons.red);
+	}
+	else {
+		setFavicon(favicons.green);
+	}
+};
 const link = (href, anchor) => dom.a(attr.href(href), anchor);
 class Stream {
 	subscribers = [];
@@ -1308,8 +1330,21 @@ const pageHome = async () => {
 		client.Version(password),
 	]));
 	let rbl = rbl0 || [];
+	const rblFavicon = () => {
+		let busy = false;
+		for (const rb of rbl) {
+			for (const b of (rb.Builds || [])) {
+				if (!b.Finish) {
+					busy = true;
+					break;
+				}
+			}
+		}
+		setFavicon(busy ? favicons.gray : favicons.default);
+	};
 	dom._kids(crumbElem, 'Home');
 	document.title = 'Ding - Repos';
+	rblFavicon();
 	const atexit = page.newAtexit();
 	const render = () => {
 		atexit.run();
@@ -1344,6 +1379,7 @@ const pageHome = async () => {
 			builds[i] = e.Build;
 		}
 		rb.Builds = builds;
+		rblFavicon();
 		render();
 	});
 	page.subscribe(streams.removeBuild, (e) => {
@@ -1352,10 +1388,10 @@ const pageHome = async () => {
 			return;
 		}
 		rb.Builds = (rb.Builds || []).filter(b => b.ID !== e.BuildID);
+		rblFavicon();
 		render();
 	});
 	page.subscribe(streams.repo, (ev) => {
-		console.log('pageHome repo');
 		for (const rb of rbl) {
 			if (rb.Repo.Name == ev.Repo.Name) {
 				rb.Repo = ev.Repo;
@@ -1367,8 +1403,8 @@ const pageHome = async () => {
 		render();
 	});
 	page.subscribe(streams.removeRepo, (ev) => {
-		console.log('pageHome removeRepo');
 		rbl = rbl.filter(rb => rb.Repo.Name !== ev.RepoName);
+		rblFavicon();
 		render();
 	});
 	return page;
@@ -1384,6 +1420,7 @@ const pageGoToolchains = async () => {
 	let active = active0 || [];
 	dom._kids(crumbElem, link('#', 'Home'), ' / ', 'Go Toolchains');
 	document.title = 'Ding - Go Toolchains';
+	setFavicon(favicons.default);
 	const render = () => {
 		const groups = [];
 		for (const s of available) {
@@ -1466,6 +1503,7 @@ const pageSettings = async () => {
 	let fieldset;
 	dom._kids(crumbElem, link('#', 'Home'), ' / ', 'Settings');
 	document.title = 'Ding - Settings';
+	setFavicon(favicons.default);
 	dom._kids(pageElem, isolationEnabled ? dom.p('Each repository and potentially build is isolated to run under a unique uid.') : dom.p('NOTE: Repositories and builds are NOT isolated to run under a unique uid. You may want to enable isolated builds in the configuration file (requires restart).'), mailEnabled ? [] : dom.p('NOTE: No SMTP server is configured for outgoing emails, no email will be sent for broken/fixed builds.'), dom.div(dom.form(async function submit(e) {
 		e.preventDefault();
 		e.stopPropagation();
@@ -1491,8 +1529,9 @@ const pageSettings = async () => {
 const pageDocs = async () => {
 	const page = new Page();
 	const [version, goos, goarch, goversion] = await authed(() => client.Version(password));
-	document.title = 'Ding - Docs';
 	dom._kids(crumbElem, link('#', 'Home'), ' / Docs');
+	document.title = 'Ding - Docs';
+	setFavicon(favicons.default);
 	dom._kids(pageElem, dom.h1('Introduction'), dom.p("Ding is a minimalistic build server for internal use. The goal is to make it easy to build software projects in an isolated environment, ensuring it also works on other people's machines. Ding clones a git or mercurial repository, or runs a custom shell script to clone a project, and runs a shell script to build the software. The shell script should output certain lines that ding recognizes, to find build results, test coverage, etc."), dom.h1('Notifications'), dom.p('Ding can be configured to send a notification email if a repo breaks (failed build) or is repaired again (successful build after previous failure)'), dom.h1('Webhooks'), dom.p('For each project to build, first configure a repository and a build script. Optionally configure the code repository to call a ding webhook to start a build. For git, this can be done with post-receive shell script in .git/hooks, or through various settings in web apps like gitea, github and bitbucket. For custom scripts, run ', dom.tt('ding kick baseURL repoName branch commit < password-file'), ' to start a build, where baseURL could be http://localhost:6084 (for default settings), and password is what you use for logging in. For externally-defined webhook formats, ensure the ding webhook listener is publicly accessible (e.g. through a reverse proxy), and configure these paths for the respective services: ', dom.tt('https://.../gitea/<repo>'), ', ', dom.tt('https://.../github/<repo>'), ' or ', dom.tt('https://.../bitbucket/<repo>/<secret>'), '. Gitea includes a "secret" in an Authorization header, github signs its request payload, for bitbucket you must include a secret value in the URL they send the webhook too. These secrets must be configured in the ding configuration file.'), dom.h1('Authentication'), dom.p('Ding only has simple password-based authentication, with a single password for the entire system. Everyone with the password can see all repositories, builds and scripts, and modify all data.'), dom.h1('Go toolchains'), dom.p('Ding has builtin functionality for downloading Go toolchains for use in builds.'), dom.h1('API'), dom.p('Ding has a simple HTTP/JSON-based API, see ', link('ding/', 'Ding API'), '.'), dom.h1('Files and directories'), dom.p('Ding stores all files for repositories, builds, releases and home directories in its "data" directory:'), dom.pre(`
 data/
 	build/<repoName>/<buildID>/		  ($DING_BUILDDIR during builds)
@@ -1585,6 +1624,12 @@ const pageRepo = async (repoName) => {
 		client.Settings(password),
 	]));
 	let builds = builds0 || [];
+	if (builds.length === 0) {
+		setFavicon(favicons.gray);
+	}
+	else {
+		buildSetFavicon(builds[0]);
+	}
 	const buildsElem = dom.div();
 	const atexit = page.newAtexit();
 	const renderBuilds = () => {
@@ -1617,6 +1662,7 @@ const pageRepo = async (repoName) => {
 		else {
 			builds[i] = e.Build;
 		}
+		buildSetFavicon(builds[0]);
 		renderBuilds();
 	});
 	page.subscribe(streams.removeBuild, (e) => {
@@ -1624,6 +1670,12 @@ const pageRepo = async (repoName) => {
 			return;
 		}
 		builds = builds.filter(b => b.ID !== e.BuildID);
+		if (builds.length === 0) {
+			setFavicon(favicons.gray);
+		}
+		else {
+			buildSetFavicon(builds[0]);
+		}
 		renderBuilds();
 	});
 	let name;
@@ -1739,6 +1791,7 @@ const pageBuild = async (repoName, buildID) => {
 	};
 	dom._kids(crumbElem, dom.span(link('#', 'Home'), ' / ', link('#repo/' + encodeURIComponent(repo.Name), 'Repo ' + repo.Name), ' / ', 'Build ' + b.ID));
 	document.title = 'Ding - Repo ' + repoName + ' - Build ' + b.ID;
+	buildSetFavicon(b);
 	const renderMoreBuilds = () => {
 		if (moreBuilds.length === 0) {
 			dom._kids(moreBuildsElem);
@@ -1785,6 +1838,7 @@ const pageBuild = async (repoName, buildID) => {
 			b = e.Build;
 			results = b.Results || [];
 			render();
+			buildSetFavicon(b);
 		}
 		else if (!moreBuilds.includes(e.Build.ID)) {
 			moreBuilds.push(e.Build.ID);
@@ -1883,6 +1937,7 @@ const init = async () => {
 			}
 		});
 	}
+	document.getElementsByTagName('head')[0].append(favicon);
 	const root = dom.div(dom.div(style({ display: 'flex', justifyContent: 'space-between', marginBottom: '1ex', padding: '.5em 1em', backgroundColor: '#f8f8f8' }), crumbElem, updateElem, dom.div(sseElem, ' ', link('#docs', 'Docs'), ' ', dom.clickbutton('Logout', function click() {
 		try {
 			window.localStorage.removeItem('dingpassword');
