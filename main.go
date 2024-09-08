@@ -13,7 +13,6 @@ import (
 	"log/slog"
 	"os"
 	"path"
-	"runtime/debug"
 	"strings"
 
 	"github.com/mjl-/bstore"
@@ -34,17 +33,7 @@ func init() {
 var (
 	database *bstore.DB
 	dbtypes  = []any{Settings{}, Repo{}, Build{}}
-
-	version = "dev"
 )
-
-func init() {
-	log.SetFlags(0)
-	info, ok := debug.ReadBuildInfo()
-	if ok {
-		version = info.Main.Version
-	}
-}
 
 // Config is read from the static config file, changing it requires restarting
 // the application.
@@ -123,6 +112,8 @@ func initDingDataDir() {
 var loglevel slog.LevelVar
 
 func main() {
+	log.SetFlags(0)
+
 	flag.TextVar(&loglevel, "loglevel", &loglevel, "log level: debug, info, warn, error")
 	flag.Usage = func() {
 		log.Fatalf("usage: ding [-loglevel level] { config | testconfig | help | kick | serve | quickstart | build | version | license }")
