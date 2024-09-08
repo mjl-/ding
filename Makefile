@@ -31,11 +31,11 @@ web/ding.js: node_modules/.bin/tsc dom.ts api.ts ding.ts
 
 node_modules/.bin/tsc:
 	-mkdir -p node_modules/.bin
-	npm ci
+	npm ci --ignore-scripts
 
 install-js:
 	-mkdir -p node_modules/.bin
-	npm install --save-dev --save-exact typescript@5.1.6
+	npm install --ignore-scripts --save-dev --save-exact typescript@5.1.6
 
 # note: running as root (with umask 0022) tests the privsep paths
 test:
