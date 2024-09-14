@@ -1,7 +1,3 @@
-export CGO_ENABLED=0
-export GOFLAGS=-mod=vendor
-export GOPROXY=off
-
 run: build
 	./ding -loglevel debug serve local/local.conf
 
@@ -9,13 +5,13 @@ run-root: build
 	sudo sh -c 'umask 027; ./ding -loglevel debug serve -listen localhost:6186 -listenwebhook localhost:6187 -listenadmin localhost:6188 local/local-root.conf'
 
 build: node_modules/.bin/tsc
-	go build
-	go vet
-	go run vendor/github.com/mjl-/sherpadoc/cmd/sherpadoc/*.go -adjust-function-names none Ding >web/ding.json
+	CGO_ENABLED=0 go build
+	CGO_ENABLED=0 go vet
+	CGO_ENABLED=0 go run vendor/github.com/mjl-/sherpadoc/cmd/sherpadoc/*.go -adjust-function-names none Ding >web/ding.json
 	./gents.sh web/ding.json api.ts
 	./genlicense.sh
 	./tsc.sh web/ding.js dom.ts api.ts ding.ts
-	go build # build with generated files
+	CGO_ENABLED=0 go build # build with generated files
 
 check:
 	CGO_ENABLED=0 go vet
@@ -54,4 +50,4 @@ fmt:
 	gofmt -w -s *.go
 
 clean:
-	go clean
+	CGO_ENABLED=0 go clean
