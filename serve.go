@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path"
 	"path/filepath"
 	"strings"
@@ -101,8 +102,19 @@ func serve(args []string) {
 			},
 		}
 	}
-	_, err = os.StartProcess(argv[0], argv, attr)
+	proc, err := os.StartProcess(argv[0], argv, attr)
 	xcheckf(err, "starting http process")
+
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGTERM)
+	go func() {
+		<-sig
+		err := proc.Signal(syscall.SIGTERM)
+		if err != nil {
+			slog.Error("sending sigterm to serve-http process", "err", err)
+		}
+		os.Exit(1)
+	}()
 
 	xcheckf(unprivMsg.Close(), "closing unpriv msg file")
 	xcheckf(unprivFD.Close(), "closing unpriv fd file")
