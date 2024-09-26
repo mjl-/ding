@@ -1376,7 +1376,7 @@ const pageHome = async () => {
 			if ((rb.Builds || []).length === 0) {
 				return dom.tr(dom.td(link('#repo/' + encodeURIComponent(rb.Repo.Name), rb.Repo.Name)));
 			}
-			return (rb.Builds || []).map((b, i) => dom.tr(i === 0 ? dom.td(link('#repo/' + encodeURIComponent(rb.Repo.Name), rb.Repo.Name), attr.rowspan('' + (rb.Builds || []).length)) : [], dom.td(link('#repo/' + encodeURIComponent(rb.Repo.Name) + '/build/' + b.ID, '' + b.ID)), dom.td(buildStatus(b)), dom.td(b.Start ? atexit.age(b.Start, b.Finish || undefined) : ''), dom.td(b.Branch), dom.td(b.Version, b.CommitHash ? attr.title('Commit ' + b.CommitHash) : []), dom.td(formatCoverage(rb.Repo, b)), dom.td(formatBuildSize(b)), dom.td(rb.Repo.UID ? dom.span(formatSize(rb.Repo.HomeDiskUsage), attr.title('Of reused home directory')) : []), dom.td(atexit.ageMins(b.Created, undefined)), dom.td(style({ textAlign: 'left' }), buildErrmsg(b))));
+			return (rb.Builds || []).map((b, i) => dom.tr(i === 0 ? dom.td(link('#repo/' + encodeURIComponent(rb.Repo.Name), rb.Repo.Name), attr.rowspan('' + (rb.Builds || []).length)) : [], dom.td(link('#repo/' + encodeURIComponent(rb.Repo.Name) + '/build/' + b.ID, '' + b.ID)), dom.td(buildStatus(b)), dom.td(b.Start ? atexit.age(b.Start, b.Finish || undefined) : ''), dom.td(b.Branch), dom.td(b.Version, b.CommitHash ? attr.title('Commit ' + b.CommitHash) : []), dom.td(formatCoverage(rb.Repo, b)), dom.td(formatBuildSize(b)), i === 0 ? dom.td(attr.rowspan('' + (rb.Builds || []).length), rb.Repo.UID ? dom.span(formatSize(rb.Repo.HomeDiskUsage), attr.title('Of reused home directory')) : []) : [], dom.td(atexit.ageMins(b.Created, undefined)), dom.td(style({ textAlign: 'left' }), buildErrmsg(b))));
 		}))));
 	};
 	render();

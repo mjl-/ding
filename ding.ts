@@ -612,7 +612,7 @@ const pageHome = async (): Promise<Page> => {
 								dom.td(b.Version, b.CommitHash ? attr.title('Commit '+b.CommitHash) : []),
 								dom.td(formatCoverage(rb.Repo, b)),
 								dom.td(formatBuildSize(b)),
-								dom.td(rb.Repo.UID ? dom.span(formatSize(rb.Repo.HomeDiskUsage), attr.title('Of reused home directory')) : []),
+								i === 0 ? dom.td(attr.rowspan(''+(rb.Builds || []).length), rb.Repo.UID ? dom.span(formatSize(rb.Repo.HomeDiskUsage), attr.title('Of reused home directory')) : []) : [],
 								dom.td(atexit.ageMins(b.Created, undefined)),
 								dom.td(style({textAlign: 'left'}), buildErrmsg(b)),
 							)
