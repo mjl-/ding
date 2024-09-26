@@ -165,7 +165,7 @@ A systemd service file has been written to ding.service. To install as service a
 You can start ding manually by running:
 
 	umask 027
-	./ding -loglevel=debug serve -listen localhost:6084 -listenwebhook localhost:6085 -listenadmin localhost:6086 ding.conf
+	./ding -loglevel debug serve -listen localhost:6084 -listenwebhook localhost:6085 -listenadmin localhost:6086 ding.conf
 
 After starting, ding will serve on:
 
