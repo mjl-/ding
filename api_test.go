@@ -226,11 +226,11 @@ func TestToolchains(t *testing.T) {
 
 	installed, active = api.GoToolchainsListInstalled(ctxbg, config.Password)
 	tcompare(t, installed, released[:1])
-	tcompare(t, active, map[string]string{"go": installed[0]})
+	tcompare(t, active, GoToolchains{Go: installed[0]})
 
-	api.GoToolchainActivate(ctxbg, config.Password, installed[0], "go-prev")
+	api.GoToolchainActivate(ctxbg, config.Password, installed[0], "goprev")
 	_, active = api.GoToolchainsListInstalled(ctxbg, config.Password)
-	tcompare(t, active, map[string]string{"go": installed[0], "go-prev": installed[0]})
+	tcompare(t, active, GoToolchains{Go: installed[0], GoPrev: installed[0]})
 
 	api.GoToolchainRemove(ctxbg, config.Password, installed[0])
 }

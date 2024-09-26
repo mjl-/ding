@@ -26,6 +26,12 @@ Old builds are automatically cleaned up.
 Command "ding kick" can be used in a git hook to signal that a build should
 start. Gitea, github and bitbucket webhooks are also supported.
 
+Go toolchains can be automatically updated, either through a daily check or
+through webhooks (e.g. through https://www.gopherwatch.org).
+
+
+## Local use
+
 Command "ding build" can be used locally to run a build script similar to how
 it would run on the build server. This allows testing build scripts without
 pushing any commits. It clones the git or hg repository of the current working

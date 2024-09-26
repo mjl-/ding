@@ -849,6 +849,7 @@ const pageSettings = async (): Promise<Page> => {
 	let runPrefix: HTMLInputElement
 	let environment: HTMLTextAreaElement
 	let automaticGoToolchains: HTMLInputElement
+	let goToolchainWebhookSecret: HTMLInputElement
 	let githubSecret: HTMLInputElement
 	let giteaSecret: HTMLInputElement
 	let bitbucketSecret: HTMLInputElement
@@ -887,6 +888,7 @@ const pageSettings = async (): Promise<Page> => {
 				settings.RunPrefix = runPrefix.value.split(' ').map(s => s.trim()).filter(s => !!s)
 				settings.Environment = environment.value.split('\n').map(s => s.trim()).filter(s => !!s)
 				settings.AutomaticGoToolchains = automaticGoToolchains.checked
+				settings.GoToolchainWebhookSecret = goToolchainWebhookSecret.value
 				settings.GithubWebhookSecret = githubSecret.value
 				settings.GiteaWebhookSecret = giteaSecret.value
 				settings.BitbucketWebhookSecret = bitbucketSecret.value
@@ -911,6 +913,8 @@ const pageSettings = async (): Promise<Page> => {
 						' Automatic Go toolchain management',
 						attr.title('Check once per day if new Go toolchains have been released, and automatically install them and update the go/goprev/gonext symlinks, and schedule low priority builds for repositories that have opted in.' + !haveGoToolchainDir ? ' Warning: No Go toolchain directory is configured in the configuration file.' : ''),
 					),
+					dom.div('Secret for webhook for Go toolchains update', style({whiteSpace: 'nowrap'}), attr.title('If configured, an HTTP POST request to the webhooks endpoint at /gotoolchain with a Authorization header with this value (e.g. "Bearer <random>") will attempt to automatically update Go toolchains, with a second attempt after 15 minutes if the first attempt failed.')),
+					goToolchainWebhookSecret=dom.input(attr.value(settings.GoToolchainWebhookSecret), attr.placeholder('Bearer ...')),
 					dom.div(
 						style({gridColumn: '1 / 3'}),
 						'Global webhook secrets (deprecated)',
@@ -954,7 +958,7 @@ const pageDocs = async (): Promise<Page> => {
 		dom.p('Ding only has simple password-based authentication, with a single password for the entire system. Everyone with the password can see all repositories, builds and scripts, and modify all data.'),
 
 		dom.h1('Go toolchains'),
-		dom.p('Ding has builtin functionality for downloading Go toolchains for use in builds.'),
+		dom.p('Ding has builtin functionality for downloading Go toolchains for use in builds. Triggered either through a daily check, or through a webhook call to /gotoolchain on the webhook endpoint.'),
 
 		dom.h1('API'),
 		dom.p('Ding has a simple HTTP/JSON-based API, see ', link('ding/', 'Ding API'), '.'),

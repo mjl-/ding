@@ -1300,6 +1300,13 @@
 					]
 				},
 				{
+					"Name": "GoToolchainWebhookSecret",
+					"Docs": "Required in Authorization header value to webhook /gotoolchain.",
+					"Typewords": [
+						"string"
+					]
+				},
+				{
 					"Name": "RunPrefix",
 					"Docs": "Commands prefixed to the clone and build commands. E.g. /usr/bin/nice.",
 					"Typewords": [

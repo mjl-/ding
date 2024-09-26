@@ -219,6 +219,7 @@ func servehttp(args []string) {
 		webhookMux.HandleFunc("POST /github/", githubHookHandler)
 		webhookMux.HandleFunc("POST /gitea/", giteaHookHandler)
 		webhookMux.HandleFunc("POST /bitbucket/", bitbucketHookHandler)
+		webhookMux.HandleFunc("POST /gotoolchain", webhookGoToolchainHandler)
 		go func() {
 			err := http.ListenAndServe(*listenWebhookAddress, webhookMux)
 			slog.Error("listen and serve", "err", err)

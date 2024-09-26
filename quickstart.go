@@ -126,9 +126,10 @@ ding.service).
 	db, err := bstore.Open(context.Background(), "data/ding.db", nil, dbtypes...)
 	xcheckf(err, "open db file")
 	settings := Settings{
-		ID:                    1, // singleton
-		Environment:           []string{"PATH=/usr/bin:/bin:/usr/local/bin"},
-		AutomaticGoToolchains: true,
+		ID:                       1, // singleton
+		Environment:              []string{"PATH=/usr/bin:/bin:/usr/local/bin"},
+		AutomaticGoToolchains:    true,
+		GoToolchainWebhookSecret: "Bearer " + genSecret(),
 	}
 	if runtime.GOOS == "linux" {
 		settings.RunPrefix = []string{"nice", "ionice", "-c3", "timeout", "600s"}

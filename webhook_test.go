@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 )
@@ -16,6 +17,45 @@ func toJSON(v any) []byte {
 		panic(err)
 	}
 	return buf
+}
+
+func TestWebhookGoToolchainAuth(t *testing.T) {
+	testHook := func(h http.HandlerFunc, path string, headers map[string]string, body []byte, expCode int) {
+		t.Helper()
+
+		w := httptest.NewRecorder()
+		w.Body = &bytes.Buffer{}
+		r := httptest.NewRequest("POST", path, bytes.NewReader(body))
+		for k, v := range headers {
+			r.Header.Set(k, v)
+		}
+		h(w, r)
+		if w.Code != expCode {
+			t.Fatalf("got code %d, expected %d, body %q", w.Code, expCode, w.Body.String())
+		}
+	}
+
+	testEnv(t)
+
+	// No secret configured.
+	testHook(webhookGoToolchainHandler, "/gotoolchain", nil, nil, http.StatusUnauthorized)
+	testHook(webhookGoToolchainHandler, "/gotoolchain", map[string]string{"Authorization": "bogus"}, nil, http.StatusUnauthorized)
+
+	settings := Settings{ID: 1}
+	err := database.Get(ctxbg, &settings)
+	tcheck(t, err, "get settings")
+	settings.GoToolchainWebhookSecret = "Bearer " + genSecret()
+	err = database.Update(ctxbg, &settings)
+	tcheck(t, err, "save settings with go toolchains webhook secret")
+
+	testHook(webhookGoToolchainHandler, "/gotoolchain", nil, nil, http.StatusUnauthorized)
+	testHook(webhookGoToolchainHandler, "/gotoolchain", map[string]string{"Authorization": "bogus"}, nil, http.StatusUnauthorized)
+
+	if os.Getenv("DING_TEST_GOTOOLCHAINS") == "" {
+		t.Skip("skipping because DING_TEST_GOTOOLCHAINS is not set")
+	}
+
+	testHook(webhookGoToolchainHandler, "/gotoolchain", map[string]string{"Authorization": settings.GoToolchainWebhookSecret}, nil, http.StatusOK)
 }
 
 func TestWebhook(t *testing.T) {

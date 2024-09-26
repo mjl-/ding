@@ -6,13 +6,14 @@ import (
 
 // Settings holds runtime configuration options.
 type Settings struct {
-	ID                     int32    // singleton with ID 1
-	NotifyEmailAddrs       []string // Email address to notify on build breakage/fixage. Can be overridden per repository.
-	GithubWebhookSecret    string   // Secret for webhooks from github. Migrated from config. New repo's get their own unique secret on creation.
-	GiteaWebhookSecret     string
-	BitbucketWebhookSecret string
-	RunPrefix              []string // Commands prefixed to the clone and build commands. E.g. /usr/bin/nice.
-	Environment            []string // Additional environment variables to set during clone and build.
+	ID                       int32    // singleton with ID 1
+	NotifyEmailAddrs         []string // Email address to notify on build breakage/fixage. Can be overridden per repository.
+	GithubWebhookSecret      string   // Secret for webhooks from github. Migrated from config. New repo's get their own unique secret on creation.
+	GiteaWebhookSecret       string
+	BitbucketWebhookSecret   string
+	GoToolchainWebhookSecret string   // Required in Authorization header value to webhook /gotoolchain.
+	RunPrefix                []string // Commands prefixed to the clone and build commands. E.g. /usr/bin/nice.
+	Environment              []string // Additional environment variables to set during clone and build.
 
 	// If set, new "go", "goprev" and "gonext" (if present, for release candidates)
 	// are automatically downloaded and installed (symlinked as active).
