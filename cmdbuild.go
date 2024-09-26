@@ -88,7 +88,12 @@ func cmdBuild(args []string) {
 	cleanupTempDestDir := func() {
 		if tmpdestdir {
 			err := os.RemoveAll(destdir)
-			if err != nil {
+			if err == nil {
+				return
+			}
+			// Try again, first making all files writable. E.g. for a go module download cache.
+			ensureWritable(destdir)
+			if err := os.RemoveAll(destdir); err != nil {
 				slog.Error("removing temporary destdir", "err", err, "destdir", destdir)
 			}
 		}
