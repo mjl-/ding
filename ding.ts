@@ -1,7 +1,7 @@
 let rootElem: HTMLElement
 let crumbElem = dom.span()
 let updateElem = dom.span()
-let pageElem = dom.div(style({padding: '1em'}))
+let pageElem = dom.div(style({padding: '1em'}), dom.div(style({textAlign: 'center'}), 'Loading...'))
 
 const client = new api.Client()
 

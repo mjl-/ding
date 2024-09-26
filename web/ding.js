@@ -943,7 +943,7 @@ var api;
 let rootElem;
 let crumbElem = dom.span();
 let updateElem = dom.span();
-let pageElem = dom.div(style({ padding: '1em' }));
+let pageElem = dom.div(style({ padding: '1em' }), dom.div(style({ textAlign: 'center' }), 'Loading...'));
 const client = new api.Client();
 const colors = {
 	green: '#66ac4c',
