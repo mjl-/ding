@@ -1,0 +1,11 @@
+#!/bin/ksh
+
+daemon="/bin/sh -c 'set -e; umask 027; cd /home/service/ding; /home/service/ding/ding -loglevel debug serve -listen 127.0.0.1:6084 -listenwebhook 127.0.0.1:6085 -listenadmin 127.0.0.1:6086 ding.conf'"
+daemon_logger=daemon.info
+
+. /etc/rc.d/rc.subr
+
+pexp="/home/service/ding/ding .*"
+rc_bg=YES
+rc_reload=NO
+rc_cmd $1

@@ -19,7 +19,7 @@ import (
 	"github.com/mjl-/sconf"
 )
 
-//go:embed INSTALL.txt web/* LICENSE licenses/* ding.service
+//go:embed INSTALL.txt web/* LICENSE licenses/* ding.service ding.openbsd.rc ding.freebsd.rc
 var embedFS embed.FS
 
 var fsys fs.FS = embedFS

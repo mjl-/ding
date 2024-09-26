@@ -38,7 +38,11 @@ func quickstart(args []string) {
 
 	u, err := user.Lookup("ding")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "looking up user ding: %v\nHint: useradd -d %s ding\n", err, workdir)
+		if runtime.GOOS == "freebsd" {
+			fmt.Fprintf(os.Stderr, "looking up user ding: %v\nHint: pw useradd ding -d %s\n", err, workdir)
+		} else {
+			fmt.Fprintf(os.Stderr, "looking up user ding: %v\nHint: useradd -d %s ding\n", err, workdir)
+		}
 		os.Exit(2)
 	}
 	uid, err := strconv.ParseInt(u.Uid, 10, 64)
@@ -80,7 +84,24 @@ ding.service).
 	err = os.Mkdir(c.GoToolchainDir, 0750)
 	xcheckf(err, "making toolchain dir")
 
-	if runtime.GOOS == "linux" {
+	writeRC := func(name string) {
+		sf, err := fsys.Open(name)
+		xcheckf(err, "open rc file")
+		defer sf.Close()
+		rc, err := io.ReadAll(sf)
+		xcheckf(err, "read rc file")
+		rc = bytes.ReplaceAll(rc, []byte("/home/service/ding"), []byte(workdir))
+		err = os.WriteFile("ding.rc", rc, 0755)
+		xcheckf(err, "writing rc file")
+
+		err = os.Chown("ding.rc", 0, 0)
+		xcheckf(err, "chown ding.rc")
+		err = os.Chmod("ding.rc", 0755)
+		xcheckf(err, "chmod ding.rc")
+	}
+
+	switch runtime.GOOS {
+	case "linux":
 		sf, err := fsys.Open("ding.service")
 		xcheckf(err, "open service file")
 		defer sf.Close()
@@ -94,6 +115,12 @@ ding.service).
 		xcheckf(err, "chown ding.service")
 		err = os.Chmod("ding.service", 0644)
 		xcheckf(err, "chmod ding.service")
+
+	case "openbsd":
+		writeRC("ding.openbsd.rc")
+
+	case "freebsd":
+		writeRC("ding.freebsd.rc")
 	}
 
 	db, err := bstore.Open(context.Background(), "data/ding.db", nil, dbtypes...)
@@ -152,13 +179,30 @@ base URL.
 
 Generated password: %s (for logging into web interface)
 `, c.Password)
-	if runtime.GOOS == "linux" {
+	switch runtime.GOOS {
+	case "linux":
 		fmt.Printf(`
 A systemd service file has been written to ding.service. To install as service and start:
 
-	sudo systemctl enable $PWD/ding.service
-	sudo systemctl start ding.service
-	sudo journalctl -f -u ding.service # See logs
+	systemctl enable $PWD/ding.service
+	systemctl start ding.service
+	journalctl -f -u ding.service # See logs
+`)
+	case "openbsd":
+		fmt.Printf(`
+An rc.d script has been written to ding.rc. To install as service and start:
+
+	mv ding.rc /etc/rc.d/ding
+	rcctl enable ding
+	rcctl start ding
+`)
+	case "freebsd":
+		fmt.Printf(`
+An rc.d script has been written to ding.rc. To install as service and start:
+
+	mv ding.rc /etc/rc.d/ding
+	sysrc ding_enable="YES"
+	service ding start
 `)
 	}
 	fmt.Printf(`

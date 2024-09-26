@@ -1,0 +1,27 @@
+#!/bin/sh
+
+# PROVIDE: ding
+# REQUIRE: netwait
+
+. /etc/rc.subr
+
+name=ding
+rcvar=ding_enable
+
+start_cmd="${name}_start"
+: ${ding_enable:=NO}
+pidfile="/var/run/${name}.pid"
+
+# make rc pass the pid/processname check
+procname=daemon
+
+load_rc_config $name
+
+ding_start()
+{
+	# -r: restart on exit
+	# -l: output to syslog as daemon
+	/usr/sbin/daemon -r -l daemon -P $pidfile sh -c 'set -e; umask 027; cd /home/service/ding; exec /home/service/ding/ding -loglevel=debug serve -listen 127.0.0.1:6084 -listenwebhook 127.0.0.1:6085 -listenadmin 127.0.0.1:6086 ding.conf'
+}
+
+run_rc_command "$1"
