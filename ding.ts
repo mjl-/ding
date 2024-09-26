@@ -626,10 +626,11 @@ const pageHome = async (): Promise<Page> => {
 	render()
 
 	page.subscribe(streams.build, (e: api.EventBuild) => {
-		const rb = rbl.find(rb => rb.Repo.Name === e.Build.RepoName)
-		if (!rb) {
+		const rbi = rbl.findIndex(rb => rb.Repo.Name === e.Build.RepoName)
+		if (rbi < 0) {
 			return
 		}
+		const rb = rbl[rbi]
 		const builds = rb.Builds || []
 		const i = builds.findIndex(b => b.ID === e.Build.ID)
 		if (i < 0) {
@@ -638,6 +639,8 @@ const pageHome = async (): Promise<Page> => {
 			builds[i] = e.Build
 		}
 		rb.Builds = builds
+		rbl.splice(rbi, 1)
+		rbl.unshift(rb)
 		rblFavicon()
 		render()
 	})
