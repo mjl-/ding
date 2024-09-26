@@ -43,7 +43,7 @@ var (
 func servehttp(args []string) {
 	serveFlag.Init("serve-http", flag.ExitOnError)
 	serveFlag.Usage = func() {
-		fmt.Println("usage: ding [flags] serve-http")
+		fmt.Println("usage: ding [flags] serve-http [flags]")
 		serveFlag.PrintDefaults()
 	}
 	serveFlag.Parse(args)

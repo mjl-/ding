@@ -116,7 +116,7 @@ func main() {
 
 	flag.TextVar(&loglevel, "loglevel", &loglevel, "log level: debug, info, warn, error")
 	flag.Usage = func() {
-		log.Fatalf("usage: ding [-loglevel level] { config | testconfig | help | kick | serve | quickstart | build | version | license }")
+		log.Fatalf("usage: ding [-loglevel level] { config | testconfig | help | kick | serve | quickstart | build | version | license } ...")
 		flag.PrintDefaults()
 		os.Exit(2)
 	}

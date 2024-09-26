@@ -32,7 +32,7 @@ func serve(args []string) {
 	origArgs := args
 	serveFlag.Init("serve", flag.ExitOnError)
 	serveFlag.Usage = func() {
-		fmt.Println("usage: ding [flags] serve ding.conf")
+		fmt.Println("usage: ding [flags] serve [flags] ding.conf")
 		serveFlag.PrintDefaults()
 	}
 	serveFlag.Parse(args)
