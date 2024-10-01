@@ -30,19 +30,24 @@ func webhookGoToolchainHandler(w http.ResponseWriter, r *http.Request) {
 		}()
 
 		slog.Info("attempting to automatically update go toolchains after webhook")
-		updated, err := automaticGoToolchain()
-		if err == nil && updated {
+		m := msg{AutomaticGoToolchain: &msgAutomaticGoToolchain{}}
+		err := requestPrivileged(m)
+		// Horrible hack, we're passing "updated" as "error" when the toolchains have been
+		// updated. todo: change ipc mechanism to properly pass data.
+		if err != nil && err.Error() == "updated" {
 			return
 		}
 		if err != nil {
 			slog.Error("error attempting to update go toolchain", "err", err)
 		}
 		slog.Info("go toolchains not updated, will try to update again in 15 mins")
+
 		time.Sleep(15 * time.Minute)
-		updated, err = automaticGoToolchain()
-		if err != nil {
+		m = msg{AutomaticGoToolchain: &msgAutomaticGoToolchain{}}
+		err = requestPrivileged(m)
+		if err != nil && err.Error() != "updated" {
 			slog.Error("error attempting again to update go toolchain", "err", err)
-		} else if !updated {
+		} else if err == nil {
 			slog.Info("go toolchains not updated in second attempt, giving up for now")
 		}
 	}()
