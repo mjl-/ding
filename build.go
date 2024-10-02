@@ -279,17 +279,22 @@ func _doBuild0(ctx context.Context, repo Repo, build Build, buildDir string, got
 
 		r := recover()
 		if r != nil {
-			if serr, ok := r.(*sherpa.Error); ok && serr.Code == "user:error" {
-				_dbwrite(ctx, func(tx *bstore.Tx) {
-					b = Build{ID: build.ID}
-					err := tx.Get(&b)
-					_checkf(err, "get build after error")
-					b.ErrorMessage = serr.Message
-					err = tx.Update(&b)
-					_checkf(err, "update error message for build in database")
-				})
-				events <- EventBuild{b}
+			var errmsg string
+			if serr, ok := r.(*sherpa.Error); ok {
+				errmsg = serr.Message
 			} else {
+				errmsg = fmt.Sprintf("%v", r)
+			}
+			_dbwrite(ctx, func(tx *bstore.Tx) {
+				b = Build{ID: build.ID}
+				err := tx.Get(&b)
+				_checkf(err, "get build after error")
+				b.ErrorMessage = errmsg
+				err = tx.Update(&b)
+				_checkf(err, "update error message for build in database")
+			})
+			events <- EventBuild{b}
+			if serr, ok := r.(*sherpa.Error); !ok || serr.Code != "user:error" {
 				panic(r)
 			}
 		}
@@ -447,12 +452,13 @@ func _doBuild0(ctx context.Context, repo Repo, build Build, buildDir string, got
 			argv := runPrefix(command...)
 			cmd := exec.CommandContext(buildCmd.ctx, argv[0], argv[1:]...)
 			cmd.Dir = checkoutDir
+			cmd.Env = env
 			buf, err := cmd.Output()
-			_checkf(err, "finding commit hash")
+			_checkUserf(err, "finding commit hash (%q)", buf)
 			build.CommitHash = strings.TrimSpace(string(buf))
 		}
 		if build.CommitHash == "" {
-			_checkf(fmt.Errorf("cannot find commit hash"), "finding commit hash")
+			_checkUserf(fmt.Errorf("cannot find commit hash"), "finding commit hash")
 		}
 		_dbwrite(ctx, func(tx *bstore.Tx) {
 			b := Build{ID: build.ID}
@@ -705,6 +711,8 @@ func setupCmd(cmdCtx context.Context, buildID int32, env []string, step, buildDi
 
 	stderrr, stderrw, err = os.Pipe()
 	lcheck(err, "pipe for stderr")
+
+	slog.Debug("starting command", "buildid", buildID, "step", step, "workdir", workDir, "builddir", buildDir, "argv", args, "env", env)
 
 	cmd := exec.CommandContext(cmdCtx, args[0], args[1:]...)
 	cmd.Dir = workDir
