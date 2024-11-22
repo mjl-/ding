@@ -1592,8 +1592,6 @@ export GOFLAGS="-mod=vendor -trimpath"
 # Don't allow fetching data (from the proxy).
 export GOPROXY=off
 
-# Find name for application.
-name=$(basename $PWD)
 # Get either a clean tagged name, or one with a commit hash.
 version=$(git describe --always)
 
