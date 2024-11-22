@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"time"
@@ -35,6 +36,9 @@ func webhookGoToolchainHandler(w http.ResponseWriter, r *http.Request) {
 		// Horrible hack, we're passing "updated" as "error" when the toolchains have been
 		// updated. todo: change ipc mechanism to properly pass data.
 		if err != nil && err.Error() == "updated" {
+			if err := scheduleLowPrioBuilds(context.Background(), true); err != nil {
+				slog.Error("scheduling low prio builds after updated toolchains", "err", err)
+			}
 			return
 		}
 		if err != nil {
@@ -49,6 +53,8 @@ func webhookGoToolchainHandler(w http.ResponseWriter, r *http.Request) {
 			slog.Error("error attempting again to update go toolchain", "err", err)
 		} else if err == nil {
 			slog.Info("go toolchains not updated in second attempt, giving up for now")
+		} else if err := scheduleLowPrioBuilds(context.Background(), true); err != nil {
+			slog.Error("scheduling low prio builds after updated toolchains", "err", err)
 		}
 	}()
 
