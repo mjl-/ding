@@ -973,6 +973,19 @@ const buildSetFavicon = (b) => {
 	}
 };
 const link = (href, anchor) => dom.a(attr.href(href), anchor);
+const genrandom = () => {
+	let b = new Uint8Array(1);
+	let s = '';
+	const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*-_;:,<.>/';
+	while (s.length < 12) {
+		crypto.getRandomValues(b);
+		if (Math.ceil(b[0] / chars.length) * chars.length > 255) {
+			continue; // Prevent bias.
+		}
+		s += chars[b[0] % chars.length];
+	}
+	return s;
+};
 class Stream {
 	subscribers = [];
 	send(e) {
@@ -1714,6 +1727,8 @@ const pageRepo = async (repoName) => {
 	let goprev;
 	let gonext;
 	let notifyEmailAddrs;
+	let webhookSecret;
+	let allowGlobalWebhookSecrets;
 	let buildScript;
 	let fieldset;
 	const originTextareaBox = dom.div(originTextarea = dom.textarea(repo.Origin, attr.required(''), attr.rows('5'), style({ width: '100%' })), dom.div('Script that clones a repository into checkout/$DING_CHECKOUTPATH.'), dom.div('Typically starts with "#!/bin/sh".'), dom.div('It must print a line of the form "commit: ...".'), dom.br());
@@ -1774,8 +1789,8 @@ const pageRepo = async (repoName) => {
 				BubblewrapNoNet: bubblewrapNoNet.checked,
 				BuildOnUpdatedToolchain: buildOnUpdatedToolchain.checked,
 				NotifyEmailAddrs: notifyEmailAddrs.value ? notifyEmailAddrs.value.split(',').map(s => s.trim()) : [],
-				WebhookSecret: '',
-				AllowGlobalWebhookSecrets: false,
+				WebhookSecret: webhookSecret.value,
+				AllowGlobalWebhookSecrets: allowGlobalWebhookSecrets.checked,
 				BuildScript: buildScript.value,
 				HomeDiskUsage: 0,
 				GoAuto: goauto.checked,
@@ -1784,13 +1799,16 @@ const pageRepo = async (repoName) => {
 				GoNext: gonext.checked,
 			};
 			repo = await authed(() => client.RepoSave(password, nr), fieldset);
+			dom._kids(pageElem, render());
 		}, fieldset = dom.fieldset(dom.div(style({ display: 'grid', columnGap: '1em', rowGap: '.5ex', gridTemplateColumns: 'min-content 1fr', alignItems: 'top' }), 'Name', name = dom.input(attr.disabled(''), attr.value(repo.Name)), dom.span('VCS', attr.title('Clones are run as the configured ding user, not under a unique/reused UID. After cloning, file permissions are fixed up. Configure an .ssh/config and/or ssh keys in the home directory of the ding user.')), vcs = dom.select(dom.option('git', repo.VCS == 'git' ? attr.selected('') : []), dom.option('mercurial', repo.VCS == 'mercurial' ? attr.selected('') : []), dom.option('command', repo.VCS == 'command' ? attr.selected('') : []), vcsChanged), 'Origin', originBox = dom.div(originInput = origin = dom.input(attr.value(repo.Origin), attr.required(''), attr.placeholder('https://... or ssh://... or user@host:path.git'), style({ width: '100%' }))), dom.div('Default branch', style({ whiteSpace: 'nowrap' })), defaultBranch = dom.input(attr.value(repo.DefaultBranch), attr.placeholder('main, master, default')), dom.div('Checkout path', style({ whiteSpace: 'nowrap' })), checkoutPath = dom.input(attr.value(repo.CheckoutPath), attr.required(''), attr.title('Name of the directory to checkout the repository. Go builds may use this name for the binary it creates.')), dom.div('Notify email addresses', style({ whiteSpace: 'nowrap' }), mailEnabled ? [] : [' *', attr.title('No SMTP server is configured for outgoing emails.')]), notifyEmailAddrs = dom.input(attr.value((repo.NotifyEmailAddrs || []).join(', ')), attr.title('Comma-separated list of email address that will receive notifications when a build breaks or is fixed. If empty, the email address configured in the configuration file receives a notification, if any.'), attr.placeholder((settings.NotifyEmailAddrs || []).join(', ') || 'user@example.org, other@example.org')), dom.div(), dom.label(reuseUID = dom.input(attr.type('checkbox'), repo.UID !== null ? attr.checked('') : []), ' Reuse $HOME and UID for builds for this repo', attr.title('By reusing $HOME and running builds for this repository under the same UID, build caches can be used. This typically leads to faster builds but reduces isolation of builds.')), dom.div(), dom.label(bubblewrap = dom.input(attr.type('checkbox'), repo.Bubblewrap ? attr.checked('') : []), ' Run build script in bubblewrap, with limited system access', attr.title('Only available on Linux, with bubblewrap (bwrap) installed. Commands are run in a new mount namespace with access to system directories like /bin /lib /usr, and to the ding build, home and toolchain directories.')), dom.div(), dom.label(bubblewrapNoNet = dom.input(attr.type('checkbox'), repo.BubblewrapNoNet ? attr.checked('') : []), ' Prevent network access from build script. Only active if bubblewrap is active.', attr.title('Hide network interfaces from the build script. Only a loopback device is available.')), dom.div('Build for Go toolchains', style({ whiteSpace: 'nowrap' }), attr.title('The build script will be run for each of the selected Go toolchains. The short name (go, goprev, gonext) is set in $DING_GOTOOLCHAIN. If this build was triggered due to a new Go toolchain being installed, the variable $DING_NEWGOTOOLCHAIN is set.' + !haveGoToolchainDir ? ' Warning: No Go toolchain directory is configured in the configuration file.' : '')), dom.div(dom.label(goauto = dom.input(attr.type('checkbox'), repo.GoAuto ? attr.checked('') : [], function change() {
 			if (goauto.checked) {
 				gocur.checked = false;
 				goprev.checked = false;
 				gonext.checked = false;
 			}
-		}), ' Automatic', attr.title('Build for each of the available Go toolchains, go/goprev/gonext. At least one must be found or the build will fail.')), ' ', dom.label(gocur = dom.input(attr.type('checkbox'), repo.GoCur ? attr.checked('') : [], function change() { goauto.checked = false; }), ' Go latest', attr.title('Latest patch version of latest stable Go toolchain version.')), ' ', dom.label(goprev = dom.input(attr.type('checkbox'), repo.GoPrev ? attr.checked('') : [], function change() { goauto.checked = false; }), ' Go previous', attr.title('Latest patch version of Go toolchain minor version before the latest stable.')), ' ', dom.label(gonext = dom.input(attr.type('checkbox'), repo.GoNext ? attr.checked('') : [], function change() { goauto.checked = false; }), ' Go next', attr.title('Release candidate of Go toolchain, if available.')), ' '), dom.div(), dom.label(buildOnUpdatedToolchain = dom.input(attr.type('checkbox'), repo.BuildOnUpdatedToolchain ? attr.checked('') : []), ' Schedule a low-priority build when new toolchains are automatically installed.')), dom.div(dom.label(dom.div('Build script', style({ marginBottom: '.25ex' })), buildScript = dom.textarea(repo.BuildScript, attr.required(''), attr.rows('24'), style({ width: '100%' })))), dom.br(), dom.div(dom.submitbutton('Save'))))), dom.br(), dom.h1('Webhooks'), dom.p('Configure the following webhook URLs to trigger builds:'), dom.ul(dom.li(dom.tt('http[s]://[webhooklistener]/github/' + repo.Name), ', with secret: ', dom.tt(repo.WebhookSecret)), dom.li(dom.tt('http[s]://[webhooklistener]/gitea/' + repo.Name), ', with secret: ', dom.tt(repo.WebhookSecret)), dom.li(dom.tt('http[s]://[webhooklistener]/bitbucket/' + repo.Name + '/' + repo.WebhookSecret))), repo.AllowGlobalWebhookSecrets && (settings.GithubWebhookSecret || settings.GiteaWebhookSecret || settings.BitbucketWebhookSecret) ? dom.p('Warning: Globally configured webhook secrets are active and also accepted for this repository.') : dom.p('No other (globally configured) secrets are accepted for this repository.'), dom.div(docsBuildScript()), dom.h1('Build settings'), (settings.RunPrefix || []).length > 0 ? dom.p('Build commands are prefixed with: ', dom.tt((settings.RunPrefix || []).join(' '))) : dom.p('Build commands are not run within other commands.'), dom.div('Additional environments available during builds:'), (settings.Environment || []).length === 0 ? dom.p('None') : dom.ul((settings.Environment || []).map(s => dom.li(dom.tt(s)))))),
+		}), ' Automatic', attr.title('Build for each of the available Go toolchains, go/goprev/gonext. At least one must be found or the build will fail.')), ' ', dom.label(gocur = dom.input(attr.type('checkbox'), repo.GoCur ? attr.checked('') : [], function change() { goauto.checked = false; }), ' Go latest', attr.title('Latest patch version of latest stable Go toolchain version.')), ' ', dom.label(goprev = dom.input(attr.type('checkbox'), repo.GoPrev ? attr.checked('') : [], function change() { goauto.checked = false; }), ' Go previous', attr.title('Latest patch version of Go toolchain minor version before the latest stable.')), ' ', dom.label(gonext = dom.input(attr.type('checkbox'), repo.GoNext ? attr.checked('') : [], function change() { goauto.checked = false; }), ' Go next', attr.title('Release candidate of Go toolchain, if available.')), ' '), dom.div(), dom.label(buildOnUpdatedToolchain = dom.input(attr.type('checkbox'), repo.BuildOnUpdatedToolchain ? attr.checked('') : []), ' Schedule a low-priority build when new toolchains are automatically installed.'), dom.div('Webhook secrets', style({ whiteSpace: 'nowrap' })), dom.div(webhookSecret = dom.input(attr.value(repo.WebhookSecret)), ' ', dom.clickbutton('Generate random', function click() {
+			webhookSecret.value = genrandom();
+		}), dom.br(), dom.label(allowGlobalWebhookSecrets = dom.input(attr.type('checkbox'), repo.AllowGlobalWebhookSecrets ? attr.checked('') : []), ' Allow global webhook secrets'))), dom.div(dom.label(dom.div('Build script', style({ marginBottom: '.25ex' })), buildScript = dom.textarea(repo.BuildScript, attr.required(''), attr.rows('24'), style({ width: '100%' })))), dom.br(), dom.div(dom.submitbutton('Save'))))), dom.br(), dom.h1('Webhooks'), dom.p('Configure the following webhook URLs to trigger builds:'), dom.ul(dom.li(dom.tt('http[s]://[webhooklistener]/github/' + repo.Name), ', with secret: ', dom.tt(repo.WebhookSecret)), dom.li(dom.tt('http[s]://[webhooklistener]/gitea/' + repo.Name), ', with secret: ', dom.tt(repo.WebhookSecret)), dom.li(dom.tt('http[s]://[webhooklistener]/bitbucket/' + repo.Name + '/' + repo.WebhookSecret))), repo.AllowGlobalWebhookSecrets && (settings.GithubWebhookSecret || settings.GiteaWebhookSecret || settings.BitbucketWebhookSecret) ? dom.p('Warning: Globally configured webhook secrets are active and also accepted for this repository.') : dom.p('No other (globally configured) secrets are accepted for this repository.'), dom.div(docsBuildScript()), dom.h1('Build settings'), (settings.RunPrefix || []).length > 0 ? dom.p('Build commands are prefixed with: ', dom.tt((settings.RunPrefix || []).join(' '))) : dom.p('Build commands are not run within other commands.'), dom.div('Additional environments available during builds:'), (settings.Environment || []).length === 0 ? dom.p('None') : dom.ul((settings.Environment || []).map(s => dom.li(dom.tt(s)))))),
 	];
 	const elem = render();
 	vcsChanged();

@@ -40,6 +40,21 @@ interface TargetDisableable {
 	}
 }
 
+const genrandom = () => {
+	let b = new Uint8Array(1)
+	let s = ''
+	const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*-_;:,<.>/'
+	while (s.length < 12) {
+		crypto.getRandomValues(b)
+		if (Math.ceil(b[0]/chars.length)*chars.length > 255) {
+			continue // Prevent bias.
+		}
+		s += chars[b[0]%chars.length]
+	}
+	return s
+}
+
+
 class Stream<T> {
 	subscribers: ((e: T) => void)[] = []
 
@@ -1239,6 +1254,8 @@ const pageRepo = async (repoName: string): Promise<Page> => {
 	let goprev: HTMLInputElement
 	let gonext: HTMLInputElement
 	let notifyEmailAddrs: HTMLInputElement
+	let webhookSecret: HTMLInputElement
+	let allowGlobalWebhookSecrets: HTMLInputElement
 	let buildScript: HTMLTextAreaElement
 	let fieldset: HTMLFieldSetElement
 
@@ -1345,8 +1362,8 @@ const pageRepo = async (repoName: string): Promise<Page> => {
 								BubblewrapNoNet: bubblewrapNoNet.checked,
 								BuildOnUpdatedToolchain: buildOnUpdatedToolchain.checked,
 								NotifyEmailAddrs: notifyEmailAddrs.value ? notifyEmailAddrs.value.split(',').map(s => s.trim()) : [],
-								WebhookSecret: '',
-								AllowGlobalWebhookSecrets: false,
+								WebhookSecret: webhookSecret.value,
+								AllowGlobalWebhookSecrets: allowGlobalWebhookSecrets.checked,
 								BuildScript: buildScript.value,
 								HomeDiskUsage: 0,
 								GoAuto: goauto.checked,
@@ -1355,6 +1372,7 @@ const pageRepo = async (repoName: string): Promise<Page> => {
 								GoNext: gonext.checked,
 							}
 							repo = await authed(() => client.RepoSave(password, nr), fieldset)
+							dom._kids(pageElem, render())
 						},
 						fieldset=dom.fieldset(
 							dom.div(
@@ -1427,6 +1445,18 @@ const pageRepo = async (repoName: string): Promise<Page> => {
 								dom.label(
 									buildOnUpdatedToolchain=dom.input(attr.type('checkbox'), repo.BuildOnUpdatedToolchain ? attr.checked('') : []),
 									' Schedule a low-priority build when new toolchains are automatically installed.',
+								),
+								dom.div('Webhook secrets', style({whiteSpace: 'nowrap'})),
+								dom.div(
+									webhookSecret=dom.input(attr.value(repo.WebhookSecret)),
+									' ', dom.clickbutton('Generate random', function click() {
+										webhookSecret.value = genrandom()
+									}),
+									dom.br(),
+									dom.label(
+										allowGlobalWebhookSecrets=dom.input(attr.type('checkbox'), repo.AllowGlobalWebhookSecrets ? attr.checked('') : []),
+										' Allow global webhook secrets',
+									),
 								),
 							),
 							dom.div(

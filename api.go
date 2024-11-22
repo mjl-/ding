@@ -460,6 +460,8 @@ func (Ding) RepoSave(ctx context.Context, password string, repo Repo) (r Repo) {
 		r.GoCur = repo.GoCur
 		r.GoPrev = repo.GoPrev
 		r.GoNext = repo.GoNext
+		r.WebhookSecret = repo.WebhookSecret
+		r.AllowGlobalWebhookSecrets = repo.AllowGlobalWebhookSecrets
 		err := tx.Update(&r)
 		_checkf(err, "updating repo in database")
 		r = _repo(tx, repo.Name)
