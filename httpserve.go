@@ -127,7 +127,12 @@ func servehttp(args []string) {
 
 	startJobManager()
 
-	staleBuilds, err := bstore.QueryDB[Build](context.Background(), database).FilterFn(func(b Build) bool { return b.Finish == nil }).FilterNotEqual("Status", string(StatusNew)).List()
+	sq := bstore.QueryDB[Build](context.Background(), database)
+	sq.FilterFn(func(b Build) bool {
+		return b.Finish == nil
+	})
+	sq.FilterNotEqual("Status", string(StatusNew))
+	staleBuilds, err := sq.List()
 	xcheckf(err, "listing stale builds in database")
 	for _, b := range staleBuilds {
 		buildDir := fmt.Sprintf("%s/build/%s/%d/", dingDataDir, b.RepoName, b.ID)
@@ -145,7 +150,12 @@ func servehttp(args []string) {
 		slog.Info("marked stale build as failed", "builddir", buildDir)
 	}
 
-	newBuilds, err := bstore.QueryDB[Build](context.Background(), database).FilterNonzero(Build{Status: StatusNew}).List()
+	bq := bstore.QueryDB[Build](context.Background(), database)
+	bq.FilterNonzero(Build{Status: StatusNew})
+	bq.FilterFn(func(b Build) bool {
+		return b.Finish == nil
+	})
+	newBuilds, err := bq.List()
 	xcheckf(err, "fetching new builds from database")
 	for _, b := range newBuilds {
 		repo := Repo{Name: b.RepoName}
