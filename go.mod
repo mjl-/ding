@@ -3,15 +3,15 @@ module github.com/mjl-/ding
 go 1.23
 
 require (
-	github.com/mjl-/bstore v0.0.6
+	github.com/mjl-/bstore v0.0.7
 	github.com/mjl-/goreleases v0.0.4
-	github.com/mjl-/sconf v0.0.7
+	github.com/mjl-/sconf v0.0.8
 	github.com/mjl-/sherpa v0.6.7
 	github.com/mjl-/sherpadoc v0.0.17
 	github.com/mjl-/sherpaprom v0.0.2
 	github.com/mjl-/sherpats v0.0.6
 	github.com/prometheus/client_golang v1.19.1
-	golang.org/x/sys v0.24.0
+	golang.org/x/sys v0.27.0
 )
 
 require (
@@ -22,9 +22,9 @@ require (
 	github.com/prometheus/common v0.48.0 // indirect
 	github.com/prometheus/procfs v0.12.0 // indirect
 	go.etcd.io/bbolt v1.3.11 // indirect
-	golang.org/x/crypto v0.26.0 // indirect
-	golang.org/x/mod v0.20.0 // indirect
-	golang.org/x/sync v0.8.0 // indirect
-	golang.org/x/tools v0.24.0 // indirect
+	golang.org/x/crypto v0.29.0 // indirect
+	golang.org/x/mod v0.22.0 // indirect
+	golang.org/x/sync v0.9.0 // indirect
+	golang.org/x/tools v0.27.0 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
 )
