@@ -180,7 +180,7 @@ func main() {
 
 func printFile(name string) {
 	f, err := fsys.Open(name)
-	xcheckf(err, "opening file "+name)
+	xcheckf(err, "opening file %s", name)
 	_, err = io.Copy(os.Stdout, f)
 	xcheckf(err, "copy")
 	err = f.Close()
