@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"runtime"
 	"testing"
 	"time"
 )
@@ -51,11 +52,32 @@ func TestWebhookGoToolchainAuth(t *testing.T) {
 	testHook(webhookGoToolchainHandler, "/gotoolchain", nil, nil, http.StatusUnauthorized)
 	testHook(webhookGoToolchainHandler, "/gotoolchain", map[string]string{"Authorization": "bogus"}, nil, http.StatusUnauthorized)
 
+	headers := map[string]string{"Authorization": settings.GoToolchainWebhookSecret, "Content-Type": "application/json"}
+
+	// Missing JSON body.
+	testHook(webhookGoToolchainHandler, "/gotoolchain", headers, nil, http.StatusBadRequest)
+
+	hookData := struct {
+		Module      string
+		Version     string
+		LogRecordID int64
+		Discovered  time.Time
+	}{"golang.org/toolchain", "", 1, time.Now()}
+	buf, err := json.Marshal(hookData)
+	tcheck(t, err, "marshal json")
+
+	// No matching GOOS/GOARCH, so no toolchain fetch.
+	testHook(webhookGoToolchainHandler, "/gotoolchain", headers, buf, http.StatusOK)
+
 	if os.Getenv("DING_TEST_GOTOOLCHAINS") == "" {
 		t.Skip("skipping because DING_TEST_GOTOOLCHAINS is not set")
 	}
 
-	testHook(webhookGoToolchainHandler, "/gotoolchain", map[string]string{"Authorization": settings.GoToolchainWebhookSecret}, nil, http.StatusOK)
+	hookData.Version = "v0.0.1-go1.24.1." + runtime.GOOS + "-" + runtime.GOARCH
+	buf, err = json.Marshal(hookData)
+	tcheck(t, err, "marshal json")
+
+	testHook(webhookGoToolchainHandler, "/gotoolchain", headers, buf, http.StatusOK)
 }
 
 func TestWebhook(t *testing.T) {
