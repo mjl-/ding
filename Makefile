@@ -17,7 +17,6 @@ check:
 	CGO_ENABLED=0 go vet
 	GOARCH=386 CGO_ENABLED=0 go vet
 	CGO_ENABLED=0 staticcheck
-	golint
 
 tswatch:
 	bash -c 'while true; do inotifywait -q -e close_write *.ts; make web/ding.js; done'
