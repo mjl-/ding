@@ -1,6 +1,6 @@
 module github.com/mjl-/ding
 
-go 1.23.0
+go 1.25.0
 
 require (
 	github.com/mjl-/bstore v0.0.10
@@ -11,7 +11,7 @@ require (
 	github.com/mjl-/sherpaprom v0.0.2
 	github.com/mjl-/sherpats v0.0.6
 	github.com/prometheus/client_golang v1.19.1
-	golang.org/x/sys v0.27.0
+	golang.org/x/sys v0.42.0
 )
 
 require (
@@ -22,9 +22,9 @@ require (
 	github.com/prometheus/common v0.48.0 // indirect
 	github.com/prometheus/procfs v0.12.0 // indirect
 	go.etcd.io/bbolt v1.3.12 // indirect
-	golang.org/x/crypto v0.29.0 // indirect
-	golang.org/x/mod v0.22.0 // indirect
-	golang.org/x/sync v0.9.0 // indirect
-	golang.org/x/tools v0.27.0 // indirect
+	golang.org/x/crypto v0.48.0 // indirect
+	golang.org/x/mod v0.33.0 // indirect
+	golang.org/x/sync v0.20.0 // indirect
+	golang.org/x/tools v0.42.0 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
 )
