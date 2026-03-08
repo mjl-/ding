@@ -22,8 +22,8 @@ github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515/go.mod h1:+0opPa2QZZtGFB
 github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5Ld7szi9bcBfOoFv/3dc6xSMkL2PC0=
 github.com/mjl-/bstore v0.0.10 h1:fYLQy3EdgXvRHoa8Q3sXMAjZf+uQLRbsh9rYjGep/t4=
 github.com/mjl-/bstore v0.0.10/go.mod h1:QzqlAZAVRKwyojCRd9v25viFsMxK5UmIbdxgEyHdK6c=
-github.com/mjl-/goreleases v0.0.4 h1:Oj84UsebyYNZVD7ql8GS/JZQsnjFazX/MbUIU+sn3Fg=
-github.com/mjl-/goreleases v0.0.4/go.mod h1:feMqtPMmNVIJjL2rqsS3pVx8gCvLFvJutbBwjj15rQo=
+github.com/mjl-/goreleases v0.0.5 h1:rb5p95rcvnXpiDerk8A43SMJEPepX99nBnOE1tWxvFg=
+github.com/mjl-/goreleases v0.0.5/go.mod h1:feMqtPMmNVIJjL2rqsS3pVx8gCvLFvJutbBwjj15rQo=
 github.com/mjl-/sconf v0.0.8 h1:xmTVjp+9rvKEpItYF+Mi6yt56F5z2VtBqqgOk6JnuRc=
 github.com/mjl-/sconf v0.0.8/go.mod h1:uF8OdWtLT8La3i4ln176i1pB0ps9pXGCaABEU55ZkE0=
 github.com/mjl-/sherpa v0.6.7 h1:C5F8XQdV5nCuS4fvB+ye/ziUQrajEhOoj/t2w5T14BY=

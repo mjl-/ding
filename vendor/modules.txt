@@ -7,7 +7,7 @@ github.com/cespare/xxhash/v2
 # github.com/mjl-/bstore v0.0.10
 ## explicit; go 1.23.0
 github.com/mjl-/bstore
-# github.com/mjl-/goreleases v0.0.4
+# github.com/mjl-/goreleases v0.0.5
 ## explicit; go 1.14
 github.com/mjl-/goreleases
 # github.com/mjl-/sconf v0.0.8

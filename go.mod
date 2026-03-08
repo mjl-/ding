@@ -4,7 +4,7 @@ go 1.23.0
 
 require (
 	github.com/mjl-/bstore v0.0.10
-	github.com/mjl-/goreleases v0.0.4
+	github.com/mjl-/goreleases v0.0.5
 	github.com/mjl-/sconf v0.0.8
 	github.com/mjl-/sherpa v0.6.7
 	github.com/mjl-/sherpadoc v0.0.17
